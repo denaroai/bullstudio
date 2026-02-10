@@ -15,12 +15,18 @@ export interface ProviderDetectionResult {
  */
 export async function detectProvider(
   redis: Redis,
-  prefix: string = "bull"
+  prefix: string = "bull",
 ): Promise<ProviderDetectionResult> {
   try {
     // Check for BullMQ meta keys (bull:*:meta)
     const metaPattern = `${prefix}:*:meta`;
-    const metaKeys = await redis.keys(metaPattern);
+    const [, metaKeys] = await redis.scan(
+      "0",
+      "MATCH",
+      metaPattern,
+      "COUNT",
+      100,
+    );
 
     if (metaKeys.length > 0) {
       return {
@@ -32,7 +38,7 @@ export async function detectProvider(
 
     // Check for Bull id keys (bull:*:id)
     const idPattern = `${prefix}:*:id`;
-    const idKeys = await redis.keys(idPattern);
+    const [, idKeys] = await redis.scan("0", "MATCH", idPattern, "COUNT", 100);
 
     if (idKeys.length > 0) {
       return {
@@ -51,7 +57,7 @@ export async function detectProvider(
   } catch (error) {
     console.warn(
       "[ProviderDetector] Detection failed, defaulting to BullMQ:",
-      error
+      error,
     );
     return {
       type: "bullmq",
