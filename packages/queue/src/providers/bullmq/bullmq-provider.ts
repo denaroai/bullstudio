@@ -419,7 +419,20 @@ export class BullMqProvider implements QueueService {
 
     const prefix = this.config.prefix ?? DEFAULT_PREFIX;
     const pattern = `${prefix}:*:meta`;
-    const keys = await this.connection.keys(pattern);
+    const keys: string[] = [];
+    let cursor = "0";
+
+    do {
+      const [nextCursor, results] = await this.connection.scan(
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        100,
+      );
+      cursor = nextCursor;
+      keys.push(...results);
+    } while (cursor !== "0");
 
     const queueNames = keys
       .map((key) => {

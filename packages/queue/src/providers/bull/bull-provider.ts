@@ -23,12 +23,7 @@ import { getProviderCapabilities } from "../../types";
 const DEFAULT_PREFIX = "bull";
 
 // Bull-specific job states (no prioritized, no waiting-children, no paused per-job)
-type BullJobStatus =
-  | "waiting"
-  | "active"
-  | "completed"
-  | "failed"
-  | "delayed";
+type BullJobStatus = "waiting" | "active" | "completed" | "failed" | "delayed";
 
 export class BullProvider implements QueueService {
   readonly providerType: QueueProviderType = "bull";
@@ -132,7 +127,7 @@ export class BullProvider implements QueueService {
 
   async disconnect(): Promise<void> {
     const closePromises = Array.from(this.queues.values()).map((queue) =>
-      queue.close()
+      queue.close(),
     );
     await Promise.all(closePromises);
     this.queues.clear();
@@ -152,7 +147,7 @@ export class BullProvider implements QueueService {
   async getQueues(): Promise<IQueue[]> {
     const queueNames = await this.discoverQueues();
     const queues = await Promise.all(
-      queueNames.map((name) => this.getQueue(name))
+      queueNames.map((name) => this.getQueue(name)),
     );
     return queues.filter((q): q is IQueue => q !== null);
   }
@@ -226,7 +221,7 @@ export class BullProvider implements QueueService {
 
   async getJobsSummary(
     queueName: string,
-    options?: JobQueryOptions
+    options?: JobQueryOptions,
   ): Promise<JobSummary[]> {
     // Bull doesn't have an efficient metadata-only fetch like BullMQ
     // Fall back to full job fetching and map to summary
@@ -326,7 +321,20 @@ export class BullProvider implements QueueService {
     const prefix = this.config.prefix ?? DEFAULT_PREFIX;
     // Bull stores job ID counter in bull:queueName:id
     const pattern = `${prefix}:*:id`;
-    const keys = await this.connection.keys(pattern);
+    const keys: string[] = [];
+    let cursor = "0";
+
+    do {
+      const [nextCursor, results] = await this.connection.scan(
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        100,
+      );
+      cursor = nextCursor;
+      keys.push(...results);
+    } while (cursor !== "0");
 
     const queueNames = keys
       .map((key) => {
@@ -338,9 +346,7 @@ export class BullProvider implements QueueService {
     return [...new Set(queueNames)];
   }
 
-  private resolveStatuses(
-    status?: JobStatus | JobStatus[]
-  ): BullJobStatus[] {
+  private resolveStatuses(status?: JobStatus | JobStatus[]): BullJobStatus[] {
     if (!status) {
       return ["waiting", "active", "completed", "failed", "delayed"];
     }
@@ -348,7 +354,7 @@ export class BullProvider implements QueueService {
     const statuses = Array.isArray(status) ? status : [status];
     // Filter out unsupported statuses (prioritized, waiting-children, paused)
     return statuses.filter((s): s is BullJobStatus =>
-      ["waiting", "active", "completed", "failed", "delayed"].includes(s)
+      ["waiting", "active", "completed", "failed", "delayed"].includes(s),
     );
   }
 
@@ -400,9 +406,7 @@ export class BullProvider implements QueueService {
     return "waiting";
   }
 
-  private normalizeProgress(
-    progress: number | object
-  ): number | object {
+  private normalizeProgress(progress: number | object): number | object {
     if (typeof progress === "number") {
       return progress;
     }
@@ -415,7 +419,7 @@ export class BullProvider implements QueueService {
   private sortJobs(
     jobs: Job[],
     field: "timestamp" | "processedOn" | "finishedOn" | "progress",
-    order: "asc" | "desc"
+    order: "asc" | "desc",
   ): Job[] {
     return [...jobs].sort((a, b) => {
       let aValue: number;
