@@ -76,6 +76,10 @@ function JobDetailPage() {
     ),
   );
 
+  const { data: logsData } = useQuery(
+    trpc.jobs.logs.queryOptions({ queueName, jobId }, { enabled: !!job }),
+  );
+
   const retryMutation = useMutation(
     trpc.jobs.retry.mutationOptions({
       onSuccess: (data) => {
@@ -253,6 +257,9 @@ function JobDetailPage() {
           <TabsTrigger value="data" className="data-[state=active]:bg-zinc-800">
             Input Data
           </TabsTrigger>
+          <TabsTrigger value="logs" className="data-[state=active]:bg-zinc-800">
+            Logs
+          </TabsTrigger>
           <TabsTrigger
             value="result"
             className="data-[state=active]:bg-zinc-800"
@@ -278,6 +285,30 @@ function JobDetailPage() {
             </CardHeader>
             <CardContent>
               <JsonViewer data={job.data} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="logs" className="mt-4">
+          <Card className="bg-zinc-900/50 border-zinc-800">
+            <CardHeader>
+              <CardTitle className="text-sm text-zinc-400">Job Logs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {logsData && logsData.logs.length > 0 ? (
+                <div className="bg-zinc-900 rounded-lg overflow-x-auto max-h-[600px] overflow-y-auto">
+                  {logsData.logs.map((line, i) => (
+                    <div
+                      key={i}
+                      className="px-4 py-1.5 text-sm font-mono text-zinc-300 hover:bg-zinc-800/50 border-b border-zinc-800/50 last:border-b-0 whitespace-pre-wrap break-all"
+                    >
+                      {line}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-zinc-500 text-sm">No logs recorded</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -392,9 +423,7 @@ const JsonViewer = memo(function JsonViewer({ data }: { data: unknown }) {
       <pre className="text-sm text-zinc-300 font-mono bg-zinc-900 p-4 rounded-lg overflow-x-auto max-h-[600px] overflow-y-auto">
         {formatted}
         {isTruncated && (
-          <span className="text-zinc-500">
-            {"\n\n... (truncated)"}
-          </span>
+          <span className="text-zinc-500">{"\n\n... (truncated)"}</span>
         )}
       </pre>
       {(isTruncated || showFull) && fullSize > TRUNCATION_THRESHOLD && (
