@@ -365,6 +365,14 @@ export class BullMqProvider implements QueueService {
     return this.mapJob(job, state, queueName);
   }
 
+  async getJobLogs(
+    queueName: string,
+    jobId: string,
+  ): Promise<{ logs: string[]; count: number }> {
+    const queue = this.getOrCreateQueue(queueName);
+    return queue.getJobLogs(jobId);
+  }
+
   async retryJob(queueName: string, jobId: string): Promise<void> {
     const queue = this.getOrCreateQueue(queueName);
     const job = await queue.getJob(jobId);

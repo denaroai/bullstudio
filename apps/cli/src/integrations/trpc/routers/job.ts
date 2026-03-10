@@ -89,6 +89,13 @@ export const jobRouter = {
       return provider.getJob(input.queueName, input.jobId);
     }),
 
+  logs: publicProcedure
+    .input(z.object({ queueName: z.string(), jobId: z.string() }))
+    .query(async ({ input }) => {
+      const provider = await getQueueProvider();
+      return provider.getJobLogs(input.queueName, input.jobId);
+    }),
+
   retry: publicProcedure
     .input(z.object({ queueName: z.string(), jobId: z.string() }))
     .mutation(async ({ input }) => {
