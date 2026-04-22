@@ -36,9 +36,15 @@ const { values, positionals } = parseArgs({
       short: "h",
       description: "Show help",
     },
+    prefix: {
+      type: "string",
+      description:
+        "Redis key prefix(es), comma-separated (default: auto-discover)",
+    },
     "no-open": {
       type: "boolean",
-      description: "Do not open browser automatically",
+      description:
+        "Do not open browser automatically",
     },
     dev: {
       type: "boolean",
@@ -57,31 +63,37 @@ Usage:
   npx bullstudio [options]
 
 Options:
-  -r, --redis <url>    Redis connection URL (default: redis://localhost:6379)
-  -p, --port <port>    Port to run the server on (default: 4000)
-  --username <user>    Username for HTTP Basic Auth (default: bullstudio)
-  --password <pass>    Password for HTTP Basic Auth
-  --no-open            Do not open browser automatically
-  --dev                Run in development mode (requires source files)
-  -h, --help           Show this help message
+  -r, --redis <url>      Redis connection URL (default: redis://localhost:6379)
+  -p, --port <port>      Port to run the server on (default: 4000)
+  --prefix <prefixes>    Comma-separated key prefixes (default: auto-discover all)
+  --username <user>      Username for HTTP Basic Auth (default: bullstudio)
+  --password <pass>      Password for HTTP Basic Auth
+  --no-open              Do not open browser automatically
+  --dev                  Run in development mode (requires source files)
+  -h, --help             Show this help message
 
 Examples:
   bullstudio
   bullstudio -r redis://localhost:6379
   bullstudio -r redis://:password@myhost.com:6379
   bullstudio -p 5000 -r redis://localhost:6379
+  bullstudio --prefix stage,stage2
   bullstudio --password secret123
   bullstudio --username admin --password secret123
 `);
   process.exit(0);
 }
 
-const redisUrl = values.redis || positionals[0] || "redis://localhost:6379";
+const redisUrl =
+  values.redis ||
+  positionals[0] ||
+  "redis://localhost:6379";
 const port = values.port || "4000";
 const shouldOpen = !values["no-open"];
 const isDev = values.dev;
 const username = values.username;
 const password = values.password;
+const prefixArg = values.prefix;
 
 // Validate Redis URL
 try {
@@ -102,10 +114,11 @@ console.log(`
 │                                             │
 └─────────────────────────────────────────────┘
 
-Redis: ${redisUrl}
-Port:  ${port}
-Mode:  ${isDev ? "development" : "production"}
-Auth:  ${password ? `enabled (username: ${username})` : "disabled"}
+Redis:    ${redisUrl}
+Port:     ${port}
+Prefix:   ${prefixArg || "auto-discover"}
+Mode:     ${isDev ? "development" : "production"}
+Auth:     ${password ? `enabled (username: ${username})` : "disabled"}
 `);
 
 async function openBrowser(url: string) {
@@ -137,16 +150,23 @@ let child: ReturnType<typeof spawn>;
 if (isDev) {
   // Development mode: use vite dev
   console.log("Starting development server...\n");
-  child = spawn("npx", ["vite", "dev", "--port", port], {
-    cwd: appDir,
-    env: {
-      ...process.env,
-      REDIS_URL: redisUrl,
-      PORT: port,
+  child = spawn(
+    "npx",
+    ["vite", "dev", "--port", port],
+    {
+      cwd: appDir,
+      env: {
+        ...process.env,
+        REDIS_URL: redisUrl,
+        PORT: port,
+        ...(prefixArg
+          ? { REDIS_PREFIX: prefixArg }
+          : {}),
+      },
+      stdio: "pipe",
+      shell: true,
     },
-    stdio: "pipe",
-    shell: true,
-  });
+  );
 } else {
   // Production mode: run the built production server
   console.log("Starting production server...\n");
@@ -159,6 +179,9 @@ if (isDev) {
       HOST: "localhost",
       BULLSTUDIO_USERNAME: username,
       BULLSTUDIO_PASSWORD: password,
+      ...(prefixArg
+        ? { REDIS_PREFIX: prefixArg }
+        : {}),
     },
     stdio: "pipe",
   });

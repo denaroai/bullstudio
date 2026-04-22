@@ -26,6 +26,7 @@ export { createQueueProvider, createProviderByType } from "./providers/provider-
 
 // Detection
 export { detectProvider, type ProviderDetectionResult } from "./detection";
+export { discoverPrefixes } from "./detection";
 
 // Errors
 export * from "./errors";

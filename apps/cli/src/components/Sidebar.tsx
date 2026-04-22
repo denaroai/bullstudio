@@ -117,7 +117,9 @@ export function AppSidebar() {
                 <Database className="size-3.5 shrink-0 text-emerald-500" />
                 <div className="flex flex-col group-data-[collapsible=icon]:hidden">
                   <div className="flex items-center gap-2">
-                    <span className="text-zinc-400 font-medium">Redis</span>
+                    <span className="text-zinc-400 font-medium">
+                      Redis
+                    </span>
                     {connectionInfo?.providerType && (
                       <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 uppercase">
                         {connectionInfo.providerType}
@@ -125,8 +127,19 @@ export function AppSidebar() {
                     )}
                   </div>
                   <span className="text-zinc-500 font-mono text-[11px]">
-                    {connectionInfo?.displayUrl || "connecting..."}
+                    {connectionInfo?.displayUrl ||
+                      "connecting..."}
                   </span>
+                  {connectionInfo?.prefixes &&
+                    connectionInfo.prefixes
+                      .length > 1 && (
+                      <span className="text-zinc-600 font-mono text-[10px] mt-0.5">
+                        prefixes:{" "}
+                        {connectionInfo.prefixes.join(
+                          ", ",
+                        )}
+                      </span>
+                    )}
                 </div>
               </div>
             </div>

@@ -28,7 +28,10 @@ export interface QueueServiceEventCallbacks {
  */
 export interface QueueServiceConfig {
   redisUrl: string;
+  /** Single prefix (backward compat). Ignored when prefixes is set. */
   prefix?: string;
+  /** Explicit list of prefixes. Use `["*"]` for auto-discovery. */
+  prefixes?: string[];
   eventCallbacks?: QueueServiceEventCallbacks;
 }
 
@@ -49,29 +52,60 @@ export interface QueueService {
   /** Check if currently connected */
   isConnected(): boolean;
 
+  /** Return all discovered prefixes. */
+  getPrefixes(): Promise<string[]>;
+
   // Queue operations
   getQueues(): Promise<Queue[]>;
-  getQueue(name: string): Promise<Queue | null>;
-  pauseQueue(queueName: string): Promise<void>;
-  resumeQueue(queueName: string): Promise<void>;
-  getJobCounts(queueName: string): Promise<JobCounts>;
+  getQueue(
+    name: string, prefix?: string,
+  ): Promise<Queue | null>;
+  pauseQueue(
+    queueName: string, prefix?: string,
+  ): Promise<void>;
+  resumeQueue(
+    queueName: string, prefix?: string,
+  ): Promise<void>;
+  getJobCounts(
+    queueName: string, prefix?: string,
+  ): Promise<JobCounts>;
 
   // Job operations
-  getJobs(queueName: string, options?: JobQueryOptions): Promise<Job[]>;
+  getJobs(
+    queueName: string,
+    options?: JobQueryOptions,
+    prefix?: string,
+  ): Promise<Job[]>;
   getJobsSummary(
     queueName: string,
     options?: JobQueryOptions,
+    prefix?: string,
   ): Promise<JobSummary[]>;
-  getJob(queueName: string, jobId: string): Promise<Job | null>;
+  getJob(
+    queueName: string,
+    jobId: string,
+    prefix?: string,
+  ): Promise<Job | null>;
   getJobLogs(
     queueName: string,
     jobId: string,
+    prefix?: string,
   ): Promise<{ logs: string[]; count: number }>;
-  retryJob(queueName: string, jobId: string): Promise<void>;
-  removeJob(queueName: string, jobId: string): Promise<void>;
+  retryJob(
+    queueName: string,
+    jobId: string,
+    prefix?: string,
+  ): Promise<void>;
+  removeJob(
+    queueName: string,
+    jobId: string,
+    prefix?: string,
+  ): Promise<void>;
 
   // Worker operations
-  getWorkerCount(queueName: string): Promise<WorkerCount>;
+  getWorkerCount(
+    queueName: string, prefix?: string,
+  ): Promise<WorkerCount>;
 
   // Provider capabilities
   getCapabilities(): QueueProviderCapabilities;

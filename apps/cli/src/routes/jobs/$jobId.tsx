@@ -40,6 +40,7 @@ import { z } from "zod";
 
 const searchSchema = z.object({
   queueName: z.string(),
+  prefix: z.string().optional(),
 });
 
 export const Route = createFileRoute("/jobs/$jobId")({
@@ -49,7 +50,7 @@ export const Route = createFileRoute("/jobs/$jobId")({
 
 function JobDetailPage() {
   const { jobId } = Route.useParams();
-  const { queueName } = Route.useSearch();
+  const { queueName, prefix } = Route.useSearch();
   const navigate = useNavigate();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -64,6 +65,7 @@ function JobDetailPage() {
       {
         queueName,
         jobId,
+        prefix,
       },
       {
         refetchInterval(query) {
@@ -77,7 +79,10 @@ function JobDetailPage() {
   );
 
   const { data: logsData } = useQuery(
-    trpc.jobs.logs.queryOptions({ queueName, jobId }, { enabled: !!job }),
+    trpc.jobs.logs.queryOptions(
+      { queueName, jobId, prefix },
+      { enabled: !!job },
+    ),
   );
 
   const retryMutation = useMutation(
@@ -158,11 +163,19 @@ function JobDetailPage() {
   };
 
   const handleRetry = () => {
-    retryMutation.mutate({ queueName, jobId });
+    retryMutation.mutate({
+      queueName,
+      jobId,
+      prefix,
+    });
   };
 
   const handleRemove = () => {
-    removeMutation.mutate({ queueName, jobId });
+    removeMutation.mutate({
+      queueName,
+      jobId,
+      prefix,
+    });
   };
 
   return (

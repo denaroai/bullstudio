@@ -31,18 +31,22 @@ export const connectionRouter = createTRPCRouter({
     const provider = await getQueueProvider();
     const capabilities = provider.getCapabilities();
 
+    const prefixes =
+      await provider.getPrefixes();
+
     return {
       host: parsed.host,
       port: parsed.port,
       hasPassword: parsed.hasPassword,
       database: parsed.database,
-      // Don't expose full URL with password
       displayUrl: `${parsed.host}:${parsed.port}`,
-      // Provider info
       providerType: capabilities.providerType,
+      prefixes,
       capabilities: {
-        supportsFlows: capabilities.supportsFlows,
-        supportedStatuses: capabilities.supportedJobStates,
+        supportsFlows:
+          capabilities.supportsFlows,
+        supportedStatuses:
+          capabilities.supportedJobStates,
       },
     };
   }),

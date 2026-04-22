@@ -204,32 +204,57 @@ export const overviewRouter = {
     .input(
       z.object({
         queueName: z.string().optional(),
-        timeRangeHours: z.number().min(1).max(168).default(24),
+        prefix: z.string().optional(),
+        timeRangeHours: z
+          .number()
+          .min(1)
+          .max(168)
+          .default(24),
       }),
     )
-    .query(async ({ input }): Promise<OverviewMetricsResponse> => {
-      const provider = await getQueueProvider();
-      const allQueues = await provider.getQueues();
-      const timeRangeMs = input.timeRangeHours * 60 * 60 * 1000;
-      const cutoffTimestamp = Date.now() - timeRangeMs;
+    .query(
+      async ({
+        input,
+      }): Promise<OverviewMetricsResponse> => {
+        const provider = await getQueueProvider();
+        const allQueues =
+          await provider.getQueues();
+        const timeRangeMs =
+          input.timeRangeHours * 60 * 60 * 1000;
+        const cutoffTimestamp =
+          Date.now() - timeRangeMs;
 
-      const queuesToProcess = input.queueName
-        ? allQueues.filter((q) => q.name === input.queueName)
-        : allQueues;
+        const queuesToProcess = input.queueName
+          ? allQueues.filter(
+              (q) =>
+                q.name === input.queueName &&
+                (!input.prefix ||
+                  q.prefix === input.prefix),
+            )
+          : allQueues;
 
       const allJobs: JobSummary[] = [];
 
       for (const queue of queuesToProcess) {
-        const [completed, failed] = await Promise.all([
-          provider.getJobsSummary(queue.name, {
-            filter: { status: "completed" },
-            limit: 1000,
-          }),
-          provider.getJobsSummary(queue.name, {
-            filter: { status: "failed" },
-            limit: 1000,
-          }),
-        ]);
+        const [completed, failed] =
+          await Promise.all([
+            provider.getJobsSummary(
+              queue.name,
+              {
+                filter: { status: "completed" },
+                limit: 1000,
+              },
+              queue.prefix,
+            ),
+            provider.getJobsSummary(
+              queue.name,
+              {
+                filter: { status: "failed" },
+                limit: 1000,
+              },
+              queue.prefix,
+            ),
+          ]);
 
         allJobs.push(
           ...completed.filter(

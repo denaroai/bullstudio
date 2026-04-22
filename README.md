@@ -124,6 +124,7 @@ docker compose up -d
 | --------------------- | ----------------------------------------- | ------------------------ |
 | `REDIS_URL`           | Redis connection URL                      | `redis://localhost:6379` |
 | `PORT`                | Port to run the dashboard on              | `4000`                   |
+| `REDIS_PREFIX`        | Comma-separated key prefixes              | auto-discover all        |
 | `BULLSTUDIO_USERNAME` | Password for HTTP Basic Auth (production) | `bullstudio`             |
 | `BULLSTUDIO_PASSWORD` | Password for HTTP Basic Auth (production) | (none)                   |
 
@@ -151,14 +152,15 @@ bullstudio [options]
 
 ### Options
 
-| Option              | Short | Description                                    | Default                  |
-| ------------------- | ----- | ---------------------------------------------- | ------------------------ |
-| `--redis <url>`     | `-r`  | Redis connection URL                           | `redis://localhost:6379` |
-| `--port <port>`     | `-p`  | Port to run the dashboard on                   | `4000`                   |
-| `--username <user>` |       | Username for HTTP Basic Auth (production only) | `bullstudio`             |
-| `--password <pass>` |       | Password for HTTP Basic Auth (production only) | (none)                   |
-| `--no-open`         |       | Don't open browser automatically               | Opens browser            |
-| `--help`            | `-h`  | Show help message                              |                          |
+| Option                 | Short | Description                                    | Default                  |
+| ---------------------- | ----- | ---------------------------------------------- | ------------------------ |
+| `--redis <url>`        | `-r`  | Redis connection URL                           | `redis://localhost:6379` |
+| `--port <port>`        | `-p`  | Port to run the dashboard on                   | `4000`                   |
+| `--prefix <prefixes>`  |       | Comma-separated key prefixes                   | auto-discover all        |
+| `--username <user>`    |       | Username for HTTP Basic Auth (production only) | `bullstudio`             |
+| `--password <pass>`    |       | Password for HTTP Basic Auth (production only) | (none)                   |
+| `--no-open`            |       | Don't open browser automatically               | Opens browser            |
+| `--help`               | `-h`  | Show help message                              |                          |
 
 ---
 
@@ -198,6 +200,21 @@ bullstudio -r redis://username:password@myhost.com:6379
 
 ```bash
 bullstudio --no-open
+```
+
+### Multiple prefixes
+
+By default bullstudio auto-discovers all prefixes in Redis.
+To restrict to specific prefixes:
+
+```bash
+bullstudio --prefix stage,stage2
+```
+
+Or via the environment variable:
+
+```bash
+REDIS_PREFIX=stage,stage2 bullstudio
 ```
 
 ### Combine options
@@ -330,7 +347,7 @@ docker run -d -p 6379:6379 redis
 bullstudio discovers queues by scanning for BullMQ metadata keys in Redis. Make sure:
 1. Your application has created at least one queue
 2. You're connecting to the correct Redis instance
-3. If using a prefix other than `bull`, your queues use the default prefix
+3. If you use custom prefixes, bullstudio will auto-discover them. You can also specify them explicitly with `--prefix` or `REDIS_PREFIX`
 
 ### Port already in use
 

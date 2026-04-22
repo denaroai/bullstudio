@@ -99,7 +99,11 @@ export const flowRouter = {
       for (const queue of queues) {
         if (flows.length >= limit) break;
 
-        const jobs = await provider.getJobsSummary(queue.name, { limit: 500 });
+        const jobs = await provider.getJobsSummary(
+          queue.name,
+          { limit: 500 },
+          queue.prefix,
+        );
 
         const potentialRoots = jobs.filter((job) => !job.parentId);
 
@@ -141,10 +145,17 @@ export const flowRouter = {
       for (const queue of queues) {
         if (flows.length >= limit) break;
 
-        const waitingChildrenJobs = await provider.getJobs(queue.name, {
-          filter: { status: "waiting-children" },
-          limit: 100,
-        });
+        const waitingChildrenJobs =
+          await provider.getJobs(
+            queue.name,
+            {
+              filter: {
+                status: "waiting-children",
+              },
+              limit: 100,
+            },
+            queue.prefix,
+          );
 
         for (const job of waitingChildrenJobs) {
           if (flows.length >= limit) break;

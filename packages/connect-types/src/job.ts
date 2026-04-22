@@ -11,6 +11,7 @@ export interface Job {
   id: string;
   name: string;
   queueName: string;
+  prefix?: string;
   data: unknown;
   status: JobStatus;
   progress: number | object;
@@ -56,6 +57,7 @@ export interface JobSummary {
   id: string;
   name: string;
   queueName: string;
+  prefix?: string;
   status: JobStatus;
   progress: number | object;
   attemptsMade: number;
