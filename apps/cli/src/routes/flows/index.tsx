@@ -1,10 +1,10 @@
-"use client";
+"use client"
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useTRPC } from "@/integrations/trpc/react";
-import { useQuery } from "@tanstack/react-query";
-import Header from "@/components/Header";
-import { Button } from "@bullstudio/ui/components/button";
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { useTRPC } from "@/integrations/trpc/react"
+import { useQuery } from "@tanstack/react-query"
+import Header from "@/components/Header"
+import { Button } from "@bullstudio/ui/components/button"
 import {
   Table,
   TableBody,
@@ -12,23 +12,23 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@bullstudio/ui/components/table";
-import { Skeleton } from "@bullstudio/ui/components/skeleton";
+} from "@bullstudio/ui/components/table"
+import { Skeleton } from "@bullstudio/ui/components/skeleton"
 import {
   JobStatusBadge,
   type JobStatus,
   EmptyState,
-} from "@bullstudio/ui/shared";
-import { Workflow, RefreshCw, Inbox, CheckCircle, XCircle } from "lucide-react";
-import dayjs from "@bullstudio/dayjs";
+} from "@bullstudio/ui/shared"
+import { Workflow, RefreshCw, Inbox, CheckCircle, XCircle } from "lucide-react"
+import dayjs from "@bullstudio/dayjs"
 
 export const Route = createFileRoute("/flows/")({
   component: FlowsPage,
-});
+})
 
 function FlowsPage() {
-  const trpc = useTRPC();
-  const navigate = useNavigate();
+  const trpc = useTRPC()
+  const navigate = useNavigate()
 
   const {
     data: flows,
@@ -38,15 +38,15 @@ function FlowsPage() {
   } = useQuery(
     trpc.flows.list.queryOptions(undefined, {
       refetchInterval(query) {
-        const flowsData = query.state.data;
-        if (!flowsData || flowsData.length === 0) return false;
+        const flowsData = query.state.data
+        if (!flowsData || flowsData.length === 0) return false
         const hasActiveFlows = flowsData.some(
-          (f) => !["completed", "failed"].includes(f.status)
-        );
-        return hasActiveFlows ? 2000 : false;
+          (f) => !["completed", "failed"].includes(f.status),
+        )
+        return hasActiveFlows ? 2000 : false
       },
-    })
-  );
+    }),
+  )
 
   const navigateToFlow = (
     flowId: string,
@@ -60,8 +60,8 @@ function FlowsPage() {
         queueName,
         prefix: flowPrefix,
       },
-    });
-  };
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -110,13 +110,11 @@ function FlowsPage() {
             <TableBody>
               {flows.map((flow) => (
                 <TableRow
-                  key={`${flow.queueName}-${flow.id}`}
+                  key={`${flow.prefix}-${flow.queueName}-${flow.id}`}
                   className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
-                  onClick={() => navigateToFlow(
-  flow.id,
-  flow.queueName,
-  flow.prefix,
-)}
+                  onClick={() =>
+                    navigateToFlow(flow.id, flow.queueName, flow.prefix)
+                  }
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -139,7 +137,10 @@ function FlowsPage() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <JobStatusBadge status={flow.status as JobStatus} size="sm" />
+                    <JobStatusBadge
+                      status={flow.status as JobStatus}
+                      size="sm"
+                    />
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
@@ -183,5 +184,5 @@ function FlowsPage() {
         </div>
       )}
     </div>
-  );
+  )
 }

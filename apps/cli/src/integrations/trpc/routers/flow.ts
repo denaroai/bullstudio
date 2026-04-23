@@ -110,7 +110,9 @@ export const flowRouter = {
         for (const job of potentialRoots) {
           if (flows.length >= limit) break;
 
-          const jobKey = `${job.queueName}:${job.id}`;
+          const jobKey =
+            `${queue.prefix}:${job.queueName}` +
+            `:${job.id}`;
           if (seenJobIds.has(jobKey)) continue;
           seenJobIds.add(jobKey);
 
@@ -161,7 +163,9 @@ export const flowRouter = {
         for (const job of waitingChildrenJobs) {
           if (flows.length >= limit) break;
 
-          const jobKey = `${job.queueName}:${job.id}`;
+          const jobKey =
+            `${queue.prefix}:${job.queueName}` +
+            `:${job.id}`;
           if (seenJobIds.has(jobKey)) continue;
           seenJobIds.add(jobKey);
 

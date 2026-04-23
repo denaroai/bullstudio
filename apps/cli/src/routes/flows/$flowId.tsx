@@ -71,10 +71,13 @@ function FlowDetailPage() {
       navigate({
         to: "/jobs/$jobId",
         params: { jobId },
-        search: { queueName: jobQueueName },
+        search: {
+          queueName: jobQueueName,
+          prefix,
+        },
       });
     },
-    [navigate]
+    [navigate, prefix]
   );
 
   if (isLoading) {
