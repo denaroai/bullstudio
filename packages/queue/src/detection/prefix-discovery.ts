@@ -17,12 +17,15 @@ export async function discoverPrefixes(
   return Array.from(prefixes).sort();
 }
 
+const MAX_SCAN_ITERATIONS = 10_000;
+
 async function scanForPattern(
   redis: Redis,
   pattern: string,
   out: Set<string>,
 ): Promise<void> {
   let cursor = "0";
+  let iterations = 0;
   do {
     const [next, keys] = await redis.scan(
       cursor,
@@ -35,6 +38,14 @@ async function scanForPattern(
     for (const key of keys) {
       const prefix = key.split(":")[0];
       if (prefix) out.add(prefix);
+    }
+    iterations++;
+    if (iterations >= MAX_SCAN_ITERATIONS) {
+      console.warn(
+        `[PrefixDiscovery] Stopped after ` +
+          `${MAX_SCAN_ITERATIONS} iterations`,
+      );
+      break;
     }
   } while (cursor !== "0");
 }

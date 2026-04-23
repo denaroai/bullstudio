@@ -31,26 +31,9 @@ const TIME_RANGES = [
   { value: "168", label: "Last 7d" },
 ];
 
+import { queueKey, parseQueueKey } from "@/lib/queue-key";
+
 const ALL_QUEUES_VALUE = "__all__";
-const COMPOSITE_SEP = "::";
-
-function queueKey(
-  prefix: string,
-  name: string,
-): string {
-  return `${prefix}${COMPOSITE_SEP}${name}`;
-}
-
-function parseQueueKey(
-  key: string,
-): { prefix: string; name: string } | null {
-  const idx = key.indexOf(COMPOSITE_SEP);
-  if (idx === -1) return null;
-  return {
-    prefix: key.slice(0, idx),
-    name: key.slice(idx + COMPOSITE_SEP.length),
-  };
-}
 
 function OverviewPage() {
   const trpc = useTRPC();

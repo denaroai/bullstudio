@@ -58,27 +58,10 @@ const BASE_STATUS_TABS: { value: FilterableStatus | "all"; label: string }[] = [
   { value: "delayed", label: "Delayed" },
 ];
 
+import { queueKey, parseQueueKey } from "@/lib/queue-key";
+
 const ALL_QUEUES_VALUE = "__all__";
 const SEARCH_DEBOUNCE_MS = 300;
-const COMPOSITE_SEP = "::";
-
-function queueKey(
-  prefix: string,
-  name: string,
-): string {
-  return `${prefix}${COMPOSITE_SEP}${name}`;
-}
-
-function parseQueueKey(
-  key: string,
-): { prefix: string; name: string } | null {
-  const idx = key.indexOf(COMPOSITE_SEP);
-  if (idx === -1) return null;
-  return {
-    prefix: key.slice(0, idx),
-    name: key.slice(idx + COMPOSITE_SEP.length),
-  };
-}
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);

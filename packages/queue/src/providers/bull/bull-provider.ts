@@ -19,6 +19,7 @@ import type {
 } from "@bullstudio/connect-types";
 import { NotConnectedError, JobNotFoundError } from "../../errors";
 import { getProviderCapabilities } from "../../types";
+import { discoverPrefixes } from "../../detection/prefix-discovery";
 
 const DEFAULT_PREFIX = "bull";
 
@@ -56,7 +57,17 @@ export class BullProvider implements QueueService {
   }
 
   private get defaultPrefix(): string {
-    return this.config.prefix ?? DEFAULT_PREFIX;
+    if (this.config.prefix) {
+      return this.config.prefix;
+    }
+    const explicit =
+      this.config.prefixes?.filter(
+        (p) => p !== "*",
+      );
+    if (explicit?.length === 1) {
+      return explicit[0]!;
+    }
+    return DEFAULT_PREFIX;
   }
 
   private async getActivePrefixes(): Promise<string[]> {
@@ -76,13 +87,13 @@ export class BullProvider implements QueueService {
       explicit?.includes("*") &&
       this.connection
     ) {
-      const { discoverPrefixes } =
-        await import("../../detection/prefix-discovery");
       const found = await discoverPrefixes(
         this.connection,
       );
       this.resolvedPrefixes =
-        found.length > 0 ? found : [this.defaultPrefix];
+        found.length > 0
+          ? found
+          : [this.defaultPrefix];
       return this.resolvedPrefixes;
     }
     this.resolvedPrefixes = [this.defaultPrefix];

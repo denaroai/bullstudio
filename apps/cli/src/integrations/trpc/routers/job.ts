@@ -41,14 +41,21 @@ export const jobRouter = {
       const provider = await getQueueProvider();
       const queues = await provider.getQueues();
 
-      const queuesToFetch = input?.queueName
-        ? queues.filter(
-            (q) =>
-              q.name === input.queueName &&
-              (!input.prefix ||
-                q.prefix === input.prefix),
+      const queuesToFetch = queues.filter(
+        (q) => {
+          if (
+            input?.queueName &&
+            q.name !== input.queueName
           )
-        : queues;
+            return false;
+          if (
+            input?.prefix &&
+            q.prefix !== input.prefix
+          )
+            return false;
+          return true;
+        },
+      );
 
       const allJobs: Job[] = [];
       for (const queue of queuesToFetch) {
@@ -95,14 +102,21 @@ export const jobRouter = {
         const provider = await getQueueProvider();
         const queues = await provider.getQueues();
 
-        const queuesToFetch = input?.queueName
-          ? queues.filter(
-              (q) =>
-                q.name === input.queueName &&
-                (!input.prefix ||
-                  q.prefix === input.prefix),
+        const queuesToFetch = queues.filter(
+          (q) => {
+            if (
+              input?.queueName &&
+              q.name !== input.queueName
             )
-          : queues;
+              return false;
+            if (
+              input?.prefix &&
+              q.prefix !== input.prefix
+            )
+              return false;
+            return true;
+          },
+        );
 
         const allJobs: JobSummary[] = [];
         for (const queue of queuesToFetch) {

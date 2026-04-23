@@ -22,27 +22,36 @@ export async function createQueueProvider(
     retryStrategy: () => null,
   });
 
+  let finalConfig: QueueServiceConfig = {
+    ...config,
+  };
+
   try {
     await redis.connect();
 
     let prefixes = config.prefixes;
 
     if (prefixes?.includes("*")) {
-      const found = await discoverPrefixes(redis);
+      const found =
+        await discoverPrefixes(redis);
       if (found.length > 0) {
         prefixes = found;
         console.log(
-          `[ProviderFactory] Discovered prefixes: ${found.join(", ")}`,
+          `[ProviderFactory] Discovered ` +
+            `prefixes: ${found.join(", ")}`,
         );
       } else {
         prefixes = [config.prefix ?? "bull"];
       }
     }
 
+    finalConfig = { ...config, prefixes };
+
     const detectionPrefix =
       prefixes?.[0] ?? config.prefix ?? "bull";
     const detection = await detectProvider(
-      redis, detectionPrefix,
+      redis,
+      detectionPrefix,
     );
 
     console.log(
@@ -52,19 +61,16 @@ export async function createQueueProvider(
         `from ${detection.detectedFrom})`,
     );
 
-    const finalConfig: QueueServiceConfig = {
-      ...config,
-      prefixes,
-    };
-
     return createProviderByType(
-      detection.type, finalConfig,
+      detection.type,
+      finalConfig,
     );
   } catch (error) {
     console.error(
-      "[ProviderFactory] Detection failed:", error,
+      "[ProviderFactory] Detection failed:",
+      error,
     );
-    return new BullMqProvider(config);
+    return new BullMqProvider(finalConfig);
   } finally {
     await redis.quit().catch(() => {});
   }

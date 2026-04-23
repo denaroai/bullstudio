@@ -41,30 +41,43 @@ export const getQueueProvider =
 
     if (!connectingPromise) {
       connectingPromise = (async () => {
-        const cfg: QueueServiceConfig = {
-          redisUrl,
-          prefixes: getPrefixes(),
-        };
-        const p = await createQueueProvider(cfg);
-        providerRedisUrl = redisUrl;
-        await p.connect();
-        const caps = p.getCapabilities();
-        console.log(
-          `[CLI] Connected to ` +
-            `${caps.displayName} ` +
-            `(${p.providerType})`,
-        );
-        provider = p;
-        return p;
+        try {
+          const cfg: QueueServiceConfig = {
+            redisUrl,
+            prefixes: getPrefixes(),
+          };
+          const p =
+            await createQueueProvider(cfg);
+          await p.connect();
+          providerRedisUrl = redisUrl;
+          provider = p;
+
+          const caps = p.getCapabilities();
+          console.log(
+            `[CLI] Connected to ` +
+              `${caps.displayName} ` +
+              `(${p.providerType})`,
+          );
+          return p;
+        } catch (error) {
+          provider = null;
+          providerRedisUrl = null;
+          throw error;
+        } finally {
+          connectingPromise = null;
+        }
       })();
     }
 
     return connectingPromise;
   };
 
-export const disconnectProvider = async (): Promise<void> => {
-  if (provider) {
-    await provider.disconnect();
-    provider = null;
-  }
-};
+export const disconnectProvider =
+  async (): Promise<void> => {
+    if (provider) {
+      await provider.disconnect();
+      provider = null;
+      providerRedisUrl = null;
+      connectingPromise = null;
+    }
+  };

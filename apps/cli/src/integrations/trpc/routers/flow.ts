@@ -118,6 +118,7 @@ export const flowRouter = {
             const flowTree = await fp.getFlow({
               id: job.id,
               queueName: job.queueName,
+              prefix: queue.prefix,
             });
 
             if (flowTree?.children && flowTree.children.length > 0) {
@@ -141,7 +142,6 @@ export const flowRouter = {
         }
       }
 
-      // Also check jobs with waiting-children status
       for (const queue of queues) {
         if (flows.length >= limit) break;
 
@@ -164,12 +164,13 @@ export const flowRouter = {
           if (seenJobIds.has(jobKey)) continue;
           seenJobIds.add(jobKey);
 
-          if (job.parentId) continue; // Skip children
+          if (job.parentId) continue;
 
           try {
             const flowTree = await fp.getFlow({
               id: job.id,
               queueName: job.queueName,
+              prefix: queue.prefix,
             });
 
             if (flowTree?.children && flowTree.children.length > 0) {

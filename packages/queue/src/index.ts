@@ -25,8 +25,7 @@ export { BullMqProvider, BullProvider } from "./providers";
 export { createQueueProvider, createProviderByType } from "./providers/provider-factory";
 
 // Detection
-export { detectProvider, type ProviderDetectionResult } from "./detection";
-export { discoverPrefixes } from "./detection";
+export { detectProvider, discoverPrefixes, type ProviderDetectionResult } from "./detection";
 
 // Errors
 export * from "./errors";
