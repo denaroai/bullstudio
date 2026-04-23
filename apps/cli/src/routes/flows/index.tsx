@@ -48,11 +48,18 @@ function FlowsPage() {
     })
   );
 
-  const navigateToFlow = (flowId: string, queueName: string) => {
+  const navigateToFlow = (
+    flowId: string,
+    queueName: string,
+    flowPrefix?: string,
+  ) => {
     navigate({
       to: "/flows/$flowId",
       params: { flowId },
-      search: { queueName },
+      search: {
+        queueName,
+        prefix: flowPrefix,
+      },
     });
   };
 
@@ -105,7 +112,11 @@ function FlowsPage() {
                 <TableRow
                   key={`${flow.queueName}-${flow.id}`}
                   className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
-                  onClick={() => navigateToFlow(flow.id, flow.queueName)}
+                  onClick={() => navigateToFlow(
+  flow.id,
+  flow.queueName,
+  flow.prefix,
+)}
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">

@@ -23,6 +23,7 @@ import type { FlowNode } from "@bullstudio/connect-types";
 
 const searchSchema = z.object({
   queueName: z.string(),
+  prefix: z.string().optional(),
 });
 
 export const Route = createFileRoute("/flows/$flowId")({
@@ -39,7 +40,7 @@ function checkHasActiveJobs(node: FlowNode): boolean {
 
 function FlowDetailPage() {
   const { flowId } = Route.useParams();
-  const { queueName } = Route.useSearch();
+  const { queueName, prefix } = Route.useSearch();
   const navigate = useNavigate();
   const trpc = useTRPC();
 
@@ -50,7 +51,7 @@ function FlowDetailPage() {
     isFetching,
   } = useQuery(
     trpc.flows.get.queryOptions(
-      { queueName, flowId },
+      { queueName, flowId, prefix },
       {
         refetchInterval(query) {
           const data = query.state.data;

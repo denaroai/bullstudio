@@ -129,6 +129,7 @@ export const flowRouter = {
                 id: job.id,
                 name: job.name,
                 queueName: job.queueName,
+                prefix: queue.prefix,
                 status: state as JobStatus,
                 totalJobs: stats.total,
                 completedJobs: stats.completed,
@@ -180,6 +181,7 @@ export const flowRouter = {
                 id: job.id,
                 name: job.name,
                 queueName: job.queueName,
+                prefix: queue.prefix,
                 status: job.status,
                 totalJobs: stats.total,
                 completedJobs: stats.completed,
@@ -197,52 +199,73 @@ export const flowRouter = {
     }),
 
   get: publicProcedure
-    .input(z.object({ queueName: z.string(), flowId: z.string() }))
-    .query(async ({ input }): Promise<FlowTree> => {
-      const provider = await getQueueProvider();
+    .input(
+      z.object({
+        queueName: z.string(),
+        flowId: z.string(),
+        prefix: z.string().optional(),
+      }),
+    )
+    .query(
+      async ({ input }): Promise<FlowTree> => {
+        const provider =
+          await getQueueProvider();
 
-      // Check if flows are supported
-      const capabilities = provider.getCapabilities();
-      if (!capabilities.supportsFlows) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Flows are not supported by this queue provider (Bull)",
-        });
-      }
-
-      const fp = await getFlowProducer();
-
-      try {
-        const flowTree = await fp.getFlow({
-          id: input.flowId,
-          queueName: input.queueName,
-        });
-
-        if (!flowTree) {
+        const capabilities =
+          provider.getCapabilities();
+        if (!capabilities.supportsFlows) {
           throw new TRPCError({
-            code: "NOT_FOUND",
-            message: `Flow ${input.flowId} not found in queue ${input.queueName}`,
+            code: "BAD_REQUEST",
+            message:
+              "Flows are not supported by " +
+              "this queue provider (Bull)",
           });
         }
 
-        const root = await convertFlowTree(flowTree);
-        const stats = await countFlowStats(flowTree);
+        const fp = await getFlowProducer();
 
-        return {
-          id: input.flowId,
-          root,
-          queueName: input.queueName,
-          totalNodes: stats.total,
-          completedNodes: stats.completed,
-          failedNodes: stats.failed,
-        };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
+        try {
+          const flowTree = await fp.getFlow({
+            id: input.flowId,
+            queueName: input.queueName,
+            prefix: input.prefix,
+          });
 
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `Flow ${input.flowId} not found in queue ${input.queueName}`,
-        });
-      }
-    }),
+          if (!flowTree) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message:
+                `Flow ${input.flowId} not ` +
+                `found in queue ` +
+                `${input.queueName}`,
+            });
+          }
+
+          const root =
+            await convertFlowTree(flowTree);
+          const stats =
+            await countFlowStats(flowTree);
+
+          return {
+            id: input.flowId,
+            root,
+            queueName: input.queueName,
+            totalNodes: stats.total,
+            completedNodes: stats.completed,
+            failedNodes: stats.failed,
+          };
+        } catch (error) {
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              `Flow ${input.flowId} not ` +
+              `found in queue ` +
+              `${input.queueName}`,
+          });
+        }
+      },
+    ),
 } satisfies TRPCRouterRecord;
