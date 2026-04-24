@@ -434,7 +434,7 @@ function JobsPage() {
             <TableBody>
               {filteredAndSortedJobs.map((job) => (
                 <TableRow
-                  key={`${job.queueName}-${job.id}`}
+                  key={`${job.prefix ?? ""}-${job.queueName}-${job.id}`}
                   className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
                   onClick={() => navigateToJob(job.id, job.queueName, job.prefix)}
                 >
