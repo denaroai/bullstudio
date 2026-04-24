@@ -213,7 +213,7 @@ server.listen(port, host, () => {
 const shutdown = (signal: string) => {
   console.log(`Process received ${signal}, attempting to shut down gracefully`);
   server.close(() => {
-    console.log('Server stopped succesfully');
+    console.log('Server stopped successfully');
     process.exit(0);
   });
 
