@@ -34,6 +34,7 @@ import {
 import dayjs from "@bullstudio/dayjs";
 import { JobStatusBadge, type JobStatus, EmptyState } from "@bullstudio/ui/shared";
 import type { JobSummary } from "@bullstudio/connect-types";
+import { queueKey, parseQueueKey } from "./queue-key";
 
 export const Route = createFileRoute("/jobs/")({ component: JobsPage });
 

@@ -3,6 +3,7 @@ import {
   type QueueService,
   type QueueServiceConfig,
 } from "@bullstudio/queue";
+import { getPrefixes } from "./prefixes";
 
 let provider: QueueService | null = null;
 let providerRedisUrl: string | null = null;
@@ -13,15 +14,6 @@ function getRedisUrl(): string {
   return (
     process.env.REDIS_URL || "redis://localhost:6379"
   );
-}
-
-function getPrefixes(): string[] | undefined {
-  const raw = process.env.REDIS_PREFIX;
-  if (!raw) return ["*"];
-  return raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
 }
 
 export const getQueueProvider =

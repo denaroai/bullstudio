@@ -359,6 +359,49 @@ bullstudio -p 5000
 
 ---
 
+## Development
+
+### Running tests
+
+Tests are written with [vitest](https://vitest.dev) and exercise the queue
+providers against a **real Redis instance** — no mocks. An ephemeral Redis
+service is provided via docker compose.
+
+```bash
+# Start the test Redis (first time, or after docker prune)
+docker compose -f docker-compose.test.yml up -d
+
+# Install dependencies
+pnpm install
+
+# Run every package's test suite
+pnpm test
+```
+
+Tests default to `redis://localhost:6379/15`. Override with `TEST_REDIS_URL`
+if you run Redis elsewhere (e.g. a non-default port).
+
+> Tests flush Redis **DB 15** between cases. Do not use DB 15 for anything
+> you care about keeping.
+
+### Running a subset
+
+```bash
+# One package
+pnpm --filter @bullstudio/queue test
+
+# One test file
+pnpm --filter @bullstudio/queue test src/detection/prefix-discovery.test.ts
+```
+
+### Stopping the test Redis
+
+```bash
+docker compose -f docker-compose.test.yml down
+```
+
+---
+
 ## License
 
 MIT
