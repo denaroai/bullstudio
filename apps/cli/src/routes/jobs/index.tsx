@@ -450,6 +450,11 @@ function JobsPage() {
                   </TableCell>
                   <TableCell>
                     <span className="font-mono text-sm text-zinc-400">
+                      {hasMultiplePrefixes && job.prefix && (
+                        <span className="text-zinc-500 mr-1">
+                          {job.prefix}/
+                        </span>
+                      )}
                       {job.queueName}
                     </span>
                   </TableCell>
