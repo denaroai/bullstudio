@@ -209,3 +209,19 @@ const server = createServer(async (req, res) => {
 server.listen(port, host, () => {
   console.log(`Server running at http://${host}:${port}`);
 });
+
+const shutdown = (signal: string) => {
+  console.log(`Process received ${signal}, attempting to shut down gracefully`);
+  server.close(() => {
+    console.log('Server stopped succesfully');
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    console.error('Server stop timeout occurred, forcing shutdown');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
