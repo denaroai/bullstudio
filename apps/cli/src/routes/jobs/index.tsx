@@ -34,7 +34,7 @@ import {
 import dayjs from "@bullstudio/dayjs";
 import { JobStatusBadge, type JobStatus, EmptyState } from "@bullstudio/ui/shared";
 import type { JobSummary } from "@bullstudio/connect-types";
-import { queueKey, parseQueueKey } from "./queue-key";
+import { queueKey, parseQueueKey } from "@/lib/queue-key";
 
 export const Route = createFileRoute("/jobs/")({ component: JobsPage });
 
@@ -58,8 +58,6 @@ const BASE_STATUS_TABS: { value: FilterableStatus | "all"; label: string }[] = [
   { value: "failed", label: "Failed" },
   { value: "delayed", label: "Delayed" },
 ];
-
-import { queueKey, parseQueueKey } from "@/lib/queue-key";
 
 const ALL_QUEUES_VALUE = "__all__";
 const SEARCH_DEBOUNCE_MS = 300;
