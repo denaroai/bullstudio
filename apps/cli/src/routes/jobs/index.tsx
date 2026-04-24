@@ -34,6 +34,7 @@ import {
 import dayjs from "@bullstudio/dayjs";
 import { JobStatusBadge, type JobStatus, EmptyState } from "@bullstudio/ui/shared";
 import type { JobSummary } from "@bullstudio/connect-types";
+import { queueKey, parseQueueKey } from "./queue-key";
 
 export const Route = createFileRoute("/jobs/")({ component: JobsPage });
 
@@ -58,6 +59,8 @@ const BASE_STATUS_TABS: { value: FilterableStatus | "all"; label: string }[] = [
   { value: "delayed", label: "Delayed" },
 ];
 
+import { queueKey, parseQueueKey } from "@/lib/queue-key";
+
 const ALL_QUEUES_VALUE = "__all__";
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -76,19 +79,31 @@ function JobsPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
 
-  const [queueName, setQueueName] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<FilterableStatus | "all">(
-    "all"
+  const [selectedQueue, setSelectedQueue] =
+    useState<string>("");
+  const [statusFilter, setStatusFilter] =
+    useState<FilterableStatus | "all">("all");
+  const [searchQuery, setSearchQuery] =
+    useState("");
+  const debouncedSearchQuery = useDebounce(
+    searchQuery,
+    SEARCH_DEBOUNCE_MS,
   );
-  const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
-  const [sortField, setSortField] = useState<SortField>("timestamp");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [sortField, setSortField] =
+    useState<SortField>("timestamp");
+  const [sortOrder, setSortOrder] =
+    useState<SortOrder>("desc");
 
-  // Fetch connection info for capabilities
   const { data: connectionInfo } = useQuery(
-    trpc.connection.info.queryOptions()
+    trpc.connection.info.queryOptions(),
   );
+
+  const hasMultiplePrefixes =
+    (connectionInfo?.prefixes?.length ?? 0) > 1;
+
+  const parsed = selectedQueue
+    ? parseQueueKey(selectedQueue)
+    : null;
 
   // Build status tabs based on provider capabilities
   const statusTabs = useMemo(() => {
@@ -102,22 +117,25 @@ function JobsPage() {
     return BASE_STATUS_TABS;
   }, [connectionInfo?.capabilities?.supportsFlows]);
 
-  // Fetch queues
-  const { data: queues, isLoading: loadingQueues } = useQuery(
-    trpc.queues.list.queryOptions()
-  );
+  const {
+    data: queues,
+    isLoading: loadingQueues,
+  } = useQuery(trpc.queues.list.queryOptions());
 
-  // Fetch jobs (using summary endpoint for better performance)
   const {
     data: jobs,
     isLoading: loadingJobs,
     refetch: refetchJobs,
   } = useQuery(
     trpc.jobs.listSummary.queryOptions({
-      queueName: queueName || undefined,
-      status: statusFilter !== "all" ? statusFilter : undefined,
+      queueName: parsed?.name,
+      prefix: parsed?.prefix,
+      status:
+        statusFilter !== "all"
+          ? statusFilter
+          : undefined,
       limit: 500,
-    })
+    }),
   );
 
   // Client-side filtering and sorting
@@ -223,11 +241,18 @@ function JobsPage() {
     return <span className="text-zinc-600">—</span>;
   };
 
-  const navigateToJob = (jobId: string, jobQueueName: string) => {
+  const navigateToJob = (
+    jobId: string,
+    jobQueueName: string,
+    jobPrefix?: string,
+  ) => {
     navigate({
       to: "/jobs/$jobId",
       params: { jobId },
-      search: { queueName: jobQueueName },
+      search: {
+        queueName: jobQueueName,
+        prefix: jobPrefix,
+      },
     });
   };
 
@@ -238,20 +263,29 @@ function JobsPage() {
       {/* Header Controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          {/* Queue Selector */}
           <Select
-            value={queueName || ALL_QUEUES_VALUE}
+            value={
+              selectedQueue || ALL_QUEUES_VALUE
+            }
             onValueChange={(value) =>
-              setQueueName(value === ALL_QUEUES_VALUE ? "" : value)
+              setSelectedQueue(
+                value === ALL_QUEUES_VALUE
+                  ? ""
+                  : value,
+              )
             }
             disabled={loadingQueues}
           >
-            <SelectTrigger className="w-[200px] bg-zinc-900 border-zinc-800">
+            <SelectTrigger className="w-[250px] bg-zinc-900 border-zinc-800">
               <Layers className="size-4 mr-2 text-zinc-500" />
               <SelectValue placeholder="Select queue" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_QUEUES_VALUE}>All queues</SelectItem>
+              <SelectItem
+                value={ALL_QUEUES_VALUE}
+              >
+                All queues
+              </SelectItem>
               {loadingQueues ? (
                 <div className="p-2">
                   <Skeleton className="h-8 w-full" />
@@ -262,8 +296,24 @@ function JobsPage() {
                 </div>
               ) : (
                 queues?.map((queue) => (
-                  <SelectItem key={queue.name} value={queue.name}>
-                    <span className="font-mono">{queue.name}</span>
+                  <SelectItem
+                    key={queueKey(
+                      queue.prefix,
+                      queue.name,
+                    )}
+                    value={queueKey(
+                      queue.prefix,
+                      queue.name,
+                    )}
+                  >
+                    <span className="font-mono">
+                      {hasMultiplePrefixes && (
+                        <span className="text-zinc-500 mr-1">
+                          {queue.prefix}/
+                        </span>
+                      )}
+                      {queue.name}
+                    </span>
                   </SelectItem>
                 ))
               )}
@@ -385,9 +435,9 @@ function JobsPage() {
             <TableBody>
               {filteredAndSortedJobs.map((job) => (
                 <TableRow
-                  key={`${job.queueName}-${job.id}`}
+                  key={`${job.prefix ?? ""}-${job.queueName}-${job.id}`}
                   className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
-                  onClick={() => navigateToJob(job.id, job.queueName)}
+                  onClick={() => navigateToJob(job.id, job.queueName, job.prefix)}
                 >
                   <TableCell>
                     <div className="flex flex-col">
@@ -401,6 +451,11 @@ function JobsPage() {
                   </TableCell>
                   <TableCell>
                     <span className="font-mono text-sm text-zinc-400">
+                      {hasMultiplePrefixes && job.prefix && (
+                        <span className="text-zinc-500 mr-1">
+                          {job.prefix}/
+                        </span>
+                      )}
                       {job.queueName}
                     </span>
                   </TableCell>

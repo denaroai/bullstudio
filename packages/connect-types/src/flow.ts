@@ -17,6 +17,7 @@ export interface FlowSummary {
   id: string;
   name: string;
   queueName: string;
+  prefix?: string;
   status: JobStatus;
   totalJobs: number;
   completedJobs: number;

@@ -1,6 +1,6 @@
 {
   "name": "bullstudio",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "A lightweight queue management dashboard for Bull and BullMQ",
   "private": false,
   "type": "module",
@@ -55,6 +55,7 @@
     "@trpc/tanstack-react-query": "^11.4.3",
     "@types/dagre": "^0.7.53",
     "@xyflow/react": "^12.10.0",
+    "bull": "^4.16.4",
     "bullmq": "^5.34.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -70,15 +71,14 @@
     "tailwindcss": "^4.0.6",
     "tw-animate-css": "^1.3.6",
     "vite-tsconfig-paths": "^5.1.4",
-    "bull": "^4.16.4",
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.2.4",
     "@bullstudio/connect-types": "workspace:*",
     "@bullstudio/dayjs": "workspace:*",
     "@bullstudio/queue": "workspace:*",
     "@bullstudio/ui": "workspace:*",
-    "@biomejs/biome": "2.2.4",
     "@tanstack/devtools-vite": "^0.3.11",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",
@@ -90,7 +90,7 @@
     "jsdom": "^27.0.0",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
-    "vitest": "^3.0.5",
+    "vitest": "^3.2.4",
     "web-vitals": "^5.1.0"
   }
 }

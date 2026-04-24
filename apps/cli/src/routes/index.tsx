@@ -31,16 +31,30 @@ const TIME_RANGES = [
   { value: "168", label: "Last 7d" },
 ];
 
+import { queueKey, parseQueueKey } from "@/lib/queue-key";
+
 const ALL_QUEUES_VALUE = "__all__";
 
 function OverviewPage() {
   const trpc = useTRPC();
-  const [queueName, setQueueName] = useState<string>("");
-  const [timeRange, setTimeRange] = useState<number>(24);
+  const [selectedQueue, setSelectedQueue] =
+    useState<string>("");
+  const [timeRange, setTimeRange] =
+    useState<number>(24);
 
-  const { data: queues, isLoading: loadingQueues } = useQuery(
-    trpc.queues.list.queryOptions(),
+  const { data: queues, isLoading: loadingQueues } =
+    useQuery(trpc.queues.list.queryOptions());
+
+  const { data: connectionInfo } = useQuery(
+    trpc.connection.info.queryOptions(),
   );
+
+  const hasMultiplePrefixes =
+    (connectionInfo?.prefixes?.length ?? 0) > 1;
+
+  const parsed = selectedQueue
+    ? parseQueueKey(selectedQueue)
+    : null;
 
   const {
     data: metrics,
@@ -50,7 +64,8 @@ function OverviewPage() {
   } = useQuery(
     trpc.overview.metrics.queryOptions({
       timeRangeHours: timeRange,
-      queueName: queueName || undefined,
+      queueName: parsed?.name,
+      prefix: parsed?.prefix,
     }),
   );
 
@@ -62,26 +77,46 @@ function OverviewPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <Select
-            value={queueName || ALL_QUEUES_VALUE}
+            value={
+              selectedQueue || ALL_QUEUES_VALUE
+            }
             onValueChange={(value) =>
-              setQueueName(value === ALL_QUEUES_VALUE ? "" : value)
+              setSelectedQueue(
+                value === ALL_QUEUES_VALUE
+                  ? ""
+                  : value,
+              )
             }
             disabled={loadingQueues}
           >
-            <SelectTrigger className="w-[200px] bg-zinc-900/50 border-zinc-800">
+            <SelectTrigger className="w-[250px] bg-zinc-900/50 border-zinc-800">
               <Layers className="size-4 mr-2 text-zinc-500" />
               <SelectValue placeholder="Select queue" />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-zinc-800">
-              <SelectItem value={ALL_QUEUES_VALUE} className="text-zinc-100">
+              <SelectItem
+                value={ALL_QUEUES_VALUE}
+                className="text-zinc-100"
+              >
                 All queues
               </SelectItem>
               {queues?.map((queue) => (
                 <SelectItem
-                  key={queue.name}
-                  value={queue.name}
+                  key={queueKey(
+                    queue.prefix,
+                    queue.name,
+                  )}
+                  value={queueKey(
+                    queue.prefix,
+                    queue.name,
+                  )}
                   className="text-zinc-100 font-mono"
                 >
+                  {hasMultiplePrefixes && (
+                    <span className="text-zinc-500 mr-1">
+                      {queue.prefix}/
+                    </span>
+                  )}
                   {queue.name}
                 </SelectItem>
               ))}

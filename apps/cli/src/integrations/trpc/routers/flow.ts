@@ -99,14 +99,20 @@ export const flowRouter = {
       for (const queue of queues) {
         if (flows.length >= limit) break;
 
-        const jobs = await provider.getJobsSummary(queue.name, { limit: 500 });
+        const jobs = await provider.getJobsSummary(
+          queue.name,
+          { limit: 500 },
+          queue.prefix,
+        );
 
         const potentialRoots = jobs.filter((job) => !job.parentId);
 
         for (const job of potentialRoots) {
           if (flows.length >= limit) break;
 
-          const jobKey = `${job.queueName}:${job.id}`;
+          const jobKey =
+            `${queue.prefix}:${job.queueName}` +
+            `:${job.id}`;
           if (seenJobIds.has(jobKey)) continue;
           seenJobIds.add(jobKey);
 
@@ -114,6 +120,7 @@ export const flowRouter = {
             const flowTree = await fp.getFlow({
               id: job.id,
               queueName: job.queueName,
+              prefix: queue.prefix,
             });
 
             if (flowTree?.children && flowTree.children.length > 0) {
@@ -124,6 +131,7 @@ export const flowRouter = {
                 id: job.id,
                 name: job.name,
                 queueName: job.queueName,
+                prefix: queue.prefix,
                 status: state as JobStatus,
                 totalJobs: stats.total,
                 completedJobs: stats.completed,
@@ -137,28 +145,37 @@ export const flowRouter = {
         }
       }
 
-      // Also check jobs with waiting-children status
       for (const queue of queues) {
         if (flows.length >= limit) break;
 
-        const waitingChildrenJobs = await provider.getJobs(queue.name, {
-          filter: { status: "waiting-children" },
-          limit: 100,
-        });
+        const waitingChildrenJobs =
+          await provider.getJobs(
+            queue.name,
+            {
+              filter: {
+                status: "waiting-children",
+              },
+              limit: 100,
+            },
+            queue.prefix,
+          );
 
         for (const job of waitingChildrenJobs) {
           if (flows.length >= limit) break;
 
-          const jobKey = `${job.queueName}:${job.id}`;
+          const jobKey =
+            `${queue.prefix}:${job.queueName}` +
+            `:${job.id}`;
           if (seenJobIds.has(jobKey)) continue;
           seenJobIds.add(jobKey);
 
-          if (job.parentId) continue; // Skip children
+          if (job.parentId) continue;
 
           try {
             const flowTree = await fp.getFlow({
               id: job.id,
               queueName: job.queueName,
+              prefix: queue.prefix,
             });
 
             if (flowTree?.children && flowTree.children.length > 0) {
@@ -168,6 +185,7 @@ export const flowRouter = {
                 id: job.id,
                 name: job.name,
                 queueName: job.queueName,
+                prefix: queue.prefix,
                 status: job.status,
                 totalJobs: stats.total,
                 completedJobs: stats.completed,
@@ -185,52 +203,73 @@ export const flowRouter = {
     }),
 
   get: publicProcedure
-    .input(z.object({ queueName: z.string(), flowId: z.string() }))
-    .query(async ({ input }): Promise<FlowTree> => {
-      const provider = await getQueueProvider();
+    .input(
+      z.object({
+        queueName: z.string(),
+        flowId: z.string(),
+        prefix: z.string().optional(),
+      }),
+    )
+    .query(
+      async ({ input }): Promise<FlowTree> => {
+        const provider =
+          await getQueueProvider();
 
-      // Check if flows are supported
-      const capabilities = provider.getCapabilities();
-      if (!capabilities.supportsFlows) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Flows are not supported by this queue provider (Bull)",
-        });
-      }
-
-      const fp = await getFlowProducer();
-
-      try {
-        const flowTree = await fp.getFlow({
-          id: input.flowId,
-          queueName: input.queueName,
-        });
-
-        if (!flowTree) {
+        const capabilities =
+          provider.getCapabilities();
+        if (!capabilities.supportsFlows) {
           throw new TRPCError({
-            code: "NOT_FOUND",
-            message: `Flow ${input.flowId} not found in queue ${input.queueName}`,
+            code: "BAD_REQUEST",
+            message:
+              "Flows are not supported by " +
+              "this queue provider (Bull)",
           });
         }
 
-        const root = await convertFlowTree(flowTree);
-        const stats = await countFlowStats(flowTree);
+        const fp = await getFlowProducer();
 
-        return {
-          id: input.flowId,
-          root,
-          queueName: input.queueName,
-          totalNodes: stats.total,
-          completedNodes: stats.completed,
-          failedNodes: stats.failed,
-        };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
+        try {
+          const flowTree = await fp.getFlow({
+            id: input.flowId,
+            queueName: input.queueName,
+            prefix: input.prefix,
+          });
 
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `Flow ${input.flowId} not found in queue ${input.queueName}`,
-        });
-      }
-    }),
+          if (!flowTree) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message:
+                `Flow ${input.flowId} not ` +
+                `found in queue ` +
+                `${input.queueName}`,
+            });
+          }
+
+          const root =
+            await convertFlowTree(flowTree);
+          const stats =
+            await countFlowStats(flowTree);
+
+          return {
+            id: input.flowId,
+            root,
+            queueName: input.queueName,
+            totalNodes: stats.total,
+            completedNodes: stats.completed,
+            failedNodes: stats.failed,
+          };
+        } catch (error) {
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              `Flow ${input.flowId} not ` +
+              `found in queue ` +
+              `${input.queueName}`,
+          });
+        }
+      },
+    ),
 } satisfies TRPCRouterRecord;

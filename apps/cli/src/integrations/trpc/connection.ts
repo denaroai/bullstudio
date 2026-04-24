@@ -1,48 +1,75 @@
-import { createQueueProvider, type QueueService } from "@bullstudio/queue";
+import {
+  createQueueProvider,
+  type QueueService,
+  type QueueServiceConfig,
+} from "@bullstudio/queue";
+import { getPrefixes } from "./prefixes";
 
 let provider: QueueService | null = null;
 let providerRedisUrl: string | null = null;
-let connectingPromise: Promise<QueueService> | null = null;
+let connectingPromise: Promise<QueueService> | null =
+  null;
 
 function getRedisUrl(): string {
-  return process.env.REDIS_URL || "redis://localhost:6379";
+  return (
+    process.env.REDIS_URL || "redis://localhost:6379"
+  );
 }
 
-export const getQueueProvider = async (): Promise<QueueService> => {
-  const redisUrl = getRedisUrl();
+export const getQueueProvider =
+  async (): Promise<QueueService> => {
+    const redisUrl = getRedisUrl();
 
-  // If URL changed, disconnect old provider and create new one
-  if (provider && providerRedisUrl !== redisUrl) {
-    await provider.disconnect();
-    provider = null;
-    providerRedisUrl = null;
-    connectingPromise = null;
-  }
+    if (provider && providerRedisUrl !== redisUrl) {
+      await provider.disconnect();
+      provider = null;
+      providerRedisUrl = null;
+      connectingPromise = null;
+    }
 
-  if (provider) {
-    return provider;
-  }
+    if (provider) {
+      return provider;
+    }
 
-  // Deduplicate concurrent calls by reusing the in-flight promise
-  if (!connectingPromise) {
-    connectingPromise = (async () => {
-      const p = await createQueueProvider({ redisUrl });
-      providerRedisUrl = redisUrl;
-      await p.connect();
-      console.log(
-        `[CLI] Connected to ${p.getCapabilities().displayName} (${p.providerType})`
-      );
-      provider = p;
-      return p;
-    })();
-  }
+    if (!connectingPromise) {
+      connectingPromise = (async () => {
+        try {
+          const cfg: QueueServiceConfig = {
+            redisUrl,
+            prefixes: getPrefixes(),
+          };
+          const p =
+            await createQueueProvider(cfg);
+          await p.connect();
+          providerRedisUrl = redisUrl;
+          provider = p;
 
-  return connectingPromise;
-};
+          const caps = p.getCapabilities();
+          console.log(
+            `[CLI] Connected to ` +
+              `${caps.displayName} ` +
+              `(${p.providerType})`,
+          );
+          return p;
+        } catch (error) {
+          provider = null;
+          providerRedisUrl = null;
+          throw error;
+        } finally {
+          connectingPromise = null;
+        }
+      })();
+    }
 
-export const disconnectProvider = async (): Promise<void> => {
-  if (provider) {
-    await provider.disconnect();
-    provider = null;
-  }
-};
+    return connectingPromise;
+  };
+
+export const disconnectProvider =
+  async (): Promise<void> => {
+    if (provider) {
+      await provider.disconnect();
+      provider = null;
+      providerRedisUrl = null;
+      connectingPromise = null;
+    }
+  };

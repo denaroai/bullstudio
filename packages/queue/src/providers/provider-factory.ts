@@ -1,42 +1,77 @@
 import Redis from "ioredis";
-import type { QueueService, QueueServiceConfig, QueueProviderType } from "../types";
+import type {
+  QueueService,
+  QueueServiceConfig,
+  QueueProviderType,
+} from "../types";
 import { BullMqProvider } from "./bullmq";
 import { BullProvider } from "./bull";
-import { detectProvider } from "../detection";
+import { detectProvider, discoverPrefixes } from "../detection";
 
 /**
  * Auto-detect and create appropriate queue provider.
- * Detection happens once per connection by scanning Redis keys.
+ * When `prefixes: ["*"]` is set, discovers all
+ * prefixes before detecting the provider type.
  */
 export async function createQueueProvider(
-  config: QueueServiceConfig
+  config: QueueServiceConfig,
 ): Promise<QueueService> {
-  // Create temporary Redis connection for detection
   const redis = new Redis(config.redisUrl, {
     maxRetriesPerRequest: null,
     lazyConnect: true,
     retryStrategy: () => null,
   });
 
+  let finalConfig: QueueServiceConfig = {
+    ...config,
+  };
+
   try {
     await redis.connect();
 
-    // Detect provider type
-    const detection = await detectProvider(redis, config.prefix ?? "bull");
+    let prefixes = config.prefixes;
 
-    console.log(
-      `[ProviderFactory] Detected provider: ${detection.type} (${detection.confidence} confidence from ${detection.detectedFrom})`
+    if (prefixes?.includes("*")) {
+      const found =
+        await discoverPrefixes(redis);
+      if (found.length > 0) {
+        prefixes = found;
+        console.log(
+          `[ProviderFactory] Discovered ` +
+            `prefixes: ${found.join(", ")}`,
+        );
+      } else {
+        prefixes = [config.prefix ?? "bull"];
+      }
+    }
+
+    finalConfig = { ...config, prefixes };
+
+    const detectionPrefix =
+      prefixes?.[0] ?? config.prefix ?? "bull";
+    const detection = await detectProvider(
+      redis,
+      detectionPrefix,
     );
 
-    // Create appropriate provider
-    return createProviderByType(detection.type, config);
-  } catch (error) {
-    console.error("[ProviderFactory] Detection failed:", error);
+    console.log(
+      `[ProviderFactory] Detected provider: ` +
+        `${detection.type} ` +
+        `(${detection.confidence} confidence ` +
+        `from ${detection.detectedFrom})`,
+    );
 
-    // Default to BullMQ on error
-    return new BullMqProvider(config);
+    return createProviderByType(
+      detection.type,
+      finalConfig,
+    );
+  } catch (error) {
+    console.error(
+      "[ProviderFactory] Detection failed:",
+      error,
+    );
+    return new BullMqProvider(finalConfig);
   } finally {
-    // Always close the detection connection
     await redis.quit().catch(() => {});
   }
 }

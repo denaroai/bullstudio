@@ -11,6 +11,7 @@ export interface JobCounts {
 
 export interface Queue {
   name: string;
+  prefix: string;
   isPaused: boolean;
   jobCounts: JobCounts;
 }

@@ -1,7 +1,7 @@
 {
   "extends": "@bullstudio/typescript-config/base.json",
   "include": ["src"],
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules", "src/**/*.test.ts"],
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src"

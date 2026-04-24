@@ -20,6 +20,9 @@
     },
     "start": {
       "cache": false
+    },
+    "test": {
+      "cache": false
     }
   }
 }
