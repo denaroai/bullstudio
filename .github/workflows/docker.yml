@@ -10,7 +10,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: emirce/bullstudio
+  IMAGE_NAME: denaroai/bullstudio
 
 jobs:
   build-and-push:
