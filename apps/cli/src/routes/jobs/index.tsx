@@ -35,15 +35,28 @@ import {
 	RefreshCw,
 	Search,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import Header from "@/components/Header";
 import { useTRPC } from "@/integrations/trpc/react";
 import { parseQueueKey, queueKey } from "@/lib/queue-key";
 
+const jobsIndexStatusSchema = z.enum([
+	"all",
+	"waiting",
+	"active",
+	"completed",
+	"failed",
+	"delayed",
+	"waiting-children",
+]);
+
 const jobsIndexSearchSchema = z.object({
 	q: z.string().optional(),
+	status: jobsIndexStatusSchema.optional(),
 });
+
+type JobsIndexSearchStatus = z.infer<typeof jobsIndexStatusSchema>;
 
 export const Route = createFileRoute("/jobs/")({
 	component: JobsPage,
@@ -87,21 +100,28 @@ function useDebounce<T>(value: T, delay: number): T {
 
 function JobsPage() {
 	const trpc = useTRPC();
-	const { q } = Route.useSearch();
+	const { q, status: urlStatus } = Route.useSearch();
 	const navigate = useNavigate({ from: Route.fullPath });
 
 	const [selectedQueue, setSelectedQueue] = useState<string>("");
-	const [statusFilter, setStatusFilter] = useState<FilterableStatus | "all">(
-		"all",
-	);
-	const searchQuery = q ?? "";
-	const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
-	const [sortField, setSortField] = useState<SortField>("timestamp");
-	const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
 	const { data: connectionInfo } = useQuery(
 		trpc.connection.info.queryOptions(),
 	);
+
+	const supportsWaitingChildren =
+		connectionInfo?.capabilities?.supportsFlows === true;
+
+	const statusFilter: FilterableStatus | "all" = useMemo(() => {
+		const s = urlStatus ?? "all";
+		if (s === "waiting-children" && !supportsWaitingChildren) return "all";
+		return s;
+	}, [urlStatus, supportsWaitingChildren]);
+
+	const searchQuery = q ?? "";
+	const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
+	const [sortField, setSortField] = useState<SortField>("timestamp");
+	const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
 	const hasMultiplePrefixes = (connectionInfo?.prefixes?.length ?? 0) > 1;
 
@@ -204,6 +224,64 @@ function JobsPage() {
 		});
 	}, [jobs, debouncedSearchQuery, sortField, sortOrder]);
 
+	const jobsListScrollKey = useMemo(
+		() =>
+			jobsListScrollStorageKey({
+				q: searchQuery,
+				status: statusFilter,
+			}),
+		[searchQuery, statusFilter],
+	);
+
+	useEffect(() => {
+		if (urlStatus === "waiting-children" && !supportsWaitingChildren) {
+			navigate({
+				search: (prev) => ({ ...prev, status: undefined }),
+				replace: true,
+			});
+		}
+	}, [urlStatus, supportsWaitingChildren, navigate]);
+
+	// Re-run when job count changes so scroll clamp uses the final document height after the table renders.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: jobs?.length is an intentional layout trigger
+	useLayoutEffect(() => {
+		if (loadingJobs) return;
+		const y = readJobsListScrollY(jobsListScrollKey);
+		if (y == null) return;
+		let cancelled = false;
+		const apply = () => {
+			if (cancelled) return;
+			const max = Math.max(
+				0,
+				document.documentElement.scrollHeight - window.innerHeight,
+			);
+			window.scrollTo(0, Math.min(y, max));
+		};
+		const raf1 = requestAnimationFrame(() => {
+			requestAnimationFrame(apply);
+		});
+		const t = window.setTimeout(apply, 120);
+		return () => {
+			cancelled = true;
+			cancelAnimationFrame(raf1);
+			window.clearTimeout(t);
+		};
+	}, [loadingJobs, jobsListScrollKey, jobs?.length]);
+
+	useEffect(() => {
+		let ticking = false;
+		const onScrollThrottled = () => {
+			if (ticking) return;
+			ticking = true;
+			requestAnimationFrame(() => {
+				ticking = false;
+				writeJobsListScrollY(jobsListScrollKey, window.scrollY);
+			});
+		};
+		window.addEventListener("scroll", onScrollThrottled, { passive: true });
+		return () => window.removeEventListener("scroll", onScrollThrottled);
+	}, [jobsListScrollKey]);
+
 	const handleSort = (field: SortField) => {
 		if (sortField === field) {
 			setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -242,6 +320,16 @@ function JobsPage() {
 		return <span className="text-zinc-600">—</span>;
 	};
 
+	const setStatusFilter = (v: JobsIndexSearchStatus) => {
+		navigate({
+			search: (prev) => ({
+				...prev,
+				status: v === "all" ? undefined : v,
+			}),
+			replace: true,
+		});
+	};
+
 	const setSearchQuery = (value: string) => {
 		navigate({
 			search: (prev) => ({
@@ -257,6 +345,13 @@ function JobsPage() {
 		jobQueueName: string,
 		jobPrefix?: string,
 	) => {
+		writeJobsListScrollY(
+			jobsListScrollStorageKey({
+				q: searchQuery,
+				status: statusFilter,
+			}),
+			window.scrollY,
+		);
 		navigate({
 			to: "/jobs/$jobId",
 			params: { jobId },
@@ -341,7 +436,9 @@ function JobsPage() {
 			{/* Status Tabs */}
 			<Tabs
 				value={statusFilter}
-				onValueChange={(v) => setStatusFilter(v as FilterableStatus | "all")}
+				onValueChange={(v) =>
+					setStatusFilter(v as JobsIndexSearchStatus)
+				}
 			>
 				<TabsList className="bg-zinc-900 border border-zinc-800">
 					{statusTabs.map((tab) => (
@@ -488,4 +585,33 @@ function JobsPage() {
 			)}
 		</div>
 	);
+}
+
+function jobsListScrollStorageKey(parts: {
+	q?: string;
+	status: FilterableStatus | "all";
+}): string {
+	return `bullstudio:jobs-index-scroll:${JSON.stringify({
+		q: parts.q?.trim() ?? "",
+		s: parts.status,
+	})}`;
+}
+
+function readJobsListScrollY(storageKey: string): number | null {
+	try {
+		const raw = sessionStorage.getItem(storageKey);
+		if (raw == null) return null;
+		const y = Number.parseInt(raw, 10);
+		return Number.isFinite(y) ? y : null;
+	} catch {
+		return null;
+	}
+}
+
+function writeJobsListScrollY(storageKey: string, y: number): void {
+	try {
+		sessionStorage.setItem(storageKey, String(Math.round(y)));
+	} catch {
+		// private mode / quota
+	}
 }

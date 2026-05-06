@@ -10,8 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://hub.docker.com/r/emirce/bullstudio"><img src="https://img.shields.io/docker/v/emirce/bullstudio?sort=semver&label=Docker%20Hub" alt="Docker Hub" /></a>
-  <a href="https://hub.docker.com/r/emirce/bullstudio"><img src="https://img.shields.io/docker/pulls/emirce/bullstudio" alt="Docker Pulls" /></a>
+  <a href="https://github.com/denaroai/bullstudio/pkgs/container/bullstudio"><img src="https://img.shields.io/badge/container-GHCR-2496ED?logo=github" alt="GHCR" /></a>
   <img src="https://img.shields.io/badge/BullMQ-5.x-orange" alt="BullMQ" />
   <img src="https://img.shields.io/badge/Bullx-4.x-orange" alt="Bull" />
   <img src="https://img.shields.io/badge/React-19-blue" alt="React" />
@@ -55,13 +54,15 @@ bullstudio
 
 ## Docker
 
+Container images are published to **GitHub Container Registry** (`ghcr.io`), not Docker Hub. The CI image name is `ghcr.io/<github-owner>/bullstudio`. For this repo that is `ghcr.io/denaroai/bullstudio`.
+
 ### Quick Start
 
 ```bash
 docker run -d \
   -p 4000:4000 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
-  emirce/bullstudio
+  ghcr.io/denaroai/bullstudio:latest
 ```
 
 The dashboard is available at [http://localhost:4000](http://localhost:4000).
@@ -70,19 +71,19 @@ The dashboard is available at [http://localhost:4000](http://localhost:4000).
 
 ```bash
 # Local Redis (Docker for Mac/Windows)
-docker run -d -p 4000:4000 -e REDIS_URL=redis://host.docker.internal:6379 emirce/bullstudio
+docker run -d -p 4000:4000 -e REDIS_URL=redis://host.docker.internal:6379 ghcr.io/denaroai/bullstudio:latest
 
 # Remote Redis
-docker run -d -p 4000:4000 -e REDIS_URL=redis://myhost.com:6379 emirce/bullstudio
+docker run -d -p 4000:4000 -e REDIS_URL=redis://myhost.com:6379 ghcr.io/denaroai/bullstudio:latest
 
 # Redis with authentication
-docker run -d -p 4000:4000 -e REDIS_URL=redis://:yourpassword@myhost.com:6379 emirce/bullstudio
+docker run -d -p 4000:4000 -e REDIS_URL=redis://:yourpassword@myhost.com:6379 ghcr.io/denaroai/bullstudio:latest
 ```
 
 ### Custom Port
 
 ```bash
-docker run -d -p 8080:8080 -e PORT=8080 -e REDIS_URL=redis://host.docker.internal:6379 emirce/bullstudio
+docker run -d -p 8080:8080 -e PORT=8080 -e REDIS_URL=redis://host.docker.internal:6379 ghcr.io/denaroai/bullstudio:latest
 ```
 
 ### With Authentication
@@ -92,7 +93,7 @@ docker run -d \
   -p 4000:4000 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
   -e BULLSTUDIO_PASSWORD=secret123 \
-  emirce/bullstudio
+  ghcr.io/denaroai/bullstudio:latest
 ```
 
 ### Docker Compose
@@ -100,7 +101,7 @@ docker run -d \
 ```yaml
 services:
   bullstudio:
-    image: emirce/bullstudio
+    image: ghcr.io/denaroai/bullstudio:latest
     ports:
       - "4000:4000"
     environment:
@@ -117,6 +118,24 @@ services:
 ```bash
 docker compose up -d
 ```
+
+### Kubernetes
+
+If your pod shows `ImagePullBackOff` and the event mentions **`docker.io/denaroai/bullstudio`**, the manifest used a short image name. Kubernetes does **not** infer GHCR: `denaroai/bullstudio:…` is always pulled from Docker Hub.
+
+Use the full image reference:
+
+```yaml
+image: ghcr.io/denaroai/bullstudio:latest
+```
+
+```bash
+kubectl set image deployment/bullstudio-deployment \
+  bullstudio=ghcr.io/denaroai/bullstudio:latest \
+  -n denaro
+```
+
+See `deploy/kubernetes/bullstudio-deployment.yaml` in the repo root. Private GHCR packages need `imagePullSecrets`.
 
 ### Environment Variables
 
@@ -236,7 +255,7 @@ bullstudio --username bullstudio_admin --password secret123
 BULLSTUDIO_PASSWORD=secret123 bullstudio
 
 # Docker with authentication
-docker run -e BULLSTUDIO_PASSWORD=secret123 -p 4000:4000 emirce/bullstudio
+docker run -e BULLSTUDIO_PASSWORD=secret123 -p 4000:4000 ghcr.io/denaroai/bullstudio:latest
 ```
 
 ### Authentication Details
