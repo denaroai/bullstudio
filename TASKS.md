@@ -355,6 +355,8 @@ Progress:
 
 ## 12. Add the Express framework adapter
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Tasks 4, 5, 6, 7, 9
@@ -367,13 +369,21 @@ Add the Express framework adapter package with a native `bullstudio()` dashboard
 
 ### Acceptance criteria
 
-- [ ] Express developers can import `bullstudio()` from the Express adapter package.
-- [ ] The Express adapter returns an Express-native mountable value.
-- [ ] Dashboard assets and private dashboard API are served under one mount path.
-- [ ] Basic Auth protection works by default.
-- [ ] Read-only mode rejects mutating operations server-side.
-- [ ] Dashboard and document identity work without rebuilding assets.
-- [ ] Tests verify an Express app can mount and use the dashboard at a non-root path.
+- [x] Express developers can import `bullstudio()` from the Express adapter package.
+- [x] The Express adapter returns an Express-native mountable value.
+- [x] Dashboard assets and private dashboard API are served under one mount path.
+- [x] Basic Auth protection works by default.
+- [x] Read-only mode rejects mutating operations server-side.
+- [x] Dashboard and document identity work without rebuilding assets.
+- [x] Tests verify an Express app can mount and use the dashboard at a non-root path.
+
+Progress:
+
+- Added `@bullstudio/express` with the native `bullstudio()` dashboard factory.
+- Implemented the Express adapter as an Express `RequestHandler` that mounts dashboard assets and the private tRPC dashboard API through the embedded core.
+- Added Express integration coverage for non-root mount behavior, Basic Auth protection, read-only mutation rejection, and dashboard/document identity.
+- Verified with `pnpm --filter @bullstudio/express test`, `pnpm --filter @bullstudio/express typecheck`, and `pnpm exec biome check packages/express-adapter`.
+- Workspace `pnpm typecheck` currently fails before reaching this adapter because `@bullstudio/typescript-config` cannot resolve its local `@types/node` type library.
 
 ## 13. Add the Fastify framework adapter
 
