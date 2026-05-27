@@ -3,12 +3,25 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { ReadOnlyDashboardError } from "./errors";
 import { assertCanMutate } from "./mutation";
 import type {
+  DashboardQueue,
   EmbeddedDashboardInstance,
   FrameworkRequest,
   FrameworkResponse,
   PrivateDashboardApiMount,
+  QueueAdapterProvider,
+  QueueSourceStatus,
 } from "./types";
 import { getPathname, toAbsoluteUrl } from "./url";
+
+const supportedJobStatuses = [
+  "waiting",
+  "active",
+  "completed",
+  "failed",
+  "delayed",
+  "paused",
+  "waiting-children",
+] as const;
 
 export function createPrivateDashboardApi(
   dashboard: EmbeddedDashboardInstance,
@@ -42,11 +55,18 @@ function createPrivateDashboardApiRouter(dashboard: EmbeddedDashboardInstance) {
   const t = initTRPC.create();
 
   return t.router({
+    connection: t.router({
+      info: t.procedure.query(() => getConnectionInfo(dashboard)),
+    }),
     queueSource: t.router({
       status: t.procedure.query(() => dashboard.getQueueSourceStatus()),
     }),
     queues: t.router({
       list: t.procedure.query(() => dashboard.listQueues()),
+      prefixes: t.procedure.query(() => getSuppliedQueuePrefixes(dashboard)),
+      get: t.procedure.input((value) => value).query(({ input }) =>
+        getSuppliedQueueByPrivateApiInput(dashboard, input),
+      ),
       pause: t.procedure.mutation(({ input }) =>
         runPrivateDashboardMutation(dashboard, () =>
           dashboard.pauseQueue(getQueueKeyInput(input).queueKey),
@@ -100,6 +120,119 @@ function createPrivateDashboardApiRouter(dashboard: EmbeddedDashboardInstance) {
       ),
     }),
   });
+}
+
+async function getConnectionInfo(dashboard: EmbeddedDashboardInstance) {
+  const queueSource = dashboard.getQueueSourceStatus();
+  const prefixes = await getSuppliedQueuePrefixes(dashboard);
+
+  return {
+    mode: "embedded" as const,
+    providerType: getLegacyProviderType(queueSource.providers),
+    prefixes,
+    capabilities: {
+      supportsFlows: queueSource.capabilities.flows,
+      supportedStatuses: [...supportedJobStatuses],
+    },
+    queueSource,
+  };
+}
+
+async function getSuppliedQueuePrefixes(
+  dashboard: EmbeddedDashboardInstance,
+): Promise<string[]> {
+  const queues = await dashboard.listQueues();
+  return [...new Set(queues.map((queue) => queue.prefix))].sort();
+}
+
+function getLegacyProviderType(
+  providers: QueueSourceStatus["providers"],
+): QueueAdapterProvider {
+  if (providers.includes("bullmq")) {
+    return "bullmq";
+  }
+
+  return providers[0] ?? "bullmq";
+}
+
+async function getSuppliedQueueByPrivateApiInput(
+  dashboard: EmbeddedDashboardInstance,
+  input: unknown,
+): Promise<DashboardQueue> {
+  const value = getObjectInput(input);
+
+  if ("queueKey" in value && typeof value.queueKey === "string") {
+    const queue = await dashboard.getQueue(value.queueKey);
+
+    if (!queue) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: `Supplied queue "${value.queueKey}" was not found.`,
+      });
+    }
+
+    return queue;
+  }
+
+  const name =
+    "name" in value && typeof value.name === "string"
+      ? value.name
+      : "queueName" in value && typeof value.queueName === "string"
+        ? value.queueName
+        : undefined;
+
+  if (!name) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "A queueKey string or queue name string is required.",
+    });
+  }
+
+  const prefix =
+    "prefix" in value && typeof value.prefix === "string"
+      ? value.prefix
+      : undefined;
+  const lookupLabel = formatQueueLookup(name, prefix);
+  const matches = (await dashboard.listQueues()).filter(
+    (queue) => queue.name === name && (!prefix || queue.prefix === prefix),
+  );
+
+  const match = matches[0];
+
+  if (!match) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: `Supplied queue "${lookupLabel}" was not found.`,
+    });
+  }
+
+  if (matches.length > 1) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        `Supplied queue lookup "${lookupLabel}" matched more than one queue. ` +
+        "Use queueKey instead.",
+    });
+  }
+
+  return match;
+}
+
+function getObjectInput(input: unknown): Record<string, unknown> {
+  const value = unwrapJsonInput(input);
+
+  if (value && typeof value === "object") {
+    return value as Record<string, unknown>;
+  }
+
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: "An object input is required.",
+  });
+}
+
+function formatQueueLookup(name: string, prefix: string | undefined): string {
+  return prefix ? `${prefix}/${name}` : name;
 }
 
 async function runPrivateDashboardMutation(

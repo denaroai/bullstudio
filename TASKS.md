@@ -18,16 +18,16 @@ Make the embedded private dashboard API answer the connection and queue procedur
 
 ### Acceptance criteria
 
-- [ ] `connection.info` returns embedded queue source status for supplied queues.
-- [ ] `connection.info` does not invent Redis host, port, database, password, or display URL values in embedded mode.
-- [ ] `connection.info` includes any legacy compatibility fields needed by current dashboard assets without changing the canonical queue source status.
-- [ ] `queues.list` returns supplied queues with queue key, queue label, provider, per-queue capabilities, queue name, and prefix when available.
-- [ ] `queues.prefixes` returns only supplied queue prefixes derived from supplied queue metadata.
-- [ ] `queues.get` accepts queue key and standalone-style queue name/prefix compatibility input.
-- [ ] Queue name/prefix lookup returns not found when no supplied queue matches.
-- [ ] Queue name/prefix lookup returns bad request when more than one supplied queue matches.
-- [ ] Embedded core tests cover the private API behavior.
-- [ ] Existing standalone behavior remains unchanged.
+- [x] `connection.info` returns embedded queue source status for supplied queues.
+- [x] `connection.info` does not invent Redis host, port, database, password, or display URL values in embedded mode.
+- [x] `connection.info` includes any legacy compatibility fields needed by current dashboard assets without changing the canonical queue source status.
+- [x] `queues.list` returns supplied queues with queue key, queue label, provider, per-queue capabilities, queue name, and prefix when available.
+- [x] `queues.prefixes` returns only supplied queue prefixes derived from supplied queue metadata.
+- [x] `queues.get` accepts queue key and standalone-style queue name/prefix compatibility input.
+- [x] Queue name/prefix lookup returns not found when no supplied queue matches.
+- [x] Queue name/prefix lookup returns bad request when more than one supplied queue matches.
+- [x] Embedded core tests cover the private API behavior.
+- [x] Existing standalone behavior remains unchanged.
 
 ## 2. Add embedded overview metrics parity
 
