@@ -58,6 +58,45 @@ serve({
 
 The mount path is `/ops/bullstudio` in this example. Dashboard assets and the private dashboard API are both served below that same mount path, so reverse-proxy configuration only needs one route.
 
+## Framework Adapters
+
+Embedded mode is exposed through framework-native adapter packages. Each adapter exports a `bullstudio()` dashboard factory and serves dashboard assets plus the private dashboard API below one mount path.
+
+| Framework | Package | Mounting shape |
+| --- | --- | --- |
+| Hono | `@bullstudio/hono` | `host.route("/ops/bullstudio", bullstudio(config))` |
+| Express | `@bullstudio/express` | `app.use("/ops/bullstudio", bullstudio(config))` |
+| Fastify | `@bullstudio/fastify` | `app.register(bullstudio(config), { prefix: "/ops/bullstudio" })` |
+| Next.js App Router | `@bullstudio/next` | `export const { GET, HEAD, POST } = bullstudio({ mountPath: "/ops/bullstudio", ...config })` |
+
+Next.js support is for App Router route handlers. Pages Router support is not included.
+
+## Queue Adapters
+
+Queue adapters are function-based and wrap host-owned queue instances. Bullstudio uses the host application's installed Bull or BullMQ package and does not close the supplied queue or Redis connection.
+
+Use `@bullstudio/bullmq-adapter` for BullMQ queues:
+
+```ts
+import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
+
+const queue = createBullMqQueueAdapter(emailQueue, {
+  key: "email",
+  label: "Email",
+});
+```
+
+Use `@bullstudio/bull-adapter` for Bull queues:
+
+```ts
+import { createBullQueueAdapter } from "@bullstudio/bull-adapter";
+
+const queue = createBullQueueAdapter(emailQueue, {
+  key: "email",
+  label: "Email",
+});
+```
+
 ## Dashboard Protection
 
 Embedded dashboards use Bullstudio-owned dashboard protection by default. The default protection is Basic Auth protection, which protects both dashboard assets and the private dashboard API.
@@ -136,3 +175,13 @@ Identity configuration is supplied at runtime; developers do not need to rebuild
 ## Private Dashboard API
 
 The private dashboard API is internal to Bullstudio's dashboard assets. It remains tRPC internally and is not a public integration API. Applications should use framework adapters and queue adapters as the public embedded-mode surface instead of calling the private dashboard API directly.
+
+## Out Of Scope
+
+The embedded-mode public surface is intentionally narrow:
+
+- No public REST API.
+- No WebSocket or Server-Sent Events support; polling remains the update mechanism.
+- No Pages Router support for Next.js.
+- No arbitrary metadata display.
+- No full theming or custom dashboard component system.

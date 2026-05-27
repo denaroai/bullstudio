@@ -42,6 +42,25 @@ describe("embedded mode documentation", () => {
     expect(example).toContain("dashboardIdentity");
     expect(example).toContain("documentIdentity");
   });
+
+  it("documents the final embedded-mode framework and queue adapter surface", async () => {
+    const docs = await readRepoFile("docs/embedded-mode.md");
+
+    expect(docs).toContain("@bullstudio/hono");
+    expect(docs).toContain("@bullstudio/express");
+    expect(docs).toContain("@bullstudio/fastify");
+    expect(docs).toContain("@bullstudio/next");
+    expect(docs).toContain("@bullstudio/bullmq-adapter");
+    expect(docs).toContain("@bullstudio/bull-adapter");
+    expect(docs).toContain("createBullMqQueueAdapter");
+    expect(docs).toContain("createBullQueueAdapter");
+    expect(docs).toContain("App Router");
+    expect(docs).toContain("Pages Router support is not included");
+    expect(docs).toContain("No public REST API");
+    expect(docs).toContain("No WebSocket or Server-Sent Events");
+    expect(docs).toContain("No arbitrary metadata display");
+    expect(docs).toContain("No full theming");
+  });
 });
 
 async function readRepoFile(path: string): Promise<string> {

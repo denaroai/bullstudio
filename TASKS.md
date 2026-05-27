@@ -451,6 +451,8 @@ Progress:
 
 ## 15. Final embedded-mode verification and release readiness
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Tasks 10, 11, 12, 13, 14
@@ -463,12 +465,21 @@ Run the full embedded-mode feature through repository-level verification, docume
 
 ### Acceptance criteria
 
-- [ ] Workspace typecheck passes.
-- [ ] Workspace lint/check passes.
-- [ ] Queue and dashboard tests pass.
-- [ ] Standalone parity tests pass.
-- [ ] Embedded Hono, Express, Fastify, and Next.js adapter tests or examples pass.
-- [ ] BullMQ and Bull queue adapter tests pass.
-- [ ] Documentation reflects the final public API and package names.
-- [ ] Out-of-scope items remain out of scope.
-- [ ] No public REST API, WebSockets, SSE, Pages Router support, arbitrary metadata display, or full theming is introduced accidentally.
+- [x] Workspace typecheck passes.
+- [x] Workspace lint/check passes.
+- [x] Queue and dashboard tests pass.
+- [x] Standalone parity tests pass.
+- [x] Embedded Hono, Express, Fastify, and Next.js adapter tests or examples pass.
+- [x] BullMQ and Bull queue adapter tests pass.
+- [x] Documentation reflects the final public API and package names.
+- [x] Out-of-scope items remain out of scope.
+- [x] No public REST API, WebSockets, SSE, Pages Router support, arbitrary metadata display, or full theming is introduced accidentally.
+
+Progress:
+
+- Added documentation coverage for the final embedded-mode framework and queue adapter surface.
+- Updated `docs/embedded-mode.md` to document Hono, Express, Fastify, Next.js App Router, BullMQ, and Bull package names and public factory APIs.
+- Documented the explicit out-of-scope boundaries: no public REST API, no WebSocket or Server-Sent Events support, no Pages Router support, no arbitrary metadata display, and no full theming.
+- Added local `@types/node` dev dependencies for internal packages that typecheck independently through the shared TypeScript config.
+- Verified with `pnpm typecheck`, `pnpm check`, `pnpm test` with the Redis test container available, `pnpm --filter @bullstudio/hono test`, `pnpm --filter @bullstudio/express test`, `pnpm --filter @bullstudio/fastify test`, `pnpm --filter @bullstudio/next test`, `pnpm --filter @bullstudio/bullmq-adapter test`, `pnpm --filter @bullstudio/bull-adapter test`, and `pnpm build`.
+- Confirmed by source search that embedded framework adapters continue to expose only framework-native mount surfaces and the private `/api/trpc` dashboard API; no public REST API, WebSockets, SSE, or Pages Router support was introduced.
