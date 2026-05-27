@@ -198,17 +198,17 @@ Run the real dashboard assets inside the Next.js embedded example and verify the
 
 ### Acceptance criteria
 
-- [ ] The Next embedded example starts successfully.
-- [ ] The dashboard renders at the configured non-root mount path.
-- [ ] Dashboard assets load from the configured mount path.
-- [ ] Private dashboard API requests use the configured mount path.
-- [ ] Overview loads without missing-procedure errors.
-- [ ] Jobs list loads without missing-procedure errors.
-- [ ] Job detail loads without missing-procedure errors.
-- [ ] Job logs, retry, and remove behavior can be exercised or explicitly verified with fixture constraints.
-- [ ] Flows list and flow detail are verified when the example supplies flow-capable data.
-- [ ] Browser console has no relevant errors or warnings from missing private dashboard API procedures.
-- [ ] Standalone mode still passes its existing tests, typecheck, and build checks after the embedded UI changes.
+- [x] The Next embedded example starts successfully.
+- [x] The dashboard renders at the configured non-root mount path.
+- [x] Dashboard assets load from the configured mount path.
+- [x] Private dashboard API requests use the configured mount path.
+- [x] Overview loads without missing-procedure errors.
+- [x] Jobs list loads without missing-procedure errors.
+- [x] Job detail loads without missing-procedure errors.
+- [x] Job logs, retry, and remove behavior can be exercised or explicitly verified with fixture constraints.
+- [x] Flows list and flow detail are verified when the example supplies flow-capable data.
+- [x] Browser console has no relevant errors or warnings from missing private dashboard API procedures.
+- [x] Standalone mode still passes its existing tests, typecheck, and build checks after the embedded UI changes.
 
 ## 9. Plan the shared private dashboard router refactor
 

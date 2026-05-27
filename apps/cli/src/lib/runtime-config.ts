@@ -31,6 +31,10 @@ export function getBasePath(): string {
 export function getApiUrl(): string {
   const basePath = getBasePath();
 
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}${basePath}/api/trpc`;
+  }
+
   return `${basePath}/api/trpc`;
 }
 
