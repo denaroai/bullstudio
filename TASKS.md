@@ -68,6 +68,8 @@ Progress:
 
 ## 3. Aggregate supplied queues in the embedded core
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Tasks 1, 2
@@ -80,12 +82,20 @@ Teach the embedded core to aggregate supplied queue adapters into the dashboard'
 
 ### Acceptance criteria
 
-- [ ] A dashboard instance can be created from one or more supplied queue adapters.
-- [ ] Embedded mode exposes only supplied queues.
-- [ ] Duplicate inferred or explicit queue keys fail fast with a clear error.
-- [ ] Queue source status reports supplied queue count, adapter/provider types, capabilities, and source health.
-- [ ] Embedded queue APIs address queues through queue keys.
-- [ ] Tests verify supplied-queue visibility, duplicate-key failure, queue label behavior, and queue source status.
+- [x] A dashboard instance can be created from one or more supplied queue adapters.
+- [x] Embedded mode exposes only supplied queues.
+- [x] Duplicate inferred or explicit queue keys fail fast with a clear error.
+- [x] Queue source status reports supplied queue count, adapter/provider types, capabilities, and source health.
+- [x] Embedded queue APIs address queues through queue keys.
+- [x] Tests verify supplied-queue visibility, duplicate-key failure, queue label behavior, and queue source status.
+
+Progress:
+
+- Added keyed supplied-queue aggregation to `@bullstudio/embedded-core`.
+- Added dashboard queue projections that preserve queue key, label, provider, capabilities, and adapter-provided queue state.
+- Added keyed embedded queue APIs for queue reads, job reads, job logs, queue mutations, job mutations, and worker counts.
+- Added duplicate supplied-queue key validation with a clear fail-fast error.
+- Verified with `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, `pnpm --filter @bullstudio/bullmq-adapter test`, `pnpm --filter @bullstudio/bullmq-adapter typecheck`, and `pnpm exec biome check packages/embedded-core`.
 
 ## 4. Mount embedded Bullstudio in Hono at one mount path
 

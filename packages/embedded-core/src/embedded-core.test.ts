@@ -8,54 +8,10 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 
 describe("embedded core public contracts", () => {
   it("creates an importable framework-neutral dashboard instance from supplied queue adapters", () => {
-    const suppliedQueue: QueueAdapter = {
+    const suppliedQueue = createQueueAdapter({
       key: "email",
       label: "Email",
-      provider: "bullmq",
-      capabilities: {
-        flows: true,
-        jobLogs: true,
-        jobRemoval: true,
-        jobRetry: true,
-        queuePause: true,
-        queueResume: true,
-        workers: true,
-      },
-      getQueue: async () => ({
-        name: "email",
-        prefix: "bull",
-        isPaused: false,
-        jobCounts: {
-          waiting: 0,
-          active: 0,
-          completed: 0,
-          failed: 0,
-          delayed: 0,
-          paused: 0,
-          prioritized: 0,
-          waitingChildren: 0,
-        },
-      }),
-      getJobCounts: async () => ({
-        waiting: 0,
-        active: 0,
-        completed: 0,
-        failed: 0,
-        delayed: 0,
-        paused: 0,
-        prioritized: 0,
-        waitingChildren: 0,
-      }),
-      pauseQueue: async () => {},
-      resumeQueue: async () => {},
-      getJobs: async () => [],
-      getJobsSummary: async () => [],
-      getJob: async () => null,
-      getJobLogs: async () => ({ logs: [], count: 0 }),
-      retryJob: async () => {},
-      removeJob: async () => {},
-      getWorkerCount: async () => ({ queueName: "email", count: 0 }),
-    };
+    });
 
     const config = {
       queues: [suppliedQueue],
@@ -105,4 +61,153 @@ describe("embedded core public contracts", () => {
     expect(dashboard.handle).toEqual(expect.any(Function));
     expect(dashboard.mountPrivateDashboardApi).toEqual(expect.any(Function));
   });
+
+  it("aggregates only supplied queues and addresses queue APIs by queue key", async () => {
+    const emailQueue = createQueueAdapter({
+      key: "email-critical",
+      label: "Critical email",
+      queueName: "email",
+      provider: "bullmq",
+      capabilities: {
+        flows: true,
+        jobLogs: true,
+        jobRemoval: true,
+        jobRetry: true,
+        queuePause: true,
+        queueResume: true,
+        workers: true,
+      },
+    });
+    const reportQueue = createQueueAdapter({
+      key: "reports",
+      label: "Reports",
+      provider: "bull",
+      capabilities: {
+        flows: false,
+        jobLogs: true,
+        jobRemoval: true,
+        jobRetry: true,
+        queuePause: true,
+        queueResume: true,
+        workers: false,
+      },
+    });
+
+    const dashboard = createEmbeddedDashboard({
+      queues: [emailQueue, reportQueue],
+    });
+
+    await expect(dashboard.listQueues()).resolves.toEqual([
+      {
+        key: "email-critical",
+        label: "Critical email",
+        provider: "bullmq",
+        capabilities: emailQueue.capabilities,
+        name: "email",
+        prefix: "bull",
+        isPaused: false,
+        jobCounts: emptyJobCounts,
+      },
+      {
+        key: "reports",
+        label: "Reports",
+        provider: "bull",
+        capabilities: reportQueue.capabilities,
+        name: "reports",
+        prefix: "bull",
+        isPaused: false,
+        jobCounts: emptyJobCounts,
+      },
+    ]);
+    await expect(dashboard.getQueue("email-critical")).resolves.toMatchObject({
+      key: "email-critical",
+      label: "Critical email",
+      name: "email",
+    });
+    await expect(dashboard.getQueue("missing")).resolves.toBeNull();
+    await expect(dashboard.getJobCounts("reports")).resolves.toEqual(
+      emptyJobCounts,
+    );
+    expect(dashboard.getQueueSourceStatus()).toEqual({
+      source: "supplied",
+      status: "healthy",
+      queueCount: 2,
+      providers: ["bull", "bullmq"],
+      capabilities: {
+        flows: true,
+        jobLogs: true,
+        jobRemoval: true,
+        jobRetry: true,
+        queuePause: true,
+        queueResume: true,
+        workers: true,
+      },
+    });
+  });
+
+  it("fails fast when supplied queue keys are duplicated", () => {
+    expect(() =>
+      createEmbeddedDashboard({
+        queues: [
+          createQueueAdapter({ key: "email", label: "Email" }),
+          createQueueAdapter({ key: "email", label: "Other email" }),
+        ],
+      }),
+    ).toThrow(
+      'Duplicate supplied queue key "email". Queue keys must be unique.',
+    );
+  });
 });
+
+const emptyJobCounts = {
+  waiting: 0,
+  active: 0,
+  completed: 0,
+  failed: 0,
+  delayed: 0,
+  paused: 0,
+  prioritized: 0,
+  waitingChildren: 0,
+};
+
+function createQueueAdapter(
+  options: Partial<QueueAdapter> & {
+    key: string;
+    label: string;
+    queueName?: string;
+  },
+): QueueAdapter {
+  const capabilities = options.capabilities ?? {
+    flows: true,
+    jobLogs: true,
+    jobRemoval: true,
+    jobRetry: true,
+    queuePause: true,
+    queueResume: true,
+    workers: true,
+  };
+  const queueName = options.queueName ?? options.key;
+
+  return {
+    key: options.key,
+    label: options.label,
+    provider: options.provider ?? "bullmq",
+    capabilities,
+    getQueue: async () => ({
+      name: queueName,
+      prefix: "bull",
+      isPaused: false,
+      jobCounts: emptyJobCounts,
+    }),
+    getJobCounts: async () => emptyJobCounts,
+    pauseQueue: async () => {},
+    resumeQueue: async () => {},
+    getJobs: async () => [],
+    getJobsSummary: async () => [],
+    getJob: async () => null,
+    getJobLogs: async () => ({ logs: [], count: 0 }),
+    retryJob: async () => {},
+    removeJob: async () => {},
+    getWorkerCount: async () => ({ queueName, count: 0 }),
+  };
+}
