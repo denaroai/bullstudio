@@ -224,10 +224,10 @@ Turn the compatibility-layer learnings into a concrete refactor plan for the lon
 
 ### Acceptance criteria
 
-- [ ] The plan defines the shared private dashboard router contract at the procedure and response-shape level.
-- [ ] The plan defines how standalone discovered queues and embedded supplied queues plug into the shared router through mode-specific queue sources.
-- [ ] The plan identifies which compatibility shims can be removed after the refactor.
-- [ ] The plan identifies package boundary changes and any deep modules worth extracting.
-- [ ] The plan preserves standalone compatibility-sensitive behavior.
-- [ ] The plan includes a test strategy for migrating without regressing embedded parity or standalone behavior.
+- [x] The plan defines the shared private dashboard router contract at the procedure and response-shape level.
+- [x] The plan defines how standalone discovered queues and embedded supplied queues plug into the shared router through mode-specific queue sources.
+- [x] The plan identifies which compatibility shims can be removed after the refactor.
+- [x] The plan identifies package boundary changes and any deep modules worth extracting.
+- [x] The plan preserves standalone compatibility-sensitive behavior.
+- [x] The plan includes a test strategy for migrating without regressing embedded parity or standalone behavior.
 - [ ] Maintainer review confirms the refactor direction before implementation starts.
