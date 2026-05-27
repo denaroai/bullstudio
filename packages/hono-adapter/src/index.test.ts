@@ -8,6 +8,9 @@ describe("bullstudio Hono adapter", () => {
     const host = new Hono();
     const dashboard = bullstudio({
       queues: [createQueueAdapter({ key: "email", label: "Email" })],
+      protection: {
+        type: "disabled",
+      },
     });
 
     expectTypeOf(dashboard).toMatchTypeOf<Hono>();
@@ -43,6 +46,103 @@ describe("bullstudio Hono adapter", () => {
           },
         ],
       },
+    });
+  });
+
+  it("protects dashboard assets and private dashboard API with Basic Auth by default", async () => {
+    const host = new Hono();
+    const dashboard = bullstudio({
+      queues: [createQueueAdapter({ key: "email", label: "Email" })],
+    });
+
+    host.route("/ops/bullstudio", dashboard);
+
+    for (const path of [
+      "/ops/bullstudio",
+      "/ops/bullstudio/assets/app.js",
+      "/ops/bullstudio/api/trpc/queues.list",
+    ]) {
+      const missingCredentials = await host.request(path);
+      expect(missingCredentials.status).toBe(401);
+      expect(missingCredentials.headers.get("www-authenticate")).toBe(
+        'Basic realm="bullstudio"',
+      );
+
+      const invalidCredentials = await host.request(path, {
+        headers: {
+          Authorization: basicAuth("admin", "wrong"),
+        },
+      });
+      expect(invalidCredentials.status).toBe(401);
+      expect(invalidCredentials.headers.get("www-authenticate")).toBe(
+        'Basic realm="bullstudio"',
+      );
+    }
+
+    const validAssetResponse = await host.request("/ops/bullstudio", {
+      headers: {
+        Authorization: basicAuth("admin", "bullstudio"),
+      },
+    });
+    expect(validAssetResponse.status).toBe(200);
+    expect(validAssetResponse.headers.get("content-type")).toContain(
+      "text/html",
+    );
+
+    const validApiResponse = await host.request(
+      "/ops/bullstudio/api/trpc/queues.list",
+      {
+        headers: {
+          Authorization: basicAuth("admin", "bullstudio"),
+        },
+      },
+    );
+    expect(validApiResponse.status).toBe(200);
+    await expect(validApiResponse.json()).resolves.toMatchObject({
+      result: {
+        data: [
+          {
+            key: "email",
+            label: "Email",
+          },
+        ],
+      },
+    });
+  });
+
+  it("allows hosts to disable or replace Bullstudio dashboard protection", async () => {
+    const disabledHost = new Hono();
+    disabledHost.route(
+      "/ops/bullstudio",
+      bullstudio({
+        queues: [createQueueAdapter({ key: "email", label: "Email" })],
+        protection: {
+          type: "disabled",
+        },
+      }),
+    );
+
+    await expect(
+      disabledHost.request("/ops/bullstudio"),
+    ).resolves.toMatchObject({
+      status: 200,
+    });
+
+    const hostOwnedProtection = new Hono();
+    hostOwnedProtection.route(
+      "/ops/bullstudio",
+      bullstudio({
+        queues: [createQueueAdapter({ key: "email", label: "Email" })],
+        protection: {
+          type: "custom",
+        },
+      }),
+    );
+
+    await expect(
+      hostOwnedProtection.request("/ops/bullstudio/api/trpc/queues.list"),
+    ).resolves.toMatchObject({
+      status: 200,
     });
   });
 });
@@ -95,4 +195,8 @@ function createQueueAdapter(options: {
     removeJob: async () => {},
     getWorkerCount: async () => ({ queueName, count: 0 }),
   };
+}
+
+function basicAuth(username: string, password: string): string {
+  return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
 }

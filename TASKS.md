@@ -131,6 +131,8 @@ Progress:
 
 ## 5. Add Basic Auth dashboard protection for embedded mode
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Task 4
@@ -143,12 +145,20 @@ Implement Bullstudio-owned dashboard protection in the embedded core, enabled by
 
 ### Acceptance criteria
 
-- [ ] Embedded dashboards are protected by Basic Auth by default.
-- [ ] Protection covers dashboard assets and private dashboard API routes.
-- [ ] Invalid or missing credentials receive an authentication challenge.
-- [ ] Valid credentials can access the dashboard and API.
-- [ ] A configured opt-out path supports host-owned access control.
-- [ ] Tests cover default Basic Auth, valid credentials, invalid credentials, and disabled/replaced protection behavior.
+- [x] Embedded dashboards are protected by Basic Auth by default.
+- [x] Protection covers dashboard assets and private dashboard API routes.
+- [x] Invalid or missing credentials receive an authentication challenge.
+- [x] Valid credentials can access the dashboard and API.
+- [x] A configured opt-out path supports host-owned access control.
+- [x] Tests cover default Basic Auth, valid credentials, invalid credentials, and disabled/replaced protection behavior.
+
+Progress:
+
+- Added embedded-core dashboard protection enforcement around dashboard assets and the private dashboard API.
+- Basic Auth protection now challenges missing or invalid credentials with `WWW-Authenticate`.
+- Valid default credentials can access embedded dashboard assets and private tRPC API routes.
+- Disabled and custom protection configurations bypass Bullstudio-owned protection so host applications can own access control.
+- Verified with `pnpm --filter @bullstudio/hono test`, `pnpm --filter @bullstudio/hono typecheck`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, `pnpm exec biome check packages/hono-adapter packages/embedded-core`, and `pnpm typecheck`.
 
 ## 6. Enforce read-only dashboards in the core operation layer
 
