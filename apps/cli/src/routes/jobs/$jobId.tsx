@@ -51,7 +51,7 @@ export const Route = createFileRoute("/jobs/$jobId")({
 
 function JobDetailPage() {
   const { jobId } = Route.useParams();
-  const { queueName, prefix } = Route.useSearch();
+  const { queueName, prefix, queueKey } = Route.useSearch();
   const navigate = useNavigate();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -64,6 +64,7 @@ function JobDetailPage() {
   } = useQuery(
     trpc.jobs.get.queryOptions(
       {
+        queueKey,
         queueName,
         jobId,
         prefix,
@@ -81,7 +82,7 @@ function JobDetailPage() {
 
   const { data: logsData } = useQuery(
     trpc.jobs.logs.queryOptions(
-      { queueName, jobId, prefix },
+      { queueKey, queueName, jobId, prefix },
       { enabled: !!job },
     ),
   );
@@ -165,6 +166,7 @@ function JobDetailPage() {
 
   const handleRetry = () => {
     retryMutation.mutate({
+      queueKey,
       queueName,
       jobId,
       prefix,
@@ -173,6 +175,7 @@ function JobDetailPage() {
 
   const handleRemove = () => {
     removeMutation.mutate({
+      queueKey,
       queueName,
       jobId,
       prefix,

@@ -1,4 +1,4 @@
-import { type TRPCRouterRecord } from "@trpc/server";
+import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { publicProcedure } from "../init";
@@ -16,6 +16,7 @@ const jobStatusSchema = z.enum([
 ]);
 
 const queueIdSchema = z.object({
+  queueKey: z.string().optional(),
   queueName: z.string(),
   prefix: z.string().optional(),
 });

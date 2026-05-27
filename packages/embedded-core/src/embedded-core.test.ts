@@ -799,6 +799,439 @@ describe("embedded private dashboard API job lists", () => {
   });
 });
 
+describe("embedded private dashboard API job detail operations", () => {
+  it("gets jobs by queue key or compatibility queue identity and returns supported job logs", async () => {
+    const job = createJob({
+      id: "job-1",
+      name: "send",
+      queueName: "email",
+      status: "completed",
+      timestamp: 100,
+    });
+    const dashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      queues: [
+        createQueueAdapter({
+          key: "email",
+          label: "Email",
+          queueName: "email",
+          jobs: [job],
+          jobLogs: {
+            "job-1": { logs: ["queued", "completed"], count: 2 },
+          },
+        }),
+        createQueueAdapter({
+          key: "reports",
+          label: "Reports",
+          queueName: "reports",
+          capabilities: {
+            flows: true,
+            jobLogs: false,
+            jobRemoval: true,
+            jobRetry: true,
+            queuePause: true,
+            queueResume: true,
+            workers: true,
+          },
+          jobs: [
+            createJob({
+              id: "report-1",
+              name: "render",
+              queueName: "reports",
+              status: "completed",
+              timestamp: 200,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    await expect(
+      callPrivateDashboardApi(dashboard, "jobs.get", {
+        queueKey: "email",
+        jobId: "job-1",
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: {
+        id: "job-1",
+        queueName: "email",
+      },
+    });
+    await expect(
+      callPrivateDashboardApi(dashboard, "jobs.get", {
+        queueName: "email",
+        prefix: "bull",
+        jobId: "job-1",
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: {
+        id: "job-1",
+        queueName: "email",
+      },
+    });
+    await expect(
+      callPrivateDashboardApi(dashboard, "jobs.logs", {
+        queueKey: "email",
+        jobId: "job-1",
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: {
+        logs: ["queued", "completed"],
+        count: 2,
+      },
+    });
+    await expect(
+      callPrivateDashboardApi(dashboard, "jobs.logs", {
+        queueKey: "reports",
+        jobId: "report-1",
+      }),
+    ).resolves.toMatchObject({
+      status: 400,
+      error: {
+        code: -32600,
+        message: 'Job logs are not supported for supplied queue "reports".',
+      },
+    });
+  });
+
+  it("retries failed jobs with capability and worker preconditions", async () => {
+    const retryJob = vi.fn<() => Promise<void>>(async () => {});
+    const dashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      queues: [
+        createQueueAdapter({
+          key: "email",
+          label: "Email",
+          queueName: "email",
+          workerCount: 2,
+          retryJob,
+          jobs: [
+            createJob({
+              id: "failed-job",
+              name: "send",
+              queueName: "email",
+              status: "failed",
+              timestamp: 100,
+            }),
+            createJob({
+              id: "completed-job",
+              name: "send",
+              queueName: "email",
+              status: "completed",
+              timestamp: 200,
+            }),
+          ],
+        }),
+        createQueueAdapter({
+          key: "unsupported",
+          label: "Unsupported",
+          queueName: "unsupported",
+          capabilities: {
+            flows: true,
+            jobLogs: true,
+            jobRemoval: true,
+            jobRetry: false,
+            queuePause: true,
+            queueResume: true,
+            workers: true,
+          },
+          jobs: [
+            createJob({
+              id: "failed-job",
+              name: "blocked",
+              queueName: "unsupported",
+              status: "failed",
+              timestamp: 100,
+            }),
+          ],
+        }),
+        createQueueAdapter({
+          key: "no-workers",
+          label: "No workers",
+          queueName: "no-workers",
+          workerCount: 0,
+          jobs: [
+            createJob({
+              id: "failed-job",
+              name: "stalled",
+              queueName: "no-workers",
+              status: "failed",
+              timestamp: 100,
+            }),
+          ],
+        }),
+        createQueueAdapter({
+          key: "workerless",
+          label: "Workerless",
+          queueName: "workerless",
+          capabilities: {
+            flows: true,
+            jobLogs: true,
+            jobRemoval: true,
+            jobRetry: true,
+            queuePause: true,
+            queueResume: true,
+            workers: false,
+          },
+          jobs: [
+            createJob({
+              id: "failed-job",
+              name: "workerless",
+              queueName: "workerless",
+              status: "failed",
+              timestamp: 100,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    await expect(
+      callPrivateDashboardApiMutation(dashboard, "jobs.retry", {
+        queueKey: "email",
+        jobId: "failed-job",
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: {
+        success: true,
+        message: 'Job "send" has been enqueued for retry',
+        workerCount: 2,
+      },
+    });
+    expect(retryJob).toHaveBeenCalledWith("failed-job");
+
+    await expect(
+      callPrivateDashboardApiMutation(dashboard, "jobs.retry", {
+        queueKey: "unsupported",
+        jobId: "failed-job",
+      }),
+    ).resolves.toMatchObject({
+      status: 400,
+      error: {
+        code: -32600,
+        message: 'Job retry is not supported for supplied queue "unsupported".',
+      },
+    });
+    await expect(
+      callPrivateDashboardApiMutation(dashboard, "jobs.retry", {
+        queueKey: "email",
+        jobId: "missing",
+      }),
+    ).resolves.toMatchObject({
+      status: 404,
+      error: {
+        code: -32004,
+        message: "Job missing not found in queue email",
+      },
+    });
+    await expect(
+      callPrivateDashboardApiMutation(dashboard, "jobs.retry", {
+        queueKey: "email",
+        jobId: "completed-job",
+      }),
+    ).resolves.toMatchObject({
+      status: 400,
+      error: {
+        code: -32600,
+        message: "Job is not in failed state. Current status: completed",
+      },
+    });
+    await expect(
+      callPrivateDashboardApiMutation(dashboard, "jobs.retry", {
+        queueKey: "no-workers",
+        jobId: "failed-job",
+      }),
+    ).resolves.toMatchObject({
+      status: 412,
+      error: {
+        code: -32012,
+        message:
+          'No workers available for queue "no-workers". Start a worker to process retried jobs.',
+      },
+    });
+    await expect(
+      callPrivateDashboardApiMutation(dashboard, "jobs.retry", {
+        queueKey: "workerless",
+        jobId: "failed-job",
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: {
+        success: true,
+        workerCount: 0,
+      },
+    });
+  });
+
+  it("removes jobs with capability checks and rejects mutating operations for read-only dashboards", async () => {
+    const removeJob = vi.fn<() => Promise<void>>(async () => {});
+    const writableDashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      queues: [
+        createQueueAdapter({
+          key: "email",
+          label: "Email",
+          queueName: "email",
+          removeJob,
+          jobs: [
+            createJob({
+              id: "job-1",
+              name: "send",
+              queueName: "email",
+              status: "completed",
+              timestamp: 100,
+            }),
+          ],
+        }),
+        createQueueAdapter({
+          key: "unsupported",
+          label: "Unsupported",
+          queueName: "unsupported",
+          capabilities: {
+            flows: true,
+            jobLogs: true,
+            jobRemoval: false,
+            jobRetry: true,
+            queuePause: true,
+            queueResume: true,
+            workers: true,
+          },
+          jobs: [
+            createJob({
+              id: "job-1",
+              name: "blocked",
+              queueName: "unsupported",
+              status: "completed",
+              timestamp: 100,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    await expect(
+      callPrivateDashboardApiMutation(writableDashboard, "jobs.remove", {
+        queueName: "email",
+        prefix: "bull",
+        jobId: "job-1",
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: {
+        success: true,
+        message: 'Job "send" has been removed',
+      },
+    });
+    expect(removeJob).toHaveBeenCalledWith("job-1");
+
+    await expect(
+      callPrivateDashboardApiMutation(writableDashboard, "jobs.remove", {
+        queueKey: "unsupported",
+        jobId: "job-1",
+      }),
+    ).resolves.toMatchObject({
+      status: 400,
+      error: {
+        code: -32600,
+        message:
+          'Job removal is not supported for supplied queue "unsupported".',
+      },
+    });
+
+    const readOnlyDashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      readOnly: true,
+      queues: [
+        createQueueAdapter({
+          key: "email",
+          label: "Email",
+          queueName: "email",
+          jobs: [
+            createJob({
+              id: "failed-job",
+              name: "send",
+              queueName: "email",
+              status: "failed",
+              timestamp: 100,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    await expect(
+      callPrivateDashboardApiMutation(readOnlyDashboard, "jobs.retry", {
+        queueKey: "email",
+        jobId: "failed-job",
+      }),
+    ).resolves.toMatchObject({
+      status: 403,
+    });
+    await expect(
+      callPrivateDashboardApiMutation(readOnlyDashboard, "jobs.remove", {
+        queueKey: "email",
+        jobId: "failed-job",
+      }),
+    ).resolves.toMatchObject({
+      status: 403,
+    });
+  });
+
+  it("fails ambiguous compatibility lookup for all job detail procedures", async () => {
+    const dashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      queues: [
+        createQueueAdapter({
+          key: "email-a",
+          label: "Email A",
+          queueName: "email",
+        }),
+        createQueueAdapter({
+          key: "email-b",
+          label: "Email B",
+          queueName: "email",
+        }),
+      ],
+    });
+
+    for (const procedure of ["jobs.get", "jobs.logs"]) {
+      await expect(
+        callPrivateDashboardApi(dashboard, procedure, {
+          queueName: "email",
+          jobId: "job-1",
+        }),
+      ).resolves.toMatchObject({
+        status: 400,
+        error: {
+          code: -32600,
+          message:
+            'Supplied queue lookup "email" matched more than one queue. Use queueKey instead.',
+        },
+      });
+    }
+
+    for (const procedure of ["jobs.retry", "jobs.remove"]) {
+      await expect(
+        callPrivateDashboardApiMutation(dashboard, procedure, {
+          queueName: "email",
+          jobId: "job-1",
+        }),
+      ).resolves.toMatchObject({
+        status: 400,
+        error: {
+          code: -32600,
+          message:
+            'Supplied queue lookup "email" matched more than one queue. Use queueKey instead.',
+        },
+      });
+    }
+  });
+});
+
 const emptyJobCounts = {
   waiting: 0,
   active: 0,
@@ -818,6 +1251,8 @@ function createQueueAdapter(
     prefix?: string;
     jobs?: Job[];
     jobSummaries?: JobSummary[];
+    jobLogs?: Record<string, { logs: string[]; count: number }>;
+    workerCount?: number;
     pauseQueue?: () => Promise<void>;
     resumeQueue?: () => Promise<void>;
     retryJob?: (jobId: string) => Promise<void>;
@@ -853,11 +1288,13 @@ function createQueueAdapter(
       getJobs(options.jobs ?? [], queryOptions),
     getJobsSummary: async (queryOptions?: JobQueryOptions) =>
       getJobSummaries(options.jobSummaries ?? [], queryOptions),
-    getJob: async () => null,
-    getJobLogs: async () => ({ logs: [], count: 0 }),
+    getJob: async (jobId) =>
+      options.jobs?.find((job) => job.id === jobId) ?? null,
+    getJobLogs: async (jobId) =>
+      options.jobLogs?.[jobId] ?? { logs: [], count: 0 },
     retryJob: options.retryJob ?? (async () => {}),
     removeJob: options.removeJob ?? (async () => {}),
-    getWorkerCount: async () => ({ queueName, count: 0 }),
+    getWorkerCount: async () => ({ queueName, count: options.workerCount ?? 0 }),
   };
 }
 
@@ -940,7 +1377,33 @@ async function callPrivateDashboardApi(
   if ("error" in body) {
     return {
       status: response.status,
-      error: body.error,
+      error: body.error.json ?? body.error,
+    };
+  }
+
+  return {
+    status: response.status,
+    json: body.result.data.json ?? body.result.data,
+  };
+}
+
+async function callPrivateDashboardApiMutation(
+  dashboard: EmbeddedDashboardInstance,
+  procedure: string,
+  input: unknown,
+) {
+  const response = await dashboard.mountPrivateDashboardApi().handle({
+    method: "POST",
+    url: `http://localhost/api/trpc/${procedure}`,
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ json: input }),
+  });
+  const body = JSON.parse(String(response.body));
+
+  if ("error" in body) {
+    return {
+      status: response.status,
+      error: body.error.json ?? body.error,
     };
   }
 

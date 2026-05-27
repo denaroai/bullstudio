@@ -374,6 +374,9 @@ importers:
       '@trpc/server':
         specifier: ^11.4.3
         version: 11.8.1(typescript@5.9.3)
+      superjson:
+        specifier: ^2.2.2
+        version: 2.2.6
     devDependencies:
       '@bullstudio/typescript-config':
         specifier: workspace:*

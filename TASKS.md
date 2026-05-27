@@ -94,22 +94,22 @@ Make job detail routes operational in embedded mode. The private dashboard API s
 
 ### Acceptance criteria
 
-- [ ] `jobs.get` works in embedded mode with queue key.
-- [ ] `jobs.get` accepts queue name/prefix compatibility input.
-- [ ] `jobs.logs` returns logs and count when the target queue supports job logs.
-- [ ] `jobs.logs` returns bad request when the target queue does not support job logs.
-- [ ] `jobs.retry` requires job retry capability.
-- [ ] `jobs.retry` validates that the target job exists.
-- [ ] `jobs.retry` validates that the target job is failed.
-- [ ] `jobs.retry` checks worker count as a precondition when the target queue supports workers.
-- [ ] `jobs.retry` does not block on worker count when worker visibility is unsupported.
-- [ ] `jobs.retry` returns the current UI-compatible success payload with a numeric worker count.
-- [ ] `jobs.remove` requires job removal capability.
-- [ ] Mutating job operations are rejected for read-only dashboards.
-- [ ] Ambiguous queue name/prefix lookup fails clearly for all job detail procedures.
-- [ ] Job detail routes accept optional queue key while preserving queue name/prefix for standalone and existing links.
-- [ ] Embedded core tests cover success, not found, unsupported capability, read-only rejection, worker precondition, and ambiguous lookup behavior.
-- [ ] The job detail screen can be browser-verified in the Next embedded example.
+- [x] `jobs.get` works in embedded mode with queue key.
+- [x] `jobs.get` accepts queue name/prefix compatibility input.
+- [x] `jobs.logs` returns logs and count when the target queue supports job logs.
+- [x] `jobs.logs` returns bad request when the target queue does not support job logs.
+- [x] `jobs.retry` requires job retry capability.
+- [x] `jobs.retry` validates that the target job exists.
+- [x] `jobs.retry` validates that the target job is failed.
+- [x] `jobs.retry` checks worker count as a precondition when the target queue supports workers.
+- [x] `jobs.retry` does not block on worker count when worker visibility is unsupported.
+- [x] `jobs.retry` returns the current UI-compatible success payload with a numeric worker count.
+- [x] `jobs.remove` requires job removal capability.
+- [x] Mutating job operations are rejected for read-only dashboards.
+- [x] Ambiguous queue name/prefix lookup fails clearly for all job detail procedures.
+- [x] Job detail routes accept optional queue key while preserving queue name/prefix for standalone and existing links.
+- [x] Embedded core tests cover success, not found, unsupported capability, read-only rejection, worker precondition, and ambiguous lookup behavior.
+- [x] The job detail screen can be browser-verified in the Next embedded example.
 
 ## 5. Add embedded queue pause and resume parity
 

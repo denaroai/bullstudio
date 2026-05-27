@@ -1,5 +1,6 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import superjson from "superjson";
 import type {
   Job,
   JobQueryOptions,
@@ -58,7 +59,9 @@ async function handlePrivateDashboardApi(
 }
 
 function createPrivateDashboardApiRouter(dashboard: EmbeddedDashboardInstance) {
-  const t = initTRPC.create();
+  const t = initTRPC.create({
+    transformer: superjson,
+  });
 
   return t.router({
     connection: t.router({
@@ -123,20 +126,190 @@ function createPrivateDashboardApiRouter(dashboard: EmbeddedDashboardInstance) {
       listSummary: t.procedure.input((value) => value).query(({ input }) =>
         getJobListSummaries(dashboard, getJobListInput(input)),
       ),
-      retry: t.procedure.mutation(({ input }) =>
-        runPrivateDashboardMutation(dashboard, () => {
-          const { jobId, queueKey } = getJobMutationInput(input);
-          return dashboard.retryJob(queueKey, jobId);
-        }),
+      get: t.procedure.input((value) => value).query(({ input }) =>
+        getJobDetail(dashboard, getJobTargetInput(input)),
       ),
-      remove: t.procedure.mutation(({ input }) =>
-        runPrivateDashboardMutation(dashboard, () => {
-          const { jobId, queueKey } = getJobMutationInput(input);
-          return dashboard.removeJob(queueKey, jobId);
-        }),
+      logs: t.procedure.input((value) => value).query(({ input }) =>
+        getJobLogs(dashboard, getJobTargetInput(input)),
+      ),
+      retry: t.procedure.input((value) => value).mutation(({ input }) =>
+        runPrivateDashboardMutation(dashboard, () =>
+          retryJob(dashboard, getJobTargetInput(input)),
+        ),
+      ),
+      remove: t.procedure.input((value) => value).mutation(({ input }) =>
+        runPrivateDashboardMutation(dashboard, () =>
+          removeJob(dashboard, getJobTargetInput(input)),
+        ),
       ),
     }),
   });
+}
+
+type ResolvedJobTargetInput = {
+  queueKey?: string;
+  queueName?: string;
+  prefix?: string;
+  jobId: string;
+};
+
+async function getJobDetail(
+  dashboard: EmbeddedDashboardInstance,
+  input: ResolvedJobTargetInput,
+): Promise<Job | null> {
+  const queue = await getQueueForJobTarget(dashboard, input);
+  return dashboard.getJob(queue.key, input.jobId);
+}
+
+async function getJobLogs(
+  dashboard: EmbeddedDashboardInstance,
+  input: ResolvedJobTargetInput,
+): Promise<{ logs: string[]; count: number }> {
+  const queue = await getQueueForJobTarget(dashboard, input);
+
+  if (!queue.capabilities.jobLogs) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Job logs are not supported for supplied queue "${queue.key}".`,
+    });
+  }
+
+  return dashboard.getJobLogs(queue.key, input.jobId);
+}
+
+async function retryJob(
+  dashboard: EmbeddedDashboardInstance,
+  input: ResolvedJobTargetInput,
+): Promise<{ success: true; message: string; workerCount: number }> {
+  const queue = await getQueueForJobTarget(dashboard, input);
+
+  if (!queue.capabilities.jobRetry) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Job retry is not supported for supplied queue "${queue.key}".`,
+    });
+  }
+
+  const job = await dashboard.getJob(queue.key, input.jobId);
+
+  if (!job) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: `Job ${input.jobId} not found in queue ${queue.name}`,
+    });
+  }
+
+  if (job.status !== "failed") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Job is not in failed state. Current status: ${job.status}`,
+    });
+  }
+
+  const workerCount = queue.capabilities.workers
+    ? await dashboard.getWorkerCount(queue.key)
+    : { queueName: queue.name, count: 0 };
+
+  if (queue.capabilities.workers && workerCount.count === 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        `No workers available for queue "${queue.name}". ` +
+        "Start a worker to process retried jobs.",
+    });
+  }
+
+  await dashboard.retryJob(queue.key, input.jobId);
+
+  return {
+    success: true,
+    message: `Job "${job.name}" has been enqueued for retry`,
+    workerCount: workerCount.count,
+  };
+}
+
+async function removeJob(
+  dashboard: EmbeddedDashboardInstance,
+  input: ResolvedJobTargetInput,
+): Promise<{ success: true; message: string }> {
+  const queue = await getQueueForJobTarget(dashboard, input);
+
+  if (!queue.capabilities.jobRemoval) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Job removal is not supported for supplied queue "${queue.key}".`,
+    });
+  }
+
+  const job = await dashboard.getJob(queue.key, input.jobId);
+
+  if (!job) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: `Job ${input.jobId} not found in queue ${queue.name}`,
+    });
+  }
+
+  await dashboard.removeJob(queue.key, input.jobId);
+
+  return {
+    success: true,
+    message: `Job "${job.name}" has been removed`,
+  };
+}
+
+async function getQueueForJobTarget(
+  dashboard: EmbeddedDashboardInstance,
+  input: Pick<ResolvedJobTargetInput, "queueKey" | "queueName" | "prefix">,
+): Promise<DashboardQueue> {
+  return getSuppliedQueueByPrivateApiInput(dashboard, {
+    queueKey: input.queueKey,
+    queueName: input.queueName,
+    prefix: input.prefix,
+  });
+}
+
+function getJobTargetInput(input: unknown): ResolvedJobTargetInput {
+  const value = getObjectInput(input);
+  const jobId =
+    "jobId" in value && typeof value.jobId === "string"
+      ? value.jobId
+      : undefined;
+
+  if (!jobId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "A jobId string is required.",
+    });
+  }
+
+  return {
+    ...getQueueLookupInput(value),
+    jobId,
+  };
+}
+
+function getQueueLookupInput(input: Record<string, unknown>): {
+  queueKey?: string;
+  queueName?: string;
+  prefix?: string;
+} {
+  return {
+    queueKey:
+      "queueKey" in input && typeof input.queueKey === "string"
+        ? input.queueKey
+        : undefined,
+    queueName:
+      "queueName" in input && typeof input.queueName === "string"
+        ? input.queueName
+        : "name" in input && typeof input.name === "string"
+          ? input.name
+          : undefined,
+    prefix:
+      "prefix" in input && typeof input.prefix === "string"
+        ? input.prefix
+        : undefined,
+  };
 }
 
 type PrivateJobSourceKey = {
@@ -691,12 +864,11 @@ function formatQueueLookup(name: string, prefix: string | undefined): string {
 
 async function runPrivateDashboardMutation(
   dashboard: EmbeddedDashboardInstance,
-  operation: () => Promise<void>,
-): Promise<{ success: true }> {
+  operation: () => Promise<unknown>,
+): Promise<unknown> {
   try {
     assertCanMutate(dashboard.config);
-    await operation();
-    return { success: true };
+    return await operation();
   } catch (error) {
     if (error instanceof ReadOnlyDashboardError) {
       throw new TRPCError({
@@ -726,31 +898,6 @@ function getQueueKeyInput(input: unknown): { queueKey: string } {
   throw new TRPCError({
     code: "BAD_REQUEST",
     message: "A queueKey string is required.",
-  });
-}
-
-function getJobMutationInput(input: unknown): {
-  jobId: string;
-  queueKey: string;
-} {
-  const value = unwrapJsonInput(input);
-  const { queueKey } = getQueueKeyInput(value);
-
-  if (
-    value &&
-    typeof value === "object" &&
-    "jobId" in value &&
-    typeof value.jobId === "string"
-  ) {
-    return {
-      jobId: value.jobId,
-      queueKey,
-    };
-  }
-
-  throw new TRPCError({
-    code: "BAD_REQUEST",
-    message: "A jobId string is required.",
   });
 }
 

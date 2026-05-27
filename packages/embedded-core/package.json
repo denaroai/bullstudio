@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@bullstudio/connect-types": "workspace:*",
-    "@trpc/server": "^11.4.3"
+    "@trpc/server": "^11.4.3",
+    "superjson": "^2.2.2"
   },
   "devDependencies": {
     "@bullstudio/typescript-config": "workspace:*",
