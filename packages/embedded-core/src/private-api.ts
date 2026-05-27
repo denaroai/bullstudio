@@ -58,6 +58,33 @@ function createPrivateDashboardApiRouter(dashboard: EmbeddedDashboardInstance) {
         ),
       ),
     }),
+    flows: t.router({
+      list: t.procedure.query(({ input }) =>
+        dashboard.listFlows(getFlowListInput(input)),
+      ),
+      get: t.procedure.query(async ({ input }) => {
+        if (!dashboard.getQueueSourceStatus().capabilities.flows) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Flows are not supported by supplied queue adapters.",
+          });
+        }
+
+        const flowInput = getFlowInput(input);
+        const flow = await dashboard.getFlow(flowInput);
+
+        if (!flow) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              `Flow ${flowInput.flowId} not found in queue ` +
+              `${flowInput.queueName}`,
+          });
+        }
+
+        return flow;
+      }),
+    }),
     jobs: t.router({
       retry: t.procedure.mutation(({ input }) =>
         runPrivateDashboardMutation(dashboard, () => {
@@ -137,6 +164,61 @@ function getJobMutationInput(input: unknown): {
   throw new TRPCError({
     code: "BAD_REQUEST",
     message: "A jobId string is required.",
+  });
+}
+
+function getFlowListInput(input: unknown): { limit?: number } | undefined {
+  const value = unwrapJsonInput(input);
+
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    "limit" in value &&
+    typeof value.limit === "number"
+  ) {
+    return {
+      limit: value.limit,
+    };
+  }
+
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: "A numeric limit is required when flow list input is provided.",
+  });
+}
+
+function getFlowInput(input: unknown): {
+  queueName: string;
+  flowId: string;
+  prefix?: string;
+} {
+  const value = unwrapJsonInput(input);
+
+  if (
+    value &&
+    typeof value === "object" &&
+    "queueName" in value &&
+    typeof value.queueName === "string" &&
+    "flowId" in value &&
+    typeof value.flowId === "string"
+  ) {
+    return {
+      queueName: value.queueName,
+      flowId: value.flowId,
+      prefix:
+        "prefix" in value && typeof value.prefix === "string"
+          ? value.prefix
+          : undefined,
+    };
+  }
+
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: "queueName and flowId strings are required.",
   });
 }
 

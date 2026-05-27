@@ -1,9 +1,26 @@
 import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
 import type { QueueAdapter } from "@bullstudio/embedded-core";
-import type { Queue } from "bullmq";
-import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import type { FlowProducer, Queue } from "bullmq";
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+
+const getFlow = vi.fn<FlowProducer["getFlow"]>();
+
+vi.mock("bullmq", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("bullmq")>();
+
+  return {
+    ...actual,
+    FlowProducer: vi.fn(() => ({
+      getFlow,
+    })),
+  };
+});
 
 describe("createBullMqQueueAdapter", () => {
+  beforeEach(() => {
+    getFlow.mockReset();
+  });
+
   it("wraps a host-owned BullMQ queue with inferred identity and capabilities", () => {
     const queue = { name: "email" } as Queue;
 
@@ -232,6 +249,119 @@ describe("createBullMqQueueAdapter", () => {
     expect(adapter).not.toHaveProperty("close");
     expect(adapter).not.toHaveProperty("disconnect");
   });
+
+  it("lists and reads BullMQ flows from the supplied queue", async () => {
+    const flowTree = {
+      job: createFlowJob({
+        id: "parent",
+        name: "send-campaign",
+        queueName: "email",
+        state: "waiting-children",
+        timestamp: 300,
+      }),
+      children: [
+        {
+          job: createFlowJob({
+            id: "child-1",
+            name: "send-message",
+            queueName: "email",
+            state: "completed",
+            timestamp: 100,
+          }),
+        },
+        {
+          job: createFlowJob({
+            id: "child-2",
+            name: "send-message",
+            queueName: "email",
+            state: "failed",
+            timestamp: 200,
+            failedReason: "SMTP unavailable",
+          }),
+        },
+      ],
+    };
+    getFlow.mockResolvedValue(flowTree);
+    const queue = {
+      name: "email",
+      opts: { prefix: "production", connection: {} },
+      getJobs: vi
+        .fn()
+        .mockResolvedValueOnce([
+          createQueueJob({
+            id: "parent",
+            name: "send-campaign",
+            timestamp: 300,
+          }),
+        ])
+        .mockResolvedValueOnce([]),
+    } as unknown as Queue;
+
+    const adapter = createBullMqQueueAdapter(queue);
+
+    await expect(adapter.listFlows?.()).resolves.toEqual([
+      {
+        id: "parent",
+        name: "send-campaign",
+        queueName: "email",
+        prefix: "production",
+        status: "waiting-children",
+        totalJobs: 3,
+        completedJobs: 1,
+        failedJobs: 1,
+        timestamp: 300,
+      },
+    ]);
+    await expect(adapter.getFlow?.("parent")).resolves.toEqual({
+      id: "parent",
+      queueName: "email",
+      totalNodes: 3,
+      completedNodes: 1,
+      failedNodes: 1,
+      root: {
+        id: "parent",
+        name: "send-campaign",
+        queueName: "email",
+        status: "waiting-children",
+        data: {},
+        timestamp: 300,
+        processedOn: undefined,
+        finishedOn: undefined,
+        failedReason: undefined,
+        children: [
+          {
+            id: "child-1",
+            name: "send-message",
+            queueName: "email",
+            status: "completed",
+            data: {},
+            timestamp: 100,
+            processedOn: undefined,
+            finishedOn: undefined,
+            failedReason: undefined,
+            children: [],
+          },
+          {
+            id: "child-2",
+            name: "send-message",
+            queueName: "email",
+            status: "failed",
+            data: {},
+            timestamp: 200,
+            processedOn: undefined,
+            finishedOn: undefined,
+            failedReason: "SMTP unavailable",
+            children: [],
+          },
+        ],
+      },
+    });
+    expect(getFlow).toHaveBeenCalledWith({
+      id: "parent",
+      queueName: "email",
+      prefix: "production",
+    });
+  });
 });
 
 function createQueueJob(overrides: {
@@ -251,5 +381,26 @@ function createQueueJob(overrides: {
     finishedOn: undefined,
     getState: async () => "waiting",
     ...overrides,
+  };
+}
+
+function createFlowJob(options: {
+  id: string;
+  name: string;
+  queueName: string;
+  state: string;
+  timestamp: number;
+  failedReason?: string;
+}) {
+  return {
+    id: options.id,
+    name: options.name,
+    queueName: options.queueName,
+    data: {},
+    timestamp: options.timestamp,
+    processedOn: undefined,
+    finishedOn: undefined,
+    failedReason: options.failedReason,
+    getState: async () => options.state,
   };
 }

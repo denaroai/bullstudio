@@ -1,4 +1,6 @@
 import type {
+  FlowSummary,
+  FlowTree,
   Job,
   JobCounts,
   JobQueryOptions,
@@ -37,6 +39,8 @@ export interface QueueAdapter {
   retryJob(jobId: string): Promise<void>;
   removeJob(jobId: string): Promise<void>;
   getWorkerCount(): Promise<WorkerCount>;
+  listFlows?(options?: { limit?: number }): Promise<FlowSummary[]>;
+  getFlow?(flowId: string): Promise<FlowTree | null>;
 }
 
 export type DashboardProtection =
@@ -160,6 +164,12 @@ export interface EmbeddedDashboardInstance {
   retryJob(queueKey: string, jobId: string): Promise<void>;
   removeJob(queueKey: string, jobId: string): Promise<void>;
   getWorkerCount(queueKey: string): Promise<WorkerCount>;
+  listFlows(options?: { limit?: number }): Promise<FlowSummary[]>;
+  getFlow(input: {
+    queueName: string;
+    flowId: string;
+    prefix?: string;
+  }): Promise<FlowTree | null>;
   handle(request: FrameworkRequest): Promise<FrameworkResponse>;
   mountPrivateDashboardApi(): PrivateDashboardApiMount;
 }

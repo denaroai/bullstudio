@@ -1,3 +1,4 @@
+import type { FlowSummary } from "@bullstudio/connect-types";
 import { handleDashboardAsset } from "./assets";
 import {
   defaultCapabilities,
@@ -67,6 +68,8 @@ export function createEmbeddedDashboard(
       ),
     getWorkerCount: (queueKey) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getWorkerCount(),
+    listFlows: (options) => listFlows(resolvedConfig.queues, options),
+    getFlow: (input) => getFlow(resolvedConfig.queues, input),
     handle: (request) =>
       withDashboardProtection(resolvedConfig.protection, request, () =>
         handleDashboardAsset(request, resolvedConfig),
@@ -121,6 +124,54 @@ async function getDashboardQueue(queue: QueueAdapter): Promise<DashboardQueue> {
     capabilities: queue.capabilities,
     ...(await queue.getQueue()),
   };
+}
+
+async function listFlows(queues: QueueAdapter[], options?: { limit?: number }) {
+  const limit = options?.limit ?? 50;
+  const flows: FlowSummary[] = [];
+
+  for (const queue of queues) {
+    if (flows.length >= limit) {
+      break;
+    }
+    if (!queue.capabilities.flows || !queue.listFlows) {
+      continue;
+    }
+
+    const queueFlows = await queue.listFlows({
+      limit: limit - flows.length,
+    });
+    flows.push(...queueFlows);
+  }
+
+  return flows.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
+}
+
+async function getFlow(
+  queues: QueueAdapter[],
+  input: {
+    queueName: string;
+    flowId: string;
+    prefix?: string;
+  },
+) {
+  for (const queue of queues) {
+    if (!queue.capabilities.flows || !queue.getFlow) {
+      continue;
+    }
+
+    const suppliedQueue = await queue.getQueue();
+    if (suppliedQueue.name !== input.queueName) {
+      continue;
+    }
+    if (input.prefix && suppliedQueue.prefix !== input.prefix) {
+      continue;
+    }
+
+    return queue.getFlow(input.flowId);
+  }
+
+  return null;
 }
 
 function resolveDashboardConfig(
