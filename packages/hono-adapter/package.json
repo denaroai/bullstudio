@@ -1,5 +1,5 @@
 {
-  "name": "@bullstudio/embedded-core",
+  "name": "@bullstudio/hono",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -13,13 +13,16 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "peerDependencies": {
+    "hono": "^4.0.0"
+  },
   "dependencies": {
-    "@bullstudio/connect-types": "workspace:*",
-    "@trpc/server": "^11.4.3"
+    "@bullstudio/embedded-core": "workspace:*"
   },
   "devDependencies": {
     "@bullstudio/typescript-config": "workspace:*",
     "@types/node": "^24.10.1",
+    "hono": "^4.12.23",
     "typescript": "^5.7.3",
     "vitest": "^3.2.4"
   }

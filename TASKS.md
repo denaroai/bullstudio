@@ -99,6 +99,8 @@ Progress:
 
 ## 4. Mount embedded Bullstudio in Hono at one mount path
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Tasks 1, 2, 3
@@ -111,13 +113,21 @@ Add the Hono framework adapter package with a native `bullstudio()` dashboard fa
 
 ### Acceptance criteria
 
-- [ ] Hono developers can import `bullstudio()` from the Hono adapter package.
-- [ ] The Hono adapter returns a Hono-native mountable value.
-- [ ] Dashboard assets are served under the mount path.
-- [ ] The private dashboard API is served under the same mount path.
-- [ ] The private dashboard API remains tRPC and is not documented as public API.
-- [ ] Polling remains the update mechanism; no WebSocket or Server-Sent Events support is introduced.
-- [ ] Tests mount the dashboard at a non-root path and verify asset and API responses.
+- [x] Hono developers can import `bullstudio()` from the Hono adapter package.
+- [x] The Hono adapter returns a Hono-native mountable value.
+- [x] Dashboard assets are served under the mount path.
+- [x] The private dashboard API is served under the same mount path.
+- [x] The private dashboard API remains tRPC and is not documented as public API.
+- [x] Polling remains the update mechanism; no WebSocket or Server-Sent Events support is introduced.
+- [x] Tests mount the dashboard at a non-root path and verify asset and API responses.
+
+Progress:
+
+- Added `@bullstudio/hono` with the native `bullstudio()` dashboard factory.
+- Added a Hono integration test that mounts Bullstudio at `/ops/bullstudio` and verifies dashboard HTML, dashboard assets, and private tRPC API responses from that same mount path.
+- Added initial embedded-core dashboard asset handling for the embedded dashboard shell and asset script.
+- Added the first private embedded-core tRPC procedures for supplied queue listing and queue source status.
+- Verified with `pnpm --filter @bullstudio/hono test`, `pnpm --filter @bullstudio/hono typecheck`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, `pnpm exec biome check packages/hono-adapter packages/embedded-core`, and `pnpm typecheck`.
 
 ## 5. Add Basic Auth dashboard protection for embedded mode
 

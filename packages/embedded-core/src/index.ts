@@ -6,6 +6,8 @@ import type {
   Queue,
   WorkerCount,
 } from "@bullstudio/connect-types";
+import { initTRPC } from "@trpc/server";
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
 export type DashboardMode = "embedded";
 
@@ -180,8 +182,7 @@ export function createEmbeddedDashboard(
 ): EmbeddedDashboardInstance {
   const resolvedConfig = resolveDashboardConfig(config);
   const queueAdaptersByKey = indexQueueAdaptersByKey(resolvedConfig.queues);
-
-  return {
+  const dashboard: EmbeddedDashboardInstance = {
     mode: "embedded",
     config: resolvedConfig,
     queues: resolvedConfig.queues,
@@ -214,17 +215,163 @@ export function createEmbeddedDashboard(
       getQueueAdapter(queueAdaptersByKey, queueKey).removeJob(jobId),
     getWorkerCount: (queueKey) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getWorkerCount(),
-    handle: async () => ({
-      status: 501,
-      body: "Dashboard assets are not mounted in this implementation slice.",
-    }),
+    handle: (request) => handleDashboardAsset(request, resolvedConfig),
     mountPrivateDashboardApi: () => ({
-      handle: async () => ({
-        status: 501,
-        body: "Private dashboard API is not mounted in this implementation slice.",
-      }),
+      handle: (request) => handlePrivateDashboardApi(dashboard, request),
     }),
   };
+
+  return dashboard;
+}
+
+async function handleDashboardAsset(
+  request: FrameworkRequest,
+  config: ResolvedDashboardConfig,
+): Promise<FrameworkResponse> {
+  const pathname = getPathname(request.url);
+
+  if (request.method === "GET" || request.method === "HEAD") {
+    if (pathname.endsWith("/assets/app.js")) {
+      return {
+        status: 200,
+        headers: {
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Content-Type": "application/javascript; charset=utf-8",
+        },
+        body:
+          request.method === "HEAD"
+            ? undefined
+            : `window.__BULLSTUDIO__=${JSON.stringify({
+                mode: "embedded",
+                title: config.dashboardIdentity.title,
+              })};`,
+      };
+    }
+
+    return {
+      status: 200,
+      headers: {
+        "Cache-Control": "no-cache",
+        "Content-Type": "text/html; charset=utf-8",
+      },
+      body:
+        request.method === "HEAD"
+          ? undefined
+          : `<!doctype html><html><head><title>${escapeHtml(
+              config.documentIdentity.title,
+            )}</title><script type="module" src="./assets/app.js"></script></head><body><div id="root">${escapeHtml(
+              config.dashboardIdentity.title,
+            )}</div></body></html>`,
+    };
+  }
+
+  return {
+    status: 405,
+    headers: {
+      Allow: "GET, HEAD",
+    },
+    body: "Method Not Allowed",
+  };
+}
+
+async function handlePrivateDashboardApi(
+  dashboard: EmbeddedDashboardInstance,
+  request: FrameworkRequest,
+): Promise<FrameworkResponse> {
+  const response = await fetchRequestHandler({
+    endpoint: getPrivateDashboardApiEndpoint(request.url),
+    req: toFetchRequest(request),
+    router: createPrivateDashboardApiRouter(dashboard),
+    createContext: () => ({}),
+  });
+
+  return {
+    status: response.status,
+    headers: Object.fromEntries(response.headers.entries()),
+    body: await response.text(),
+  };
+}
+
+function createPrivateDashboardApiRouter(dashboard: EmbeddedDashboardInstance) {
+  const t = initTRPC.create();
+
+  return t.router({
+    queueSource: t.router({
+      status: t.procedure.query(() => dashboard.getQueueSourceStatus()),
+    }),
+    queues: t.router({
+      list: t.procedure.query(() => dashboard.listQueues()),
+    }),
+  });
+}
+
+function toFetchRequest(request: FrameworkRequest): Request {
+  return new Request(toAbsoluteUrl(request.url), {
+    method: request.method,
+    headers: toFetchHeaders(request.headers),
+    body:
+      request.method === "GET" || request.method === "HEAD"
+        ? undefined
+        : (request.body as BodyInit | null | undefined),
+  });
+}
+
+function toFetchHeaders(
+  headers: FrameworkRequest["headers"],
+): HeadersInit | undefined {
+  if (!headers || headers instanceof Headers) {
+    return headers;
+  }
+
+  const fetchHeaders = new Headers();
+
+  for (const [name, value] of Object.entries(headers)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        fetchHeaders.append(name, item);
+      }
+      continue;
+    }
+
+    if (value !== undefined) {
+      fetchHeaders.set(name, value);
+    }
+  }
+
+  return fetchHeaders;
+}
+
+function getPrivateDashboardApiEndpoint(url: string): string {
+  const pathname = getPathname(url);
+  const apiPathIndex = pathname.indexOf("/api/trpc");
+
+  if (apiPathIndex === -1) {
+    return "/api/trpc";
+  }
+
+  return pathname.slice(0, apiPathIndex + "/api/trpc".length);
+}
+
+function getPathname(url: string): string {
+  return new URL(toAbsoluteUrl(url)).pathname;
+}
+
+function toAbsoluteUrl(url: string): string {
+  return URL.canParse(url) ? url : `http://bullstudio.local${url}`;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[character] ?? character,
+  );
 }
 
 function indexQueueAdaptersByKey(
