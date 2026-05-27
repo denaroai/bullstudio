@@ -418,6 +418,8 @@ Progress:
 
 ## 14. Add the Next.js App Router adapter
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Tasks 4, 5, 6, 7, 9
@@ -430,14 +432,22 @@ Add the Next.js framework adapter package for App Router route handlers. Next.js
 
 ### Acceptance criteria
 
-- [ ] Next.js developers can import `bullstudio()` from the Next.js adapter package.
-- [ ] The adapter returns App Router-compatible route handlers.
-- [ ] Dashboard assets and private dashboard API are served from the configured mount path.
-- [ ] Basic Auth protection works by default.
-- [ ] Read-only mode rejects mutating operations server-side.
-- [ ] Dashboard and document identity work without rebuilding assets.
-- [ ] Tests or an example verify App Router route-handler behavior.
-- [ ] Pages Router support is not introduced in this slice.
+- [x] Next.js developers can import `bullstudio()` from the Next.js adapter package.
+- [x] The adapter returns App Router-compatible route handlers.
+- [x] Dashboard assets and private dashboard API are served from the configured mount path.
+- [x] Basic Auth protection works by default.
+- [x] Read-only mode rejects mutating operations server-side.
+- [x] Dashboard and document identity work without rebuilding assets.
+- [x] Tests or an example verify App Router route-handler behavior.
+- [x] Pages Router support is not introduced in this slice.
+
+Progress:
+
+- Added `@bullstudio/next` with the native `bullstudio()` dashboard factory for Next.js App Router.
+- Implemented App Router-compatible `GET`, `HEAD`, and `POST` route handlers that serve dashboard assets and the private tRPC dashboard API from a configured mount path.
+- Added App Router route-handler coverage for mount-path routing, Basic Auth protection, read-only mutation rejection, dashboard/document identity, and out-of-mount 404 behavior.
+- Kept Pages Router support out of scope by only returning route-handler functions.
+- Verified with `pnpm --filter @bullstudio/next test`, `pnpm --filter @bullstudio/next typecheck`, `pnpm exec biome check packages/next-adapter`, and `pnpm --filter @bullstudio/embedded-core test`.
 
 ## 15. Final embedded-mode verification and release readiness
 
