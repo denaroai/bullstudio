@@ -1,10 +1,10 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   createEmbeddedDashboard,
   type DashboardConfig,
   type EmbeddedDashboardInstance,
   type QueueAdapter,
 } from "@bullstudio/embedded-core";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 describe("embedded core public contracts", () => {
   it("creates an importable framework-neutral dashboard instance from supplied queue adapters", () => {
@@ -21,6 +21,40 @@ describe("embedded core public contracts", () => {
         queueResume: true,
         workers: true,
       },
+      getQueue: async () => ({
+        name: "email",
+        prefix: "bull",
+        isPaused: false,
+        jobCounts: {
+          waiting: 0,
+          active: 0,
+          completed: 0,
+          failed: 0,
+          delayed: 0,
+          paused: 0,
+          prioritized: 0,
+          waitingChildren: 0,
+        },
+      }),
+      getJobCounts: async () => ({
+        waiting: 0,
+        active: 0,
+        completed: 0,
+        failed: 0,
+        delayed: 0,
+        paused: 0,
+        prioritized: 0,
+        waitingChildren: 0,
+      }),
+      pauseQueue: async () => {},
+      resumeQueue: async () => {},
+      getJobs: async () => [],
+      getJobsSummary: async () => [],
+      getJob: async () => null,
+      getJobLogs: async () => ({ logs: [], count: 0 }),
+      retryJob: async () => {},
+      removeJob: async () => {},
+      getWorkerCount: async () => ({ queueName: "email", count: 0 }),
     };
 
     const config = {

@@ -1,3 +1,12 @@
+import type {
+  Job,
+  JobCounts,
+  JobQueryOptions,
+  JobSummary,
+  Queue,
+  WorkerCount,
+} from "@bullstudio/connect-types";
+
 export type DashboardMode = "embedded";
 
 export type QueueAdapterProvider = "bullmq" | "bull";
@@ -17,6 +26,17 @@ export interface QueueAdapter {
   label: string;
   provider: QueueAdapterProvider;
   capabilities: AdapterCapabilities;
+  getQueue(): Promise<Queue>;
+  getJobCounts(): Promise<JobCounts>;
+  pauseQueue(): Promise<void>;
+  resumeQueue(): Promise<void>;
+  getJobs(options?: JobQueryOptions): Promise<Job[]>;
+  getJobsSummary(options?: JobQueryOptions): Promise<JobSummary[]>;
+  getJob(jobId: string): Promise<Job | null>;
+  getJobLogs(jobId: string): Promise<{ logs: string[]; count: number }>;
+  retryJob(jobId: string): Promise<void>;
+  removeJob(jobId: string): Promise<void>;
+  getWorkerCount(): Promise<WorkerCount>;
 }
 
 export type DashboardProtection =

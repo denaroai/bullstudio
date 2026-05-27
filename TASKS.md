@@ -36,6 +36,8 @@ Progress:
 
 ## 2. Implement the BullMQ queue adapter
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Task 1
@@ -48,13 +50,21 @@ Add the function-based BullMQ queue adapter package for BullMQ 5+. The adapter s
 
 ### Acceptance criteria
 
-- [ ] Developers can create a queue adapter with a function-based API.
-- [ ] BullMQ is a peer dependency of the adapter package.
-- [ ] The adapter infers a queue key and queue label from the supplied BullMQ queue.
-- [ ] The adapter accepts explicit queue key and queue label overrides.
-- [ ] The adapter exposes BullMQ capabilities, including flow support where available.
-- [ ] The adapter does not close or otherwise own the supplied queue or its connection.
-- [ ] Tests verify queue key inference, overrides, capabilities, job reads, queue reads, and host-owned queue lifecycle behavior.
+- [x] Developers can create a queue adapter with a function-based API.
+- [x] BullMQ is a peer dependency of the adapter package.
+- [x] The adapter infers a queue key and queue label from the supplied BullMQ queue.
+- [x] The adapter accepts explicit queue key and queue label overrides.
+- [x] The adapter exposes BullMQ capabilities, including flow support where available.
+- [x] The adapter does not close or otherwise own the supplied queue or its connection.
+- [x] Tests verify queue key inference, overrides, capabilities, job reads, queue reads, and host-owned queue lifecycle behavior.
+
+Progress:
+
+- Added `@bullstudio/bullmq-adapter` with the `createBullMqQueueAdapter()` function-based API.
+- Declared BullMQ as a peer dependency while using the host-supplied queue instance for all queue and job operations.
+- Extended the embedded queue adapter contract with queue reads, job reads, job logs, queue pause/resume, job retry/removal, and worker count operations.
+- Added adapter tests for inferred identity, explicit key/label overrides, BullMQ capabilities, queue reads, job reads, delegated operations, and host-owned lifecycle behavior.
+- Verified with `pnpm --filter @bullstudio/bullmq-adapter test`, `pnpm --filter @bullstudio/bullmq-adapter typecheck`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, and `pnpm exec biome check packages/bullmq-adapter packages/embedded-core`.
 
 ## 3. Aggregate supplied queues in the embedded core
 
