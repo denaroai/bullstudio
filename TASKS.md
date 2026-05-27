@@ -43,15 +43,15 @@ Make the embedded overview screen work end-to-end against supplied queues. The p
 
 ### Acceptance criteria
 
-- [ ] `overview.metrics` works in embedded mode without missing-procedure errors.
-- [ ] Metrics aggregate completed and failed jobs from supplied queues only.
-- [ ] Queue filtering works with queue key when provided.
-- [ ] Queue filtering accepts queue name/prefix as compatibility input.
-- [ ] Ambiguous queue name/prefix filters fail clearly instead of choosing a queue.
-- [ ] Time-range filtering matches the current completed/failed overview behavior.
-- [ ] Response shape remains compatible with the current overview UI.
-- [ ] Embedded core tests cover all-queue metrics, single-queue metrics, time ranges, and ambiguous compatibility lookup.
-- [ ] The overview page can be browser-verified in the Next embedded example.
+- [x] `overview.metrics` works in embedded mode without missing-procedure errors.
+- [x] Metrics aggregate completed and failed jobs from supplied queues only.
+- [x] Queue filtering works with queue key when provided.
+- [x] Queue filtering accepts queue name/prefix as compatibility input.
+- [x] Ambiguous queue name/prefix filters fail clearly instead of choosing a queue.
+- [x] Time-range filtering matches the current completed/failed overview behavior.
+- [x] Response shape remains compatible with the current overview UI.
+- [x] Embedded core tests cover all-queue metrics, single-queue metrics, time ranges, and ambiguous compatibility lookup.
+- [x] The overview page can be browser-verified in the Next embedded example.
 
 ## 3. Add embedded job list parity and source queue identity
 

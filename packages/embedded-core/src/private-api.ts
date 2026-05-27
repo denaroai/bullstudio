@@ -1,5 +1,6 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import type { JobSummary } from "@bullstudio/connect-types";
 import { ReadOnlyDashboardError } from "./errors";
 import { assertCanMutate } from "./mutation";
 import type {
@@ -61,6 +62,11 @@ function createPrivateDashboardApiRouter(dashboard: EmbeddedDashboardInstance) {
     queueSource: t.router({
       status: t.procedure.query(() => dashboard.getQueueSourceStatus()),
     }),
+    overview: t.router({
+      metrics: t.procedure.input((value) => value).query(({ input }) =>
+        getOverviewMetrics(dashboard, getOverviewMetricsInput(input)),
+      ),
+    }),
     queues: t.router({
       list: t.procedure.query(() => dashboard.listQueues()),
       prefixes: t.procedure.query(() => getSuppliedQueuePrefixes(dashboard)),
@@ -120,6 +126,291 @@ function createPrivateDashboardApiRouter(dashboard: EmbeddedDashboardInstance) {
       ),
     }),
   });
+}
+
+type TimeSeriesDataPoint = {
+  timestamp: number;
+  completed: number;
+  failed: number;
+  avgProcessingTimeMs: number;
+  avgDelayMs: number;
+};
+
+type OverviewMetricsResponse = {
+  summary: {
+    totalCompleted: number;
+    totalFailed: number;
+    avgThroughputPerHour: number;
+    failureRate: number;
+    avgProcessingTimeMs: number;
+    avgDelayMs: number;
+  };
+  timeSeries: TimeSeriesDataPoint[];
+  slowestJobs: Array<{
+    id: string;
+    name: string;
+    queueName: string;
+    processingTimeMs: number;
+    timestamp: number;
+    status: string;
+  }>;
+  failingJobTypes: Array<{
+    name: string;
+    queueName: string;
+    failureCount: number;
+    lastFailedAt: number;
+    lastFailedReason?: string;
+  }>;
+  queuesCount: number;
+  lastUpdated: number;
+};
+
+async function getOverviewMetrics(
+  dashboard: EmbeddedDashboardInstance,
+  input: {
+    timeRangeHours: number;
+    queueKey?: string;
+    queueName?: string;
+    prefix?: string;
+  },
+): Promise<OverviewMetricsResponse> {
+  const queuesToProcess =
+    input.queueKey || input.queueName
+      ? [
+          await getSuppliedQueueByPrivateApiInput(dashboard, {
+            queueKey: input.queueKey,
+            queueName: input.queueName,
+            prefix: input.prefix,
+          }),
+        ]
+      : await dashboard.listQueues();
+  const cutoffTimestamp = Date.now() - input.timeRangeHours * 60 * 60 * 1000;
+  const allJobs: JobSummary[] = [];
+
+  for (const queue of queuesToProcess) {
+    const [completed, failed] = await Promise.all([
+      dashboard.getJobsSummary(queue.key, {
+        filter: { status: "completed" },
+        limit: 1000,
+      }),
+      dashboard.getJobsSummary(queue.key, {
+        filter: { status: "failed" },
+        limit: 1000,
+      }),
+    ]);
+
+    allJobs.push(
+      ...completed.filter(
+        (job) => job.finishedOn && job.finishedOn >= cutoffTimestamp,
+      ),
+      ...failed.filter(
+        (job) => job.finishedOn && job.finishedOn >= cutoffTimestamp,
+      ),
+    );
+  }
+
+  return aggregateOverviewMetrics(
+    allJobs,
+    input.timeRangeHours,
+    queuesToProcess.length,
+  );
+}
+
+function getOverviewMetricsInput(input: unknown): {
+  timeRangeHours: number;
+  queueKey?: string;
+  queueName?: string;
+  prefix?: string;
+} {
+  const value = unwrapJsonInput(input);
+
+  if (value === undefined || value === null) {
+    return { timeRangeHours: 24 };
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    (!("timeRangeHours" in value) || typeof value.timeRangeHours === "number")
+  ) {
+    const queueKey =
+      "queueKey" in value && typeof value.queueKey === "string"
+        ? value.queueKey
+        : undefined;
+    const queueName =
+      "queueName" in value && typeof value.queueName === "string"
+        ? value.queueName
+        : undefined;
+    const prefix =
+      "prefix" in value && typeof value.prefix === "string"
+        ? value.prefix
+        : undefined;
+
+    const timeRangeHours =
+      "timeRangeHours" in value && typeof value.timeRangeHours === "number"
+        ? value.timeRangeHours
+        : 24;
+
+    return {
+      timeRangeHours: Math.min(Math.max(timeRangeHours, 1), 168),
+      queueKey,
+      queueName,
+      prefix,
+    };
+  }
+
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: "A numeric timeRangeHours is required when overview input is provided.",
+  });
+}
+
+function aggregateOverviewMetrics(
+  jobs: JobSummary[],
+  timeRangeHours: number,
+  queuesCount: number,
+): OverviewMetricsResponse {
+  const completedJobs = jobs.filter((job) => job.status === "completed");
+  const failedJobs = jobs.filter((job) => job.status === "failed");
+  const jobsWithProcessingTime = jobs.filter(
+    (job) => job.processedOn && job.finishedOn,
+  );
+  const jobsWithDelay = jobs.filter((job) => job.processedOn && job.timestamp);
+  const totalJobs = completedJobs.length + failedJobs.length;
+
+  return {
+    summary: {
+      totalCompleted: completedJobs.length,
+      totalFailed: failedJobs.length,
+      avgThroughputPerHour: totalJobs / timeRangeHours,
+      failureRate: totalJobs > 0 ? (failedJobs.length / totalJobs) * 100 : 0,
+      avgProcessingTimeMs: averageProcessingTime(jobsWithProcessingTime),
+      avgDelayMs: Math.max(0, averageDelay(jobsWithDelay)),
+    },
+    timeSeries: buildOverviewTimeSeries(jobs, timeRangeHours),
+    slowestJobs: buildOverviewSlowestJobs(jobsWithProcessingTime),
+    failingJobTypes: buildOverviewFailingJobTypes(failedJobs),
+    queuesCount,
+    lastUpdated: Date.now(),
+  };
+}
+
+function averageProcessingTime(jobs: JobSummary[]): number {
+  if (jobs.length === 0) {
+    return 0;
+  }
+
+  return (
+    jobs.reduce(
+      (sum, job) =>
+        sum + ((job.finishedOn ?? job.processedOn ?? 0) - (job.processedOn ?? 0)),
+      0,
+    ) / jobs.length
+  );
+}
+
+function averageDelay(jobs: JobSummary[]): number {
+  if (jobs.length === 0) {
+    return 0;
+  }
+
+  return (
+    jobs.reduce(
+      (sum, job) =>
+        sum + ((job.processedOn ?? job.timestamp) - job.timestamp - (job.delay || 0)),
+      0,
+    ) / jobs.length
+  );
+}
+
+function buildOverviewTimeSeries(
+  jobs: JobSummary[],
+  timeRangeHours: number,
+): TimeSeriesDataPoint[] {
+  const hourlyBuckets = new Map<number, JobSummary[]>();
+  const now = Date.now();
+
+  for (let index = 0; index < timeRangeHours; index++) {
+    const bucketTime = now - index * 60 * 60 * 1000;
+    const hourStart =
+      Math.floor(bucketTime / (60 * 60 * 1000)) * (60 * 60 * 1000);
+    hourlyBuckets.set(hourStart, []);
+  }
+
+  for (const job of jobs) {
+    if (!job.finishedOn) {
+      continue;
+    }
+
+    const hourStart =
+      Math.floor(job.finishedOn / (60 * 60 * 1000)) * (60 * 60 * 1000);
+    const bucket = hourlyBuckets.get(hourStart);
+    if (bucket) {
+      bucket.push(job);
+    }
+  }
+
+  return Array.from(hourlyBuckets.entries())
+    .map(([timestamp, bucketJobs]) => ({
+      timestamp,
+      completed: bucketJobs.filter((job) => job.status === "completed").length,
+      failed: bucketJobs.filter((job) => job.status === "failed").length,
+      avgProcessingTimeMs: averageProcessingTime(
+        bucketJobs.filter((job) => job.processedOn && job.finishedOn),
+      ),
+      avgDelayMs: Math.max(
+        0,
+        averageDelay(bucketJobs.filter((job) => job.processedOn)),
+      ),
+    }))
+    .sort((a, b) => a.timestamp - b.timestamp);
+}
+
+function buildOverviewSlowestJobs(jobs: JobSummary[]) {
+  return jobs
+    .map((job) => ({
+      id: job.id,
+      name: job.name,
+      queueName: job.queueName,
+      processingTimeMs:
+        (job.finishedOn ?? job.processedOn ?? 0) - (job.processedOn ?? 0),
+      timestamp: job.timestamp,
+      status: job.status,
+    }))
+    .sort((a, b) => b.processingTimeMs - a.processingTimeMs)
+    .slice(0, 10);
+}
+
+function buildOverviewFailingJobTypes(failedJobs: JobSummary[]) {
+  const grouped = new Map<string, JobSummary[]>();
+
+  for (const job of failedJobs) {
+    const key = `${job.queueName}:${job.name}`;
+    const jobs = grouped.get(key) ?? [];
+    jobs.push(job);
+    grouped.set(key, jobs);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([key, jobs]) => {
+      const parts = key.split(":");
+      const queueName = parts[0] ?? "";
+      const name = parts.slice(1).join(":");
+      const sorted = [...jobs].sort(
+        (a, b) => (b.finishedOn || 0) - (a.finishedOn || 0),
+      );
+      const latest = sorted[0];
+
+      return {
+        name,
+        queueName,
+        failureCount: jobs.length,
+        lastFailedAt: latest?.finishedOn || latest?.timestamp || 0,
+        lastFailedReason: latest?.failedReason,
+      };
+    })
+    .sort((a, b) => b.failureCount - a.failureCount)
+    .slice(0, 10);
 }
 
 async function getConnectionInfo(dashboard: EmbeddedDashboardInstance) {
