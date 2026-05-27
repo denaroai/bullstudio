@@ -175,7 +175,7 @@ const server = createServer(async (req, res) => {
     const request = new Request(url.toString(), {
       method: req.method,
       headers,
-      body,
+      body: body as unknown as BodyInit | undefined,
     });
 
     // Call the TanStack Start fetch handler
@@ -213,15 +213,15 @@ server.listen(port, host, () => {
 const shutdown = (signal: string) => {
   console.log(`Process received ${signal}, attempting to shut down gracefully`);
   server.close(() => {
-    console.log('Server stopped successfully');
+    console.log("Server stopped successfully");
     process.exit(0);
   });
 
   setTimeout(() => {
-    console.error('Server stop timeout occurred, forcing shutdown');
+    console.error("Server stop timeout occurred, forcing shutdown");
     process.exit(1);
   }, 10000);
 };
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

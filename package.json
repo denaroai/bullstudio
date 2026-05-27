@@ -7,13 +7,14 @@
     "dev": "turbo dev",
     "start": "turbo start",
     "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
     "test": "turbo test --filter=@bullstudio/queue --filter=bullstudio",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "biome format --write .",
+    "check": "biome lint ."
   },
   "devDependencies": {
-    "@bullstudio/eslint-config": "workspace:*",
+    "@biomejs/biome": "2.2.4",
     "@bullstudio/typescript-config": "workspace:*",
-    "prettier": "^3.7.4",
     "turbo": "^2.6.3",
     "typescript": "5.7.3"
   },

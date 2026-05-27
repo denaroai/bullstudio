@@ -34,9 +34,10 @@
     "preview": "vite preview",
     "start": "node dist/bin/cli.js",
     "test": "vitest run",
-    "format": "biome format",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
     "lint": "biome lint",
-    "check": "biome check",
+    "check": "biome lint",
     "prepublishOnly": "pnpm build",
     "generate:bull-jobs": "npx tsx scripts/generate-bull-jobs.ts"
   },
@@ -74,7 +75,6 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.4",
     "@bullstudio/connect-types": "workspace:*",
     "@bullstudio/dayjs": "workspace:*",
     "@bullstudio/queue": "workspace:*",

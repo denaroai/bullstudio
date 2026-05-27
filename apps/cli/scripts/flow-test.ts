@@ -12,10 +12,13 @@ await flow.add({
   ],
 });
 
-
-const worker = new Worker("printQueue", async (job) => {
-  throw new Error("Test error");
-}, { connection: { host: "localhost", port: 6378 } });
+const worker = new Worker(
+  "printQueue",
+  async (_job) => {
+    throw new Error("Test error");
+  },
+  { connection: { host: "localhost", port: 6378 } },
+);
 
 worker.on("completed", (job) => {
   console.log(`Job ${job.id} has been completed`);

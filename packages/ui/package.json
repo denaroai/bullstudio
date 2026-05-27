@@ -5,7 +5,10 @@
   "private": true,
   "module": "true",
   "scripts": {
-    "lint": "eslint . --max-warnings 0"
+    "lint": "biome lint .",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
+    "check": "biome lint ."
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
@@ -58,14 +61,12 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
-    "@bullstudio/eslint-config": "workspace:*",
     "@bullstudio/typescript-config": "workspace:*",
     "@tailwindcss/postcss": "^4.1.11",
     "@turbo/gen": "^2.5.5",
     "@types/node": "^20.19.9",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
-    "eslint": "^9.32.0",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.9.2"
   },
