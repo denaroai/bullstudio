@@ -234,6 +234,60 @@ describe("bullstudio Hono adapter", () => {
     expect(removeJob).not.toHaveBeenCalled();
   });
 
+  it("reports embedded supplied queue source status instead of Redis connection details", async () => {
+    const host = new Hono();
+
+    host.route(
+      "/ops/bullstudio",
+      bullstudio({
+        queues: [
+          createQueueAdapter({ key: "email", label: "Email" }),
+          createQueueAdapter({
+            key: "reports",
+            label: "Reports",
+            provider: "bull",
+            capabilities: {
+              flows: false,
+              jobLogs: true,
+              jobRemoval: true,
+              jobRetry: true,
+              queuePause: true,
+              queueResume: true,
+              workers: true,
+            },
+          }),
+        ],
+        protection: {
+          type: "disabled",
+        },
+      }),
+    );
+
+    const response = await host.request(
+      "/ops/bullstudio/api/trpc/queueSource.status",
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      result: {
+        data: {
+          mode: "embedded",
+          source: "supplied",
+          status: "healthy",
+          queueCount: 2,
+          providers: ["bull", "bullmq"],
+          capabilities: {
+            flows: true,
+            jobLogs: true,
+          },
+        },
+      },
+    });
+    expect(body.result.data).not.toHaveProperty("displayUrl");
+    expect(body.result.data).not.toHaveProperty("connection");
+  });
+
   it("serves configured dashboard and document identity from the mount path", async () => {
     const host = new Hono();
 
@@ -291,6 +345,8 @@ function createQueueAdapter(options: {
   key: string;
   label: string;
   queueName?: string;
+  provider?: QueueAdapter["provider"];
+  capabilities?: QueueAdapter["capabilities"];
   pauseQueue?: () => Promise<void>;
   resumeQueue?: () => Promise<void>;
   retryJob?: (jobId: string) => Promise<void>;
@@ -301,8 +357,8 @@ function createQueueAdapter(options: {
   return {
     key: options.key,
     label: options.label,
-    provider: "bullmq",
-    capabilities: {
+    provider: options.provider ?? "bullmq",
+    capabilities: options.capabilities ?? {
       flows: true,
       jobLogs: true,
       jobRemoval: true,

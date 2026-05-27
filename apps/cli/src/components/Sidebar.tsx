@@ -1,16 +1,9 @@
 "use client";
 
 import {
-  LayoutDashboard,
-  ListTodo,
-  Github,
-  Database,
-  Workflow,
-  Twitter,
-} from "lucide-react";
-import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -18,12 +11,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarFooter,
 } from "@bullstudio/ui/components/sidebar";
-import { Link, useLocation } from "@tanstack/react-router";
-import { useTRPC } from "@/integrations/trpc/react";
 import { useQuery } from "@tanstack/react-query";
+import { Link, useLocation } from "@tanstack/react-router";
+import {
+  Database,
+  Github,
+  LayoutDashboard,
+  ListTodo,
+  Twitter,
+  Workflow,
+} from "lucide-react";
 import { VERSION } from "@/const";
+import { useTRPC } from "@/integrations/trpc/react";
+import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 
 export function AppSidebar() {
   const location = useLocation();
@@ -33,6 +34,9 @@ export function AppSidebar() {
   const { data: connectionInfo } = useQuery(
     trpc.connection.info.queryOptions(),
   );
+  const queueSource = connectionInfo?.queueSource
+    ? getQueueSourceViewModel(connectionInfo.queueSource)
+    : null;
 
   const isActive = (href: string) => {
     if (href === "/") {
@@ -56,7 +60,7 @@ export function AppSidebar() {
   ];
 
   // Only show Flows for providers that support it (BullMQ)
-  const navItems = connectionInfo?.capabilities?.supportsFlows
+  const navItems = queueSource?.features.flows.visible
     ? [
         ...baseNavItems,
         {
@@ -120,22 +124,23 @@ export function AppSidebar() {
                 <Database className="size-3.5 shrink-0 text-emerald-500" />
                 <div className="flex flex-col group-data-[collapsible=icon]:hidden">
                   <div className="flex items-center gap-2">
-                    <span className="text-zinc-400 font-medium">Redis</span>
-                    {connectionInfo?.providerType && (
+                    <span className="text-zinc-400 font-medium">
+                      {queueSource?.title ?? "Queue source"}
+                    </span>
+                    {queueSource?.providerLabel && (
                       <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 uppercase">
-                        {connectionInfo.providerType}
+                        {queueSource.providerLabel}
                       </span>
                     )}
                   </div>
                   <span className="text-zinc-500 font-mono text-[11px]">
-                    {connectionInfo?.displayUrl || "connecting..."}
+                    {queueSource?.detail || "connecting..."}
                   </span>
-                  {connectionInfo?.prefixes &&
-                    connectionInfo.prefixes.length > 1 && (
-                      <span className="text-zinc-600 font-mono text-[10px] mt-0.5">
-                        prefixes: {connectionInfo.prefixes.join(", ")}
-                      </span>
-                    )}
+                  {queueSource?.prefixes && queueSource.prefixes.length > 1 && (
+                    <span className="text-zinc-600 font-mono text-[10px] mt-0.5">
+                      prefixes: {queueSource.prefixes.join(", ")}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

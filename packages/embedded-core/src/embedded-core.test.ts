@@ -45,6 +45,7 @@ describe("embedded core public contracts", () => {
     expect(dashboard.config.dashboardIdentity.title).toBe("Production Queues");
     expect(dashboard.config.documentIdentity.title).toBe("Queues");
     expect(dashboard.getQueueSourceStatus()).toEqual({
+      mode: "embedded",
       source: "supplied",
       status: "healthy",
       queueCount: 1,
@@ -132,6 +133,7 @@ describe("embedded core public contracts", () => {
       emptyJobCounts,
     );
     expect(dashboard.getQueueSourceStatus()).toEqual({
+      mode: "embedded",
       source: "supplied",
       status: "healthy",
       queueCount: 2,

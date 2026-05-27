@@ -1,8 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useTRPC } from "@/integrations/trpc/react";
-import { useQuery } from "@tanstack/react-query";
-import Header from "@/components/Header";
+import type { JobSummary } from "@bullstudio/connect-types";
+import dayjs from "@bullstudio/dayjs";
+import { Button } from "@bullstudio/ui/components/button";
+import { Input } from "@bullstudio/ui/components/input";
 import {
   Select,
   SelectContent,
@@ -10,9 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@bullstudio/ui/components/select";
-import { Input } from "@bullstudio/ui/components/input";
-import { Button } from "@bullstudio/ui/components/button";
-import { Tabs, TabsList, TabsTrigger } from "@bullstudio/ui/components/tabs";
+import { Skeleton } from "@bullstudio/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -21,20 +18,28 @@ import {
   TableHeader,
   TableRow,
 } from "@bullstudio/ui/components/table";
-import { Skeleton } from "@bullstudio/ui/components/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@bullstudio/ui/components/tabs";
 import {
-  Search,
-  Layers,
-  ArrowUpDown,
-  ArrowUp,
+  EmptyState,
+  type JobStatus,
+  JobStatusBadge,
+} from "@bullstudio/ui/shared";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
   ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Inbox,
+  Layers,
   RefreshCw,
+  Search,
 } from "lucide-react";
-import dayjs from "@bullstudio/dayjs";
-import { JobStatusBadge, type JobStatus, EmptyState } from "@bullstudio/ui/shared";
-import type { JobSummary } from "@bullstudio/connect-types";
-import { queueKey, parseQueueKey } from "@/lib/queue-key";
+import { useEffect, useMemo, useState } from "react";
+import Header from "@/components/Header";
+import { useTRPC } from "@/integrations/trpc/react";
+import { parseQueueKey, queueKey } from "@/lib/queue-key";
+import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 
 export const Route = createFileRoute("/jobs/")({ component: JobsPage });
 
@@ -61,6 +66,7 @@ const BASE_STATUS_TABS: { value: FilterableStatus | "all"; label: string }[] = [
 
 const ALL_QUEUES_VALUE = "__all__";
 const SEARCH_DEBOUNCE_MS = 300;
+const JOBS_SKELETON_KEYS = ["job-1", "job-2", "job-3", "job-4", "job-5"];
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -77,48 +83,44 @@ function JobsPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
 
-  const [selectedQueue, setSelectedQueue] =
-    useState<string>("");
-  const [statusFilter, setStatusFilter] =
-    useState<FilterableStatus | "all">("all");
-  const [searchQuery, setSearchQuery] =
-    useState("");
-  const debouncedSearchQuery = useDebounce(
-    searchQuery,
-    SEARCH_DEBOUNCE_MS,
+  const [selectedQueue, setSelectedQueue] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<FilterableStatus | "all">(
+    "all",
   );
-  const [sortField, setSortField] =
-    useState<SortField>("timestamp");
-  const [sortOrder, setSortOrder] =
-    useState<SortOrder>("desc");
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
+  const [sortField, setSortField] = useState<SortField>("timestamp");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   const { data: connectionInfo } = useQuery(
     trpc.connection.info.queryOptions(),
   );
-
-  const hasMultiplePrefixes =
-    (connectionInfo?.prefixes?.length ?? 0) > 1;
-
-  const parsed = selectedQueue
-    ? parseQueueKey(selectedQueue)
+  const queueSource = connectionInfo?.queueSource
+    ? getQueueSourceViewModel(connectionInfo.queueSource)
     : null;
+
+  const hasMultiplePrefixes = (queueSource?.prefixes.length ?? 0) > 1;
+
+  const parsed = selectedQueue ? parseQueueKey(selectedQueue) : null;
 
   // Build status tabs based on provider capabilities
   const statusTabs = useMemo(() => {
     // If provider supports flows (BullMQ), add waiting-children tab
-    if (connectionInfo?.capabilities?.supportsFlows) {
+    if (queueSource?.features.flows.visible) {
       return [
         ...BASE_STATUS_TABS,
-        { value: "waiting-children" as FilterableStatus, label: "Waiting Children" },
+        {
+          value: "waiting-children" as FilterableStatus,
+          label: "Waiting Children",
+        },
       ];
     }
     return BASE_STATUS_TABS;
-  }, [connectionInfo?.capabilities?.supportsFlows]);
+  }, [queueSource?.features.flows.visible]);
 
-  const {
-    data: queues,
-    isLoading: loadingQueues,
-  } = useQuery(trpc.queues.list.queryOptions());
+  const { data: queues, isLoading: loadingQueues } = useQuery(
+    trpc.queues.list.queryOptions(),
+  );
 
   const {
     data: jobs,
@@ -128,10 +130,7 @@ function JobsPage() {
     trpc.jobs.listSummary.queryOptions({
       queueName: parsed?.name,
       prefix: parsed?.prefix,
-      status:
-        statusFilter !== "all"
-          ? statusFilter
-          : undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
       limit: 500,
     }),
   );
@@ -146,7 +145,7 @@ function JobsPage() {
       filtered = filtered.filter((job) => {
         const searchableFields = [job.name, job.id, job.queueName];
         return searchableFields.some(
-          (field) => field && String(field).toLowerCase().includes(query)
+          (field) => field && String(field).toLowerCase().includes(query),
         );
       });
     }
@@ -262,15 +261,9 @@ function JobsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <Select
-            value={
-              selectedQueue || ALL_QUEUES_VALUE
-            }
+            value={selectedQueue || ALL_QUEUES_VALUE}
             onValueChange={(value) =>
-              setSelectedQueue(
-                value === ALL_QUEUES_VALUE
-                  ? ""
-                  : value,
-              )
+              setSelectedQueue(value === ALL_QUEUES_VALUE ? "" : value)
             }
             disabled={loadingQueues}
           >
@@ -279,11 +272,7 @@ function JobsPage() {
               <SelectValue placeholder="Select queue" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem
-                value={ALL_QUEUES_VALUE}
-              >
-                All queues
-              </SelectItem>
+              <SelectItem value={ALL_QUEUES_VALUE}>All queues</SelectItem>
               {loadingQueues ? (
                 <div className="p-2">
                   <Skeleton className="h-8 w-full" />
@@ -295,14 +284,8 @@ function JobsPage() {
               ) : (
                 queues?.map((queue) => (
                   <SelectItem
-                    key={queueKey(
-                      queue.prefix,
-                      queue.name,
-                    )}
-                    value={queueKey(
-                      queue.prefix,
-                      queue.name,
-                    )}
+                    key={queueKey(queue.prefix, queue.name)}
+                    value={queueKey(queue.prefix, queue.name)}
                   >
                     <span className="font-mono">
                       {hasMultiplePrefixes && (
@@ -363,8 +346,8 @@ function JobsPage() {
       {loadingJobs ? (
         <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
           <div className="p-8 space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
+            {JOBS_SKELETON_KEYS.map((key) => (
+              <Skeleton key={key} className="h-12 w-full" />
             ))}
           </div>
         </div>
@@ -435,7 +418,9 @@ function JobsPage() {
                 <TableRow
                   key={`${job.prefix ?? ""}-${job.queueName}-${job.id}`}
                   className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
-                  onClick={() => navigateToJob(job.id, job.queueName, job.prefix)}
+                  onClick={() =>
+                    navigateToJob(job.id, job.queueName, job.prefix)
+                  }
                 >
                   <TableCell>
                     <div className="flex flex-col">
@@ -458,7 +443,10 @@ function JobsPage() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <JobStatusBadge status={job.status as JobStatus} size="sm" />
+                    <JobStatusBadge
+                      status={job.status as JobStatus}
+                      size="sm"
+                    />
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">

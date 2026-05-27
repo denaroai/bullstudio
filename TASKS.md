@@ -259,6 +259,8 @@ Progress:
 
 ## 9. Make the dashboard UI mode-aware for queue source status
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Tasks 3, 8
@@ -271,11 +273,20 @@ Update the dashboard UI and private dashboard API responses so standalone mode c
 
 ### Acceptance criteria
 
-- [ ] Standalone mode still displays Redis connection information.
-- [ ] Embedded mode displays queue source status instead of Redis connection details.
-- [ ] Embedded mode shows supplied queue count and adapter/provider information.
-- [ ] Unsupported features are hidden or disabled based on adapter capabilities.
-- [ ] Tests verify mode-specific status responses and UI-facing data shape.
+- [x] Standalone mode still displays Redis connection information.
+- [x] Embedded mode displays queue source status instead of Redis connection details.
+- [x] Embedded mode shows supplied queue count and adapter/provider information.
+- [x] Unsupported features are hidden or disabled based on adapter capabilities.
+- [x] Tests verify mode-specific status responses and UI-facing data shape.
+
+Progress:
+
+- Added a mode-aware standalone `connection.info` response that preserves Redis connection fields and exposes a UI-facing Redis queue source.
+- Added embedded queue source status mode metadata so supplied-queue dashboards can be distinguished without Redis-specific fields.
+- Added a queue source view model helper for standalone Redis status and embedded supplied-queue status, including adapter capability feature visibility/enabled state.
+- Updated the sidebar, overview, and jobs routes to read queue source details and flow support through the normalized view model.
+- Added tests for standalone Redis status responses, embedded supplied-queue status responses, and UI-facing status/capability normalization.
+- Verified with `pnpm --filter bullstudio test`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/hono test`, `pnpm exec biome check ...`, `pnpm --filter bullstudio build`, and `pnpm typecheck`.
 
 ## 10. Document and demo the first embedded slice
 

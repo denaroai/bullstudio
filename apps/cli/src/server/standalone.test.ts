@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {
   vi.doUnmock("../integrations/trpc/connection");
+  vi.unstubAllEnvs();
   vi.resetModules();
 });
 
@@ -133,6 +134,84 @@ describe("standalone dashboard parity", () => {
               prefix: "bull",
             },
           ],
+        },
+      },
+    });
+  });
+
+  it("reports standalone Redis connection information as a mode-aware queue source", async () => {
+    vi.stubEnv("REDIS_URL", "redis://:secret@cache.internal:6380/2");
+    vi.doMock("../integrations/trpc/connection", async (importOriginal) => {
+      const actual =
+        await importOriginal<
+          typeof import("../integrations/trpc/connection")
+        >();
+
+      return {
+        ...actual,
+        getQueueProvider: async () => ({
+          getCapabilities: () => ({
+            providerType: "bullmq",
+            displayName: "BullMQ",
+            supportsFlows: true,
+            supportedJobStates: [
+              "waiting",
+              "active",
+              "completed",
+              "failed",
+              "delayed",
+              "paused",
+              "waiting-children",
+            ],
+          }),
+          getPrefixes: async () => ["bull", "mail"],
+        }),
+      };
+    });
+
+    const { createStandaloneApp } = await import("../../server/standalone");
+    const clientDir = join(
+      tmpdir(),
+      "bullstudio",
+      `standalone-${Date.now().toString()}`,
+    );
+    await mkdir(clientDir, { recursive: true });
+    await writeFile(join(clientDir, "index.html"), "<html>Bullstudio</html>");
+
+    const app = createStandaloneApp({
+      clientDir,
+      env: {},
+    });
+
+    const response = await app.request("/api/trpc/connection.info");
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      result: {
+        data: {
+          json: {
+            mode: "standalone",
+            displayUrl: "cache.internal:6380",
+            providerType: "bullmq",
+            prefixes: ["bull", "mail"],
+            queueSource: {
+              mode: "standalone",
+              source: "redis",
+              status: "healthy",
+              connection: {
+                host: "cache.internal",
+                port: "6380",
+                database: "2",
+                hasPassword: true,
+                displayUrl: "cache.internal:6380",
+              },
+              providers: ["bullmq"],
+              prefixes: ["bull", "mail"],
+              capabilities: {
+                flows: true,
+              },
+            },
+          },
         },
       },
     });

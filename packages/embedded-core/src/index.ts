@@ -102,6 +102,7 @@ export interface ResolvedStandaloneDashboardConfig {
 }
 
 export interface QueueSourceStatus {
+  mode: DashboardMode;
   source: "supplied";
   status: "healthy" | "degraded" | "unhealthy";
   queueCount: number;
@@ -705,6 +706,7 @@ function getQueueSourceStatus(
   config: ResolvedDashboardConfig,
 ): QueueSourceStatus {
   return {
+    mode: "embedded",
     source: "supplied",
     status: "healthy",
     queueCount: config.queues.length,

@@ -1,8 +1,5 @@
-import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { useTRPC } from "@/integrations/trpc/react";
-import { useQuery } from "@tanstack/react-query";
-import Header from "@/components/Header";
+import dayjs from "@bullstudio/dayjs";
+import { Button } from "@bullstudio/ui/components/button";
 import {
   Select,
   SelectContent,
@@ -10,16 +7,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@bullstudio/ui/components/select";
-import { Button } from "@bullstudio/ui/components/button";
 import { Skeleton } from "@bullstudio/ui/components/skeleton";
-import { RefreshCw, Layers, Database } from "lucide-react";
 import { EmptyState } from "@bullstudio/ui/shared";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { Database, Layers, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import Header from "@/components/Header";
+import { FailingJobTypesTable } from "@/components/overview/FailingJobTypesTable";
 import { MetricCardsGrid } from "@/components/overview/MetricCardsGrid";
-import { ThroughputChart } from "@/components/overview/ThroughputChart";
 import { ProcessingTimeChart } from "@/components/overview/ProcessingTimeChart";
 import { SlowestJobsTable } from "@/components/overview/SlowestJobsTable";
-import { FailingJobTypesTable } from "@/components/overview/FailingJobTypesTable";
-import dayjs from "@bullstudio/dayjs";
+import { ThroughputChart } from "@/components/overview/ThroughputChart";
+import { useTRPC } from "@/integrations/trpc/react";
+import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 
 export const Route = createFileRoute("/")({ component: OverviewPage });
 
@@ -31,30 +32,35 @@ const TIME_RANGES = [
   { value: "168", label: "Last 7d" },
 ];
 
-import { queueKey, parseQueueKey } from "@/lib/queue-key";
+import { parseQueueKey, queueKey } from "@/lib/queue-key";
 
 const ALL_QUEUES_VALUE = "__all__";
+const OVERVIEW_SKELETON_KEYS = [
+  "summary-1",
+  "summary-2",
+  "summary-3",
+  "summary-4",
+];
 
 function OverviewPage() {
   const trpc = useTRPC();
-  const [selectedQueue, setSelectedQueue] =
-    useState<string>("");
-  const [timeRange, setTimeRange] =
-    useState<number>(24);
+  const [selectedQueue, setSelectedQueue] = useState<string>("");
+  const [timeRange, setTimeRange] = useState<number>(24);
 
-  const { data: queues, isLoading: loadingQueues } =
-    useQuery(trpc.queues.list.queryOptions());
+  const { data: queues, isLoading: loadingQueues } = useQuery(
+    trpc.queues.list.queryOptions(),
+  );
 
   const { data: connectionInfo } = useQuery(
     trpc.connection.info.queryOptions(),
   );
-
-  const hasMultiplePrefixes =
-    (connectionInfo?.prefixes?.length ?? 0) > 1;
-
-  const parsed = selectedQueue
-    ? parseQueueKey(selectedQueue)
+  const queueSource = connectionInfo?.queueSource
+    ? getQueueSourceViewModel(connectionInfo.queueSource)
     : null;
+
+  const hasMultiplePrefixes = (queueSource?.prefixes.length ?? 0) > 1;
+
+  const parsed = selectedQueue ? parseQueueKey(selectedQueue) : null;
 
   const {
     data: metrics,
@@ -77,15 +83,9 @@ function OverviewPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <Select
-            value={
-              selectedQueue || ALL_QUEUES_VALUE
-            }
+            value={selectedQueue || ALL_QUEUES_VALUE}
             onValueChange={(value) =>
-              setSelectedQueue(
-                value === ALL_QUEUES_VALUE
-                  ? ""
-                  : value,
-              )
+              setSelectedQueue(value === ALL_QUEUES_VALUE ? "" : value)
             }
             disabled={loadingQueues}
           >
@@ -94,28 +94,17 @@ function OverviewPage() {
               <SelectValue placeholder="Select queue" />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-zinc-800">
-              <SelectItem
-                value={ALL_QUEUES_VALUE}
-                className="text-zinc-100"
-              >
+              <SelectItem value={ALL_QUEUES_VALUE} className="text-zinc-100">
                 All queues
               </SelectItem>
               {queues?.map((queue) => (
                 <SelectItem
-                  key={queueKey(
-                    queue.prefix,
-                    queue.name,
-                  )}
-                  value={queueKey(
-                    queue.prefix,
-                    queue.name,
-                  )}
+                  key={queueKey(queue.prefix, queue.name)}
+                  value={queueKey(queue.prefix, queue.name)}
                   className="text-zinc-100 font-mono"
                 >
                   {hasMultiplePrefixes && (
-                    <span className="text-zinc-500 mr-1">
-                      {queue.prefix}/
-                    </span>
+                    <span className="text-zinc-500 mr-1">{queue.prefix}/</span>
                   )}
                   {queue.name}
                 </SelectItem>
@@ -172,7 +161,11 @@ function OverviewPage() {
         <EmptyState
           icon={<Database className="size-12" />}
           title="No queues found"
-          description="No BullMQ queues were found in the connected Redis instance. Make sure you have queues set up."
+          description={
+            queueSource?.mode === "embedded"
+              ? "No supplied queues are available in this dashboard."
+              : "No BullMQ queues were found in the connected Redis instance. Make sure you have queues set up."
+          }
         />
       ) : metrics ? (
         <>
@@ -204,8 +197,8 @@ function OverviewSkeleton() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-32 w-full bg-zinc-800/50" />
+        {OVERVIEW_SKELETON_KEYS.map((key) => (
+          <Skeleton key={key} className="h-32 w-full bg-zinc-800/50" />
         ))}
       </div>
       <div className="grid gap-6 lg:grid-cols-2">

@@ -1,5 +1,5 @@
-import { createTRPCRouter, publicProcedure } from "../init";
 import { getQueueProvider } from "../connection";
+import { createTRPCRouter, publicProcedure } from "../init";
 
 function getRedisUrl(): string {
   return process.env.REDIS_URL || "redis://localhost:6379";
@@ -31,10 +31,10 @@ export const connectionRouter = createTRPCRouter({
     const provider = await getQueueProvider();
     const capabilities = provider.getCapabilities();
 
-    const prefixes =
-      await provider.getPrefixes();
+    const prefixes = await provider.getPrefixes();
 
     return {
+      mode: "standalone" as const,
       host: parsed.host,
       port: parsed.port,
       hasPassword: parsed.hasPassword,
@@ -43,10 +43,27 @@ export const connectionRouter = createTRPCRouter({
       providerType: capabilities.providerType,
       prefixes,
       capabilities: {
-        supportsFlows:
-          capabilities.supportsFlows,
-        supportedStatuses:
-          capabilities.supportedJobStates,
+        supportsFlows: capabilities.supportsFlows,
+        supportedStatuses: capabilities.supportedJobStates,
+      },
+      queueSource: {
+        mode: "standalone" as const,
+        source: "redis" as const,
+        status: "healthy" as const,
+        connection: {
+          host: parsed.host,
+          port: parsed.port,
+          hasPassword: parsed.hasPassword,
+          database: parsed.database,
+          displayUrl: `${parsed.host}:${parsed.port}`,
+        },
+        providers: [capabilities.providerType],
+        prefixes,
+        capabilities: {
+          flows: capabilities.supportsFlows,
+          supportedStatuses: capabilities.supportedJobStates,
+          mutationsAllowed: true,
+        },
       },
     };
   }),
