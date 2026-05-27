@@ -81,14 +81,14 @@ function createPrivateDashboardApiRouter(dashboard: EmbeddedDashboardInstance) {
       get: t.procedure.input((value) => value).query(({ input }) =>
         getSuppliedQueueByPrivateApiInput(dashboard, input),
       ),
-      pause: t.procedure.mutation(({ input }) =>
+      pause: t.procedure.input((value) => value).mutation(({ input }) =>
         runPrivateDashboardMutation(dashboard, () =>
-          dashboard.pauseQueue(getQueueKeyInput(input).queueKey),
+          pauseQueue(dashboard, getQueueLookupInput(getObjectInput(input))),
         ),
       ),
-      resume: t.procedure.mutation(({ input }) =>
+      resume: t.procedure.input((value) => value).mutation(({ input }) =>
         runPrivateDashboardMutation(dashboard, () =>
-          dashboard.resumeQueue(getQueueKeyInput(input).queueKey),
+          resumeQueue(dashboard, getQueueLookupInput(getObjectInput(input))),
         ),
       ),
     }),
@@ -152,6 +152,48 @@ type ResolvedJobTargetInput = {
   prefix?: string;
   jobId: string;
 };
+
+type ResolvedQueueTargetInput = {
+  queueKey?: string;
+  queueName?: string;
+  prefix?: string;
+};
+
+async function pauseQueue(
+  dashboard: EmbeddedDashboardInstance,
+  input: ResolvedQueueTargetInput,
+): Promise<{ success: true }> {
+  const queue = await getSuppliedQueueByPrivateApiInput(dashboard, input);
+
+  if (!queue.capabilities.queuePause) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Queue pause is not supported for supplied queue "${queue.key}".`,
+    });
+  }
+
+  await dashboard.pauseQueue(queue.key);
+
+  return { success: true };
+}
+
+async function resumeQueue(
+  dashboard: EmbeddedDashboardInstance,
+  input: ResolvedQueueTargetInput,
+): Promise<{ success: true }> {
+  const queue = await getSuppliedQueueByPrivateApiInput(dashboard, input);
+
+  if (!queue.capabilities.queueResume) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Queue resume is not supported for supplied queue "${queue.key}".`,
+    });
+  }
+
+  await dashboard.resumeQueue(queue.key);
+
+  return { success: true };
+}
 
 async function getJobDetail(
   dashboard: EmbeddedDashboardInstance,
@@ -879,26 +921,6 @@ async function runPrivateDashboardMutation(
 
     throw error;
   }
-}
-
-function getQueueKeyInput(input: unknown): { queueKey: string } {
-  const value = unwrapJsonInput(input);
-
-  if (
-    value &&
-    typeof value === "object" &&
-    "queueKey" in value &&
-    typeof value.queueKey === "string"
-  ) {
-    return {
-      queueKey: value.queueKey,
-    };
-  }
-
-  throw new TRPCError({
-    code: "BAD_REQUEST",
-    message: "A queueKey string is required.",
-  });
 }
 
 function getFlowListInput(input: unknown): { limit?: number } | undefined {

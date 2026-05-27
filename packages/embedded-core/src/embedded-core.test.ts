@@ -1232,6 +1232,186 @@ describe("embedded private dashboard API job detail operations", () => {
   });
 });
 
+describe("embedded private dashboard API queue pause and resume operations", () => {
+  it("pauses and resumes supplied queues by queue key or compatibility queue identity", async () => {
+    const pauseEmailQueue = vi.fn<() => Promise<void>>(async () => {});
+    const resumeEmailQueue = vi.fn<() => Promise<void>>(async () => {});
+    const pauseReportsQueue = vi.fn<() => Promise<void>>(async () => {});
+    const resumeReportsQueue = vi.fn<() => Promise<void>>(async () => {});
+    const dashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      queues: [
+        createQueueAdapter({
+          key: "email-critical",
+          label: "Critical email",
+          queueName: "email",
+          pauseQueue: pauseEmailQueue,
+          resumeQueue: resumeEmailQueue,
+        }),
+        createQueueAdapter({
+          key: "reports",
+          label: "Reports",
+          queueName: "reports",
+          prefix: "tenant",
+          pauseQueue: pauseReportsQueue,
+          resumeQueue: resumeReportsQueue,
+        }),
+      ],
+    });
+
+    await expect(
+      callPrivateDashboardApiMutation(dashboard, "queues.pause", {
+        queueKey: "email-critical",
+      }),
+    ).resolves.toEqual({
+      status: 200,
+      json: { success: true },
+    });
+    await expect(
+      callPrivateDashboardApiMutation(dashboard, "queues.resume", {
+        name: "reports",
+        prefix: "tenant",
+      }),
+    ).resolves.toEqual({
+      status: 200,
+      json: { success: true },
+    });
+
+    expect(pauseEmailQueue).toHaveBeenCalledOnce();
+    expect(resumeEmailQueue).not.toHaveBeenCalled();
+    expect(pauseReportsQueue).not.toHaveBeenCalled();
+    expect(resumeReportsQueue).toHaveBeenCalledOnce();
+  });
+
+  it("requires pause and resume capabilities on the target supplied queue", async () => {
+    const pauseQueue = vi.fn<() => Promise<void>>(async () => {});
+    const resumeQueue = vi.fn<() => Promise<void>>(async () => {});
+    const dashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      queues: [
+        createQueueAdapter({
+          key: "unsupported",
+          label: "Unsupported",
+          pauseQueue,
+          resumeQueue,
+          capabilities: {
+            flows: true,
+            jobLogs: true,
+            jobRemoval: true,
+            jobRetry: true,
+            queuePause: false,
+            queueResume: false,
+            workers: true,
+          },
+        }),
+      ],
+    });
+
+    await expect(
+      callPrivateDashboardApiMutation(dashboard, "queues.pause", {
+        queueKey: "unsupported",
+      }),
+    ).resolves.toMatchObject({
+      status: 400,
+      error: {
+        code: -32600,
+        message: 'Queue pause is not supported for supplied queue "unsupported".',
+      },
+    });
+    await expect(
+      callPrivateDashboardApiMutation(dashboard, "queues.resume", {
+        queueKey: "unsupported",
+      }),
+    ).resolves.toMatchObject({
+      status: 400,
+      error: {
+        code: -32600,
+        message:
+          'Queue resume is not supported for supplied queue "unsupported".',
+      },
+    });
+
+    expect(pauseQueue).not.toHaveBeenCalled();
+    expect(resumeQueue).not.toHaveBeenCalled();
+  });
+
+  it("rejects read-only, missing, and ambiguous pause and resume targets", async () => {
+    const pauseQueue = vi.fn<() => Promise<void>>(async () => {});
+    const resumeQueue = vi.fn<() => Promise<void>>(async () => {});
+    const readOnlyDashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      readOnly: true,
+      queues: [
+        createQueueAdapter({
+          key: "email",
+          label: "Email",
+          pauseQueue,
+          resumeQueue,
+        }),
+      ],
+    });
+
+    await expect(
+      callPrivateDashboardApiMutation(readOnlyDashboard, "queues.pause", {
+        queueKey: "email",
+      }),
+    ).resolves.toMatchObject({
+      status: 403,
+    });
+    await expect(
+      callPrivateDashboardApiMutation(readOnlyDashboard, "queues.resume", {
+        queueKey: "email",
+      }),
+    ).resolves.toMatchObject({
+      status: 403,
+    });
+    expect(pauseQueue).not.toHaveBeenCalled();
+    expect(resumeQueue).not.toHaveBeenCalled();
+
+    const dashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      queues: [
+        createQueueAdapter({
+          key: "email-a",
+          label: "Email A",
+          queueName: "email",
+        }),
+        createQueueAdapter({
+          key: "email-b",
+          label: "Email B",
+          queueName: "email",
+        }),
+      ],
+    });
+
+    for (const procedure of ["queues.pause", "queues.resume"]) {
+      await expect(
+        callPrivateDashboardApiMutation(dashboard, procedure, {
+          queueKey: "missing",
+        }),
+      ).resolves.toMatchObject({
+        status: 404,
+        error: {
+          code: -32004,
+          message: 'Supplied queue "missing" was not found.',
+        },
+      });
+      await expect(
+        callPrivateDashboardApiMutation(dashboard, procedure, {
+          name: "email",
+        }),
+      ).resolves.toMatchObject({
+        status: 400,
+        error: {
+          code: -32600,
+          message:
+            'Supplied queue lookup "email" matched more than one queue. Use queueKey instead.',
+        },
+      });
+    }
+  });
+});
+
 const emptyJobCounts = {
   waiting: 0,
   active: 0,

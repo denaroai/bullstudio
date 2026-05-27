@@ -125,16 +125,16 @@ Make queue pause and resume work through the embedded private dashboard API usin
 
 ### Acceptance criteria
 
-- [ ] `queues.pause` accepts queue key.
-- [ ] `queues.pause` accepts queue name/prefix compatibility input.
-- [ ] `queues.pause` requires the target queue's pause capability.
-- [ ] `queues.resume` accepts queue key.
-- [ ] `queues.resume` accepts queue name/prefix compatibility input.
-- [ ] `queues.resume` requires the target queue's resume capability.
-- [ ] Pause and resume return `{ success: true }` on success.
-- [ ] Pause and resume are rejected for read-only dashboards.
-- [ ] Ambiguous queue name/prefix lookup fails clearly for pause and resume.
-- [ ] Embedded core tests cover success, unsupported capability, read-only rejection, not found, and ambiguous lookup behavior.
+- [x] `queues.pause` accepts queue key.
+- [x] `queues.pause` accepts queue name/prefix compatibility input.
+- [x] `queues.pause` requires the target queue's pause capability.
+- [x] `queues.resume` accepts queue key.
+- [x] `queues.resume` accepts queue name/prefix compatibility input.
+- [x] `queues.resume` requires the target queue's resume capability.
+- [x] Pause and resume return `{ success: true }` on success.
+- [x] Pause and resume are rejected for read-only dashboards.
+- [x] Ambiguous queue name/prefix lookup fails clearly for pause and resume.
+- [x] Embedded core tests cover success, unsupported capability, read-only rejection, not found, and ambiguous lookup behavior.
 
 ## 6. Add embedded flow list and flow detail parity
 
