@@ -226,6 +226,8 @@ Progress:
 
 ## 8. Refactor standalone mode onto the embedded core with parity tests
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Tasks 1, 3, 4, 5
@@ -238,13 +240,22 @@ Refactor standalone mode to use the embedded core internally while preserving ex
 
 ### Acceptance criteria
 
-- [ ] Existing CLI commands, flags, environment variables, default port, and Redis discovery behavior continue to work.
-- [ ] The standalone dashboard remains mounted at root.
-- [ ] Existing health check routes continue to work.
-- [ ] Existing private tRPC route shape continues to work.
-- [ ] Existing production Basic Auth behavior continues to work.
-- [ ] Standalone mode uses the embedded core internally.
-- [ ] Parity tests verify root asset serving, private dashboard API access, health checks, Basic Auth behavior, and Redis-discovered queue behavior.
+- [x] Existing CLI commands, flags, environment variables, default port, and Redis discovery behavior continue to work.
+- [x] The standalone dashboard remains mounted at root.
+- [x] Existing health check routes continue to work.
+- [x] Existing private tRPC route shape continues to work.
+- [x] Existing production Basic Auth behavior continues to work.
+- [x] Standalone mode uses the embedded core internally.
+- [x] Parity tests verify root asset serving, private dashboard API access, health checks, Basic Auth behavior, and Redis-discovered queue behavior.
+
+Progress:
+
+- Added `createStandaloneDashboard()` to `@bullstudio/embedded-core` for standalone-mode asset/API mounting through the shared dashboard protection layer.
+- Extracted the production Hono app into `apps/cli/server/standalone.ts`.
+- Refactored `apps/cli/server/production.ts` to start the extracted standalone app while preserving port, host, shutdown, and provider disconnect behavior.
+- Kept the existing standalone private tRPC router and Redis-discovery provider path intact.
+- Added standalone parity tests for root asset serving, immutable asset cache headers, health checks, production Basic Auth, private tRPC access, and Redis-discovered queue listing through the real tRPC router with a mocked queue provider.
+- Verified with `pnpm --filter bullstudio test`, `pnpm --filter bullstudio typecheck`, `pnpm --filter bullstudio build`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, `pnpm exec biome check apps/cli/server apps/cli/src/server packages/embedded-core`, and `pnpm typecheck`.
 
 ## 9. Make the dashboard UI mode-aware for queue source status
 

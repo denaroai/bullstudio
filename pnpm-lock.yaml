@@ -37,6 +37,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@bullstudio/embedded-core':
+        specifier: workspace:*
+        version: link:../../packages/embedded-core
       '@hono/node-server':
         specifier: ^2.0.4
         version: 2.0.4(hono@4.12.23)

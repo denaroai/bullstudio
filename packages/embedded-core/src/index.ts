@@ -91,6 +91,16 @@ export interface ResolvedDashboardConfig {
   documentIdentity: DocumentIdentity;
 }
 
+export interface StandaloneDashboardConfig {
+  protection?: DashboardProtection;
+  handleDashboardAsset(request: FrameworkRequest): Promise<FrameworkResponse>;
+  mountPrivateDashboardApi(): PrivateDashboardApiMount;
+}
+
+export interface ResolvedStandaloneDashboardConfig {
+  protection: DashboardProtection;
+}
+
 export interface QueueSourceStatus {
   source: "supplied";
   status: "healthy" | "degraded" | "unhealthy";
@@ -151,6 +161,13 @@ export interface EmbeddedDashboardInstance {
   retryJob(queueKey: string, jobId: string): Promise<void>;
   removeJob(queueKey: string, jobId: string): Promise<void>;
   getWorkerCount(queueKey: string): Promise<WorkerCount>;
+  handle(request: FrameworkRequest): Promise<FrameworkResponse>;
+  mountPrivateDashboardApi(): PrivateDashboardApiMount;
+}
+
+export interface StandaloneDashboardInstance {
+  mode: "standalone";
+  config: ResolvedStandaloneDashboardConfig;
   handle(request: FrameworkRequest): Promise<FrameworkResponse>;
   mountPrivateDashboardApi(): PrivateDashboardApiMount;
 }
@@ -238,6 +255,30 @@ export function createEmbeddedDashboard(
   };
 
   return dashboard;
+}
+
+export function createStandaloneDashboard(
+  config: StandaloneDashboardConfig,
+): StandaloneDashboardInstance {
+  const resolvedConfig: ResolvedStandaloneDashboardConfig = {
+    protection: config.protection ?? defaultProtection,
+  };
+  const privateDashboardApi = config.mountPrivateDashboardApi();
+
+  return {
+    mode: "standalone",
+    config: resolvedConfig,
+    handle: (request) =>
+      withDashboardProtection(resolvedConfig.protection, request, () =>
+        config.handleDashboardAsset(request),
+      ),
+    mountPrivateDashboardApi: () => ({
+      handle: (request) =>
+        withDashboardProtection(resolvedConfig.protection, request, () =>
+          privateDashboardApi.handle(request),
+        ),
+    }),
+  };
 }
 
 export class ReadOnlyDashboardError extends Error {
