@@ -15,6 +15,7 @@ export function bullstudio(config: DashboardConfig): RequestHandler {
         method: request.method,
         url: request.url,
         headers: request.headers,
+        basePath: request.baseUrl,
         body: await readRequestBody(request),
       };
       const frameworkResponse = isPrivateDashboardApiRequest(request)

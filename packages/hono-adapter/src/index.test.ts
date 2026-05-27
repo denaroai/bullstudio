@@ -38,17 +38,77 @@ describe("bullstudio Hono adapter", () => {
     expect(apiResponse.headers.get("content-type")).toContain(
       "application/json",
     );
-    await expect(apiResponse.json()).resolves.toMatchObject({
-      result: {
-        data: [
-          {
+    await expect(readTrpcResultData(apiResponse)).resolves.toMatchObject([
+      {
+        key: "email",
+        label: "Email",
+        name: "email",
+      },
+    ]);
+  });
+
+  it("reaches embedded compatibility procedures through the configured mount path", async () => {
+    const pauseQueue = vi.fn<() => Promise<void>>();
+    const host = new Hono();
+
+    host.route(
+      "/ops/bullstudio",
+      bullstudio({
+        queues: [
+          createQueueAdapter({
             key: "email",
             label: "Email",
-            name: "email",
-          },
+            pauseQueue,
+          }),
         ],
+        readOnly: true,
+        protection: {
+          type: "disabled",
+        },
+      }),
+    );
+
+    const connectionResponse = await host.request(
+      "/ops/bullstudio/api/trpc/connection.info",
+    );
+    expect(connectionResponse.status).toBe(200);
+    await expect(readTrpcResultData(connectionResponse)).resolves.toMatchObject({
+      mode: "embedded",
+      queueSource: {
+        mode: "embedded",
+        source: "supplied",
+        queueCount: 1,
       },
     });
+
+    const jobsResponse = await host.request(
+      "/ops/bullstudio/api/trpc/jobs.listSummary",
+    );
+    expect(jobsResponse.status).toBe(200);
+    await expect(readTrpcResultData(jobsResponse)).resolves.toEqual([]);
+
+    const readOnlyMutationResponse = await host.request(
+      "/ops/bullstudio/api/trpc/queues.pause",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ json: { queueKey: "email" } }),
+      },
+    );
+    expect(readOnlyMutationResponse.status).toBe(403);
+    await expect(readTrpcError(readOnlyMutationResponse)).resolves.toMatchObject(
+      {
+        message: "Read-only dashboards cannot mutate queues or jobs.",
+      },
+    );
+
+    const outsideMountResponse = await host.request(
+      "/api/trpc/connection.info",
+    );
+    expect(outsideMountResponse.status).toBe(404);
+    expect(pauseQueue).not.toHaveBeenCalled();
   });
 
   it("protects dashboard assets and private dashboard API with Basic Auth by default", async () => {
@@ -100,16 +160,12 @@ describe("bullstudio Hono adapter", () => {
       },
     );
     expect(validApiResponse.status).toBe(200);
-    await expect(validApiResponse.json()).resolves.toMatchObject({
-      result: {
-        data: [
-          {
-            key: "email",
-            label: "Email",
-          },
-        ],
+    await expect(readTrpcResultData(validApiResponse)).resolves.toMatchObject([
+      {
+        key: "email",
+        label: "Email",
       },
-    });
+    ]);
   });
 
   it("allows hosts to disable or replace Bullstudio dashboard protection", async () => {
@@ -184,13 +240,9 @@ describe("bullstudio Hono adapter", () => {
       "/ops/bullstudio/api/trpc/queueSource.status",
     );
     expect(statusResponse.status).toBe(200);
-    await expect(statusResponse.json()).resolves.toMatchObject({
-      result: {
-        data: {
-          readOnly: true,
-          mutationsAllowed: false,
-        },
-      },
+    await expect(readTrpcResultData(statusResponse)).resolves.toMatchObject({
+      readOnly: true,
+      mutationsAllowed: false,
     });
 
     for (const mutation of [
@@ -223,10 +275,8 @@ describe("bullstudio Hono adapter", () => {
       );
 
       expect(response.status).toBe(403);
-      await expect(response.json()).resolves.toMatchObject({
-        error: {
-          message: "Read-only dashboards cannot mutate queues or jobs.",
-        },
+      await expect(readTrpcError(response)).resolves.toMatchObject({
+        message: "Read-only dashboards cannot mutate queues or jobs.",
       });
     }
 
@@ -270,24 +320,20 @@ describe("bullstudio Hono adapter", () => {
     );
 
     expect(response.status).toBe(200);
-    const body = await response.json();
+    const body = await readTrpcResultData(response);
     expect(body).toMatchObject({
-      result: {
-        data: {
-          mode: "embedded",
-          source: "supplied",
-          status: "healthy",
-          queueCount: 2,
-          providers: ["bull", "bullmq"],
-          capabilities: {
-            flows: true,
-            jobLogs: true,
-          },
-        },
+      mode: "embedded",
+      source: "supplied",
+      status: "healthy",
+      queueCount: 2,
+      providers: ["bull", "bullmq"],
+      capabilities: {
+        flows: true,
+        jobLogs: true,
       },
     });
-    expect(body.result.data).not.toHaveProperty("displayUrl");
-    expect(body.result.data).not.toHaveProperty("connection");
+    expect(body).not.toHaveProperty("displayUrl");
+    expect(body).not.toHaveProperty("connection");
   });
 
   it("serves configured dashboard and document identity from the mount path", async () => {
@@ -387,6 +433,16 @@ function createQueueAdapter(options: {
 
 function basicAuth(username: string, password: string): string {
   return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
+}
+
+async function readTrpcResultData(response: Response) {
+  const body = await response.json();
+  return body.result.data.json ?? body.result.data;
+}
+
+async function readTrpcError(response: Response) {
+  const body = await response.json();
+  return body.error.json ?? body.error;
 }
 
 function extractScriptPath(html: string): string {

@@ -17,6 +17,7 @@ export function bullstudio(config: DashboardConfig): Hono {
         url: toMountedUrl(c.req.url),
         headers: c.req.raw.headers,
         basePath: getBasePath(c.req.url),
+        body: await getRequestBody(c.req.raw),
       }),
     ),
   );
@@ -60,6 +61,14 @@ function toMountedUrl(url: string): string {
   }
 
   return `${parsedUrl.pathname}${parsedUrl.search}`;
+}
+
+async function getRequestBody(request: Request): Promise<string | undefined> {
+  if (request.method === "GET" || request.method === "HEAD") {
+    return undefined;
+  }
+
+  return request.text();
 }
 
 function toHonoResponse(response: FrameworkResponse): Response {

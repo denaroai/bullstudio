@@ -49,17 +49,13 @@ describe("bullstudio Next.js App Router adapter", () => {
     expect(apiResponse.headers.get("content-type")).toContain(
       "application/json",
     );
-    await expect(apiResponse.json()).resolves.toMatchObject({
-      result: {
-        data: [
-          {
-            key: "email",
-            label: "Email",
-            name: "email",
-          },
-        ],
+    await expect(readTrpcResultData(apiResponse)).resolves.toMatchObject([
+      {
+        key: "email",
+        label: "Email",
+        name: "email",
       },
-    });
+    ]);
   });
 
   it("protects dashboard assets and private dashboard API with Basic Auth by default", async () => {
@@ -134,13 +130,9 @@ describe("bullstudio Next.js App Router adapter", () => {
       request("http://localhost/ops/bullstudio/api/trpc/queueSource.status"),
     );
     expect(statusResponse.status).toBe(200);
-    await expect(statusResponse.json()).resolves.toMatchObject({
-      result: {
-        data: {
-          readOnly: true,
-          mutationsAllowed: false,
-        },
-      },
+    await expect(readTrpcResultData(statusResponse)).resolves.toMatchObject({
+      readOnly: true,
+      mutationsAllowed: false,
     });
 
     for (const mutation of [
@@ -164,10 +156,8 @@ describe("bullstudio Next.js App Router adapter", () => {
       );
 
       expect(response.status).toBe(403);
-      await expect(response.json()).resolves.toMatchObject({
-        error: {
+      await expect(readTrpcError(response)).resolves.toMatchObject({
           message: "Read-only dashboards cannot mutate queues or jobs.",
-        },
       });
     }
 
@@ -295,6 +285,16 @@ function createQueueAdapter(options: {
 
 function basicAuth(username: string, password: string): string {
   return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
+}
+
+async function readTrpcResultData(response: Response) {
+  const body = await response.json();
+  return body.result.data.json ?? body.result.data;
+}
+
+async function readTrpcError(response: Response) {
+  const body = await response.json();
+  return body.error.json ?? body.error;
 }
 
 function extractScriptPath(html: string): string {

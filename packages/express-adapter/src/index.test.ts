@@ -21,17 +21,16 @@ describe("bullstudio Express adapter", () => {
     const htmlResponse = await requestExpress(app, "/ops/bullstudio");
     expect(htmlResponse.status).toBe(200);
     expect(htmlResponse.headers.get("content-type")).toContain("text/html");
-    await expect(htmlResponse.text()).resolves.toContain("Bullstudio");
+    const html = await htmlResponse.text();
+    expect(html).toContain("Bullstudio");
 
-    const assetResponse = await requestExpress(
-      app,
-      "/ops/bullstudio/assets/app.js",
-    );
+    const assetPath = extractScriptPath(html);
+    const assetResponse = await requestExpress(app, assetPath);
     expect(assetResponse.status).toBe(200);
     expect(assetResponse.headers.get("content-type")).toContain(
       "application/javascript",
     );
-    await expect(assetResponse.text()).resolves.toContain("Bullstudio");
+    await expect(assetResponse.text()).resolves.toContain("createRoot");
 
     const apiResponse = await requestExpress(
       app,
@@ -41,17 +40,13 @@ describe("bullstudio Express adapter", () => {
     expect(apiResponse.headers.get("content-type")).toContain(
       "application/json",
     );
-    await expect(apiResponse.json()).resolves.toMatchObject({
-      result: {
-        data: [
-          {
-            key: "email",
-            label: "Email",
-            name: "email",
-          },
-        ],
+    await expect(readTrpcResultData(apiResponse)).resolves.toMatchObject([
+      {
+        key: "email",
+        label: "Email",
+        name: "email",
       },
-    });
+    ]);
   });
 
   it("protects dashboard assets and private dashboard API with Basic Auth by default", async () => {
@@ -133,13 +128,9 @@ describe("bullstudio Express adapter", () => {
       "/ops/bullstudio/api/trpc/queueSource.status",
     );
     expect(statusResponse.status).toBe(200);
-    await expect(statusResponse.json()).resolves.toMatchObject({
-      result: {
-        data: {
-          readOnly: true,
-          mutationsAllowed: false,
-        },
-      },
+    await expect(readTrpcResultData(statusResponse)).resolves.toMatchObject({
+      readOnly: true,
+      mutationsAllowed: false,
     });
 
     for (const mutation of [
@@ -165,10 +156,8 @@ describe("bullstudio Express adapter", () => {
       );
 
       expect(response.status).toBe(403);
-      await expect(response.json()).resolves.toMatchObject({
-        error: {
-          message: "Read-only dashboards cannot mutate queues or jobs.",
-        },
+      await expect(readTrpcError(response)).resolves.toMatchObject({
+        message: "Read-only dashboards cannot mutate queues or jobs.",
       });
     }
 
@@ -206,17 +195,13 @@ describe("bullstudio Express adapter", () => {
     expect(html).toContain("<title>Queue Ops</title>");
     expect(html).toContain('href="/brand/favicon.ico"');
     expect(html).toContain("Production Queues");
-    expect(html).toContain('src="/brand/queues.svg"');
-    expect(html).toContain('alt="Acme Queue Ops"');
+    expect(html).toContain('"src":"/brand/queues.svg"');
+    expect(html).toContain('"alt":"Acme Queue Ops"');
 
-    const assetResponse = await requestExpress(
-      app,
-      "/ops/bullstudio/assets/app.js",
-    );
+    const assetPath = extractScriptPath(html);
+    const assetResponse = await requestExpress(app, assetPath);
     expect(assetResponse.status).toBe(200);
-    await expect(assetResponse.text()).resolves.toContain(
-      '"dashboardIdentity":{"title":"Production Queues","logo":{"src":"/brand/queues.svg","alt":"Acme Queue Ops"}}',
-    );
+    await expect(assetResponse.text()).resolves.toContain("createRoot");
   });
 });
 
@@ -404,4 +389,38 @@ function createQueueAdapter(options: {
 
 function basicAuth(username: string, password: string): string {
   return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
+}
+
+async function readTrpcResultData(response: ExpressTestResponse) {
+  const body = (await response.json()) as TrpcResultEnvelope;
+  return body.result.data.json ?? body.result.data;
+}
+
+async function readTrpcError(response: ExpressTestResponse) {
+  const body = (await response.json()) as TrpcErrorEnvelope;
+  return body.error.json ?? body.error;
+}
+
+interface TrpcResultEnvelope {
+  result: {
+    data: {
+      json?: unknown;
+    } & unknown;
+  };
+}
+
+interface TrpcErrorEnvelope {
+  error: {
+    json?: unknown;
+  } & unknown;
+}
+
+function extractScriptPath(html: string): string {
+  const match = html.match(/<script type="module"[^>]+src="([^"]+)"/);
+
+  if (!match?.[1]) {
+    throw new Error("Dashboard script was not found in HTML.");
+  }
+
+  return match[1];
 }

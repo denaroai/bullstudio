@@ -1,6 +1,7 @@
 import {
   createEmbeddedDashboard,
   type DashboardConfig,
+  type FrameworkRequest,
   type FrameworkResponse,
 } from "@bullstudio/embedded-core";
 
@@ -69,12 +70,7 @@ function isMountedRequest(request: Request, mountPath: string): boolean {
 async function toFrameworkRequest(
   request: Request,
   mountPath: string,
-): Promise<{
-  method: string;
-  url: string;
-  headers: Headers;
-  body: BodyInit | undefined;
-}> {
+): Promise<FrameworkRequest> {
   const url = new URL(request.url);
   url.pathname = getRelativePathname(url.pathname, mountPath);
 

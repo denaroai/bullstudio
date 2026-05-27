@@ -177,12 +177,12 @@ Add framework-adapter smoke tests that prove mounted private dashboard API reque
 
 ### Acceptance criteria
 
-- [ ] At least one framework adapter test verifies `connection.info` through a mounted embedded dashboard.
-- [ ] At least one framework adapter test verifies a read procedure such as `jobs.listSummary` or `overview.metrics` through the mount path.
-- [ ] At least one framework adapter test verifies a mutating procedure still respects read-only protection through the mount path.
-- [ ] Tests prove private dashboard API requests stay under the configured mount path.
-- [ ] Tests avoid duplicating the full embedded core behavior matrix across every framework adapter.
-- [ ] Existing framework adapter tests continue to pass.
+- [x] At least one framework adapter test verifies `connection.info` through a mounted embedded dashboard.
+- [x] At least one framework adapter test verifies a read procedure such as `jobs.listSummary` or `overview.metrics` through the mount path.
+- [x] At least one framework adapter test verifies a mutating procedure still respects read-only protection through the mount path.
+- [x] Tests prove private dashboard API requests stay under the configured mount path.
+- [x] Tests avoid duplicating the full embedded core behavior matrix across every framework adapter.
+- [x] Existing framework adapter tests continue to pass.
 
 ## 8. Verify embedded dashboard parity in the Next example
 

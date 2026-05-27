@@ -41,10 +41,38 @@ export function bullstudio(config: DashboardConfig): FastifyPluginCallback {
 function toFrameworkRequest(request: FastifyRequest) {
   return {
     method: request.method,
-    url: request.url,
+    url: toMountedUrl(request.url),
     headers: request.headers,
+    basePath: getBasePath(request.url),
     body: toRequestBody(request.body),
   };
+}
+
+function getBasePath(url: string): string {
+  const pathname = new URL(url, "http://bullstudio.local").pathname;
+  const assetIndex = pathname.search(/\/(?:assets\/|logo\.svg$)/);
+  const apiIndex = pathname.indexOf("/api/trpc");
+  const endIndex = [assetIndex, apiIndex]
+    .filter((index) => index >= 0)
+    .sort((a, b) => a - b)[0];
+
+  return endIndex === undefined ? pathname : pathname.slice(0, endIndex);
+}
+
+function toMountedUrl(url: string): string {
+  const parsedUrl = new URL(url, "http://bullstudio.local");
+  const assetIndex = parsedUrl.pathname.search(/\/(?:assets\/|logo\.svg$)/);
+  const apiIndex = parsedUrl.pathname.indexOf("/api/trpc");
+
+  if (apiIndex >= 0) {
+    parsedUrl.pathname = parsedUrl.pathname.slice(apiIndex);
+  } else if (assetIndex >= 0) {
+    parsedUrl.pathname = parsedUrl.pathname.slice(assetIndex);
+  } else {
+    parsedUrl.pathname = "/";
+  }
+
+  return `${parsedUrl.pathname}${parsedUrl.search}`;
 }
 
 function toRequestBody(body: unknown): unknown {

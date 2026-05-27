@@ -22,29 +22,26 @@ describe("bullstudio Fastify adapter", () => {
     expect(htmlResponse.headers["content-type"]).toContain("text/html");
     expect(htmlResponse.body).toContain("Bullstudio");
 
-    const assetResponse = await app.inject("/ops/bullstudio/assets/app.js");
+    const assetPath = extractScriptPath(htmlResponse.body);
+    const assetResponse = await app.inject(assetPath);
     expect(assetResponse.statusCode).toBe(200);
     expect(assetResponse.headers["content-type"]).toContain(
       "application/javascript",
     );
-    expect(assetResponse.body).toContain("Bullstudio");
+    expect(assetResponse.body).toContain("createRoot");
 
     const apiResponse = await app.inject(
       "/ops/bullstudio/api/trpc/queues.list",
     );
     expect(apiResponse.statusCode).toBe(200);
     expect(apiResponse.headers["content-type"]).toContain("application/json");
-    expect(apiResponse.json()).toMatchObject({
-      result: {
-        data: [
-          {
-            key: "email",
-            label: "Email",
-            name: "email",
-          },
-        ],
+    expect(readTrpcResultData(apiResponse)).toMatchObject([
+      {
+        key: "email",
+        label: "Email",
+        name: "email",
       },
-    });
+    ]);
   });
 
   it("protects dashboard assets and private dashboard API with Basic Auth by default", async () => {
@@ -124,13 +121,9 @@ describe("bullstudio Fastify adapter", () => {
       "/ops/bullstudio/api/trpc/queueSource.status",
     );
     expect(statusResponse.statusCode).toBe(200);
-    expect(statusResponse.json()).toMatchObject({
-      result: {
-        data: {
-          readOnly: true,
-          mutationsAllowed: false,
-        },
-      },
+    expect(readTrpcResultData(statusResponse)).toMatchObject({
+      readOnly: true,
+      mutationsAllowed: false,
     });
 
     for (const mutation of [
@@ -153,10 +146,8 @@ describe("bullstudio Fastify adapter", () => {
       });
 
       expect(response.statusCode).toBe(403);
-      expect(response.json()).toMatchObject({
-        error: {
-          message: "Read-only dashboards cannot mutate queues or jobs.",
-        },
+      expect(readTrpcError(response)).toMatchObject({
+        message: "Read-only dashboards cannot mutate queues or jobs.",
       });
     }
 
@@ -193,14 +184,13 @@ describe("bullstudio Fastify adapter", () => {
     expect(htmlResponse.body).toContain("<title>Queue Ops</title>");
     expect(htmlResponse.body).toContain('href="/brand/favicon.ico"');
     expect(htmlResponse.body).toContain("Production Queues");
-    expect(htmlResponse.body).toContain('src="/brand/queues.svg"');
-    expect(htmlResponse.body).toContain('alt="Acme Queue Ops"');
+    expect(htmlResponse.body).toContain('"src":"/brand/queues.svg"');
+    expect(htmlResponse.body).toContain('"alt":"Acme Queue Ops"');
 
-    const assetResponse = await app.inject("/ops/bullstudio/assets/app.js");
+    const assetPath = extractScriptPath(htmlResponse.body);
+    const assetResponse = await app.inject(assetPath);
     expect(assetResponse.statusCode).toBe(200);
-    expect(assetResponse.body).toContain(
-      '"dashboardIdentity":{"title":"Production Queues","logo":{"src":"/brand/queues.svg","alt":"Acme Queue Ops"}}',
-    );
+    expect(assetResponse.body).toContain("createRoot");
   });
 });
 
@@ -260,4 +250,38 @@ function createQueueAdapter(options: {
 
 function basicAuth(username: string, password: string): string {
   return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
+}
+
+function readTrpcResultData(response: { json(): unknown }) {
+  const body = response.json() as TrpcResultEnvelope;
+  return body.result.data.json ?? body.result.data;
+}
+
+function readTrpcError(response: { json(): unknown }) {
+  const body = response.json() as TrpcErrorEnvelope;
+  return body.error.json ?? body.error;
+}
+
+interface TrpcResultEnvelope {
+  result: {
+    data: {
+      json?: unknown;
+    } & unknown;
+  };
+}
+
+interface TrpcErrorEnvelope {
+  error: {
+    json?: unknown;
+  } & unknown;
+}
+
+function extractScriptPath(html: string): string {
+  const match = html.match(/<script type="module"[^>]+src="([^"]+)"/);
+
+  if (!match?.[1]) {
+    throw new Error("Dashboard script was not found in HTML.");
+  }
+
+  return match[1];
 }
