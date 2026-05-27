@@ -38,6 +38,10 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import Header from "@/components/Header";
 import { useTRPC } from "@/integrations/trpc/react";
+import {
+  getJobDetailSearch,
+  type JobDetailNavigationSource,
+} from "@/lib/job-detail-navigation";
 import { parseQueueKey, queueKey } from "@/lib/queue-key";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 
@@ -238,18 +242,11 @@ function JobsPage() {
     return <span className="text-zinc-600">—</span>;
   };
 
-  const navigateToJob = (
-    jobId: string,
-    jobQueueName: string,
-    jobPrefix?: string,
-  ) => {
+  const navigateToJob = (jobId: string, job: JobDetailNavigationSource) => {
     navigate({
       to: "/jobs/$jobId",
       params: { jobId },
-      search: {
-        queueName: jobQueueName,
-        prefix: jobPrefix,
-      },
+      search: getJobDetailSearch(job),
     });
   };
 
@@ -418,9 +415,7 @@ function JobsPage() {
                 <TableRow
                   key={`${job.prefix ?? ""}-${job.queueName}-${job.id}`}
                   className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
-                  onClick={() =>
-                    navigateToJob(job.id, job.queueName, job.prefix)
-                  }
+                  onClick={() => navigateToJob(job.id, job)}
                 >
                   <TableCell>
                     <div className="flex flex-col">

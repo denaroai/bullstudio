@@ -1,6 +1,11 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import type { JobSummary } from "@bullstudio/connect-types";
+import type {
+  Job,
+  JobQueryOptions,
+  JobStatus,
+  JobSummary,
+} from "@bullstudio/connect-types";
 import { ReadOnlyDashboardError } from "./errors";
 import { assertCanMutate } from "./mutation";
 import type {
@@ -112,6 +117,12 @@ function createPrivateDashboardApiRouter(dashboard: EmbeddedDashboardInstance) {
       }),
     }),
     jobs: t.router({
+      list: t.procedure.input((value) => value).query(({ input }) =>
+        getJobList(dashboard, getJobListInput(input)),
+      ),
+      listSummary: t.procedure.input((value) => value).query(({ input }) =>
+        getJobListSummaries(dashboard, getJobListInput(input)),
+      ),
       retry: t.procedure.mutation(({ input }) =>
         runPrivateDashboardMutation(dashboard, () => {
           const { jobId, queueKey } = getJobMutationInput(input);
@@ -126,6 +137,158 @@ function createPrivateDashboardApiRouter(dashboard: EmbeddedDashboardInstance) {
       ),
     }),
   });
+}
+
+type PrivateJobSourceKey = {
+  queueKey?: string;
+};
+
+async function getJobList(
+  dashboard: EmbeddedDashboardInstance,
+  input: ResolvedJobListInput,
+): Promise<Array<Job & PrivateJobSourceKey>> {
+  const queuesToProcess = await getQueuesForJobList(dashboard, input);
+  const jobs: Array<Job & PrivateJobSourceKey> = [];
+
+  for (const queue of queuesToProcess) {
+    const queueJobs = await dashboard.getJobs(
+      queue.key,
+      getQueueJobQueryOptions(input),
+    );
+    jobs.push(
+      ...queueJobs.map((job) => ({
+        ...job,
+        prefix: job.prefix ?? queue.prefix,
+        queueKey: queue.key,
+      })),
+    );
+  }
+
+  return sortAndPageJobs(jobs, input);
+}
+
+async function getJobListSummaries(
+  dashboard: EmbeddedDashboardInstance,
+  input: ResolvedJobListInput,
+): Promise<Array<JobSummary & PrivateJobSourceKey>> {
+  const queuesToProcess = await getQueuesForJobList(dashboard, input);
+  const jobs: Array<JobSummary & PrivateJobSourceKey> = [];
+
+  for (const queue of queuesToProcess) {
+    const queueJobs = await dashboard.getJobsSummary(
+      queue.key,
+      getQueueJobQueryOptions(input),
+    );
+    jobs.push(
+      ...queueJobs.map((job) => ({
+        ...job,
+        prefix: job.prefix ?? queue.prefix,
+        queueKey: queue.key,
+      })),
+    );
+  }
+
+  return sortAndPageJobs(jobs, input);
+}
+
+type ResolvedJobListInput = {
+  queueKey?: string;
+  queueName?: string;
+  prefix?: string;
+  status?: JobStatus;
+  limit: number;
+  offset: number;
+};
+
+async function getQueuesForJobList(
+  dashboard: EmbeddedDashboardInstance,
+  input: ResolvedJobListInput,
+): Promise<DashboardQueue[]> {
+  if (input.queueKey || input.queueName) {
+    return [
+      await getSuppliedQueueByPrivateApiInput(dashboard, {
+        queueKey: input.queueKey,
+        queueName: input.queueName,
+        prefix: input.prefix,
+      }),
+    ];
+  }
+
+  return dashboard.listQueues();
+}
+
+function getQueueJobQueryOptions(
+  input: ResolvedJobListInput,
+): JobQueryOptions {
+  return {
+    filter: input.status ? { status: input.status } : undefined,
+    limit: input.limit + input.offset,
+    offset: 0,
+  };
+}
+
+function sortAndPageJobs<T extends { timestamp: number }>(
+  jobs: T[],
+  input: ResolvedJobListInput,
+): T[] {
+  return [...jobs]
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(input.offset, input.offset + input.limit);
+}
+
+function getJobListInput(input: unknown): ResolvedJobListInput {
+  const value = unwrapJsonInput(input);
+
+  if (value === undefined || value === null) {
+    return {
+      limit: 100,
+      offset: 0,
+    };
+  }
+
+  if (!value || typeof value !== "object") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Job list input must be an object when provided.",
+    });
+  }
+
+  const queueKey =
+    "queueKey" in value && typeof value.queueKey === "string"
+      ? value.queueKey
+      : undefined;
+  const queueName =
+    "queueName" in value && typeof value.queueName === "string"
+      ? value.queueName
+      : undefined;
+  const prefix =
+    "prefix" in value && typeof value.prefix === "string"
+      ? value.prefix
+      : undefined;
+  const status =
+    "status" in value && isSupportedJobStatus(value.status)
+      ? value.status
+      : undefined;
+  const limit =
+    "limit" in value && typeof value.limit === "number" ? value.limit : 100;
+  const offset =
+    "offset" in value && typeof value.offset === "number" ? value.offset : 0;
+
+  return {
+    queueKey,
+    queueName,
+    prefix,
+    status,
+    limit: Math.min(Math.max(Math.floor(limit), 1), 1000),
+    offset: Math.max(Math.floor(offset), 0),
+  };
+}
+
+function isSupportedJobStatus(status: unknown): status is JobStatus {
+  return (
+    typeof status === "string" &&
+    supportedJobStatuses.includes(status as (typeof supportedJobStatuses)[number])
+  );
 }
 
 type TimeSeriesDataPoint = {

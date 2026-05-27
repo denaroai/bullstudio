@@ -41,6 +41,7 @@ import { z } from "zod";
 const searchSchema = z.object({
   queueName: z.string(),
   prefix: z.string().optional(),
+  queueKey: z.string().optional(),
 });
 
 export const Route = createFileRoute("/jobs/$jobId")({
@@ -310,9 +311,9 @@ function JobDetailPage() {
             <CardContent>
               {logsData && logsData.logs.length > 0 ? (
                 <div className="bg-zinc-900 rounded-lg overflow-x-auto max-h-[600px] overflow-y-auto">
-                  {logsData.logs.map((line, i) => (
+                  {logsData.logs.map((line) => (
                     <div
-                      key={i}
+                      key={line}
                       className="px-4 py-1.5 text-sm font-mono text-zinc-300 hover:bg-zinc-800/50 border-b border-zinc-800/50 last:border-b-0 whitespace-pre-wrap break-all"
                     >
                       {line}
@@ -445,6 +446,7 @@ const JsonViewer = memo(function JsonViewer({ data }: { data: unknown }) {
             Size: {formatSize(fullSize)}
           </span>
           <button
+            type="button"
             onClick={() => setShowFull(!showFull)}
             className="text-xs text-blue-400 hover:text-blue-300 underline"
           >

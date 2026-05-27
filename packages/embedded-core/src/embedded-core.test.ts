@@ -5,7 +5,11 @@ import {
   type QueueAdapter,
   ReadOnlyDashboardError,
 } from "@bullstudio/embedded-core";
-import type { JobQueryOptions, JobSummary } from "@bullstudio/connect-types";
+import type {
+  Job,
+  JobQueryOptions,
+  JobSummary,
+} from "@bullstudio/connect-types";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 
 afterEach(() => {
@@ -630,6 +634,171 @@ describe("embedded private dashboard API overview metrics", () => {
   });
 });
 
+describe("embedded private dashboard API job lists", () => {
+  it("aggregates job summaries from supplied queues with source queue keys, merged sorting, and a global limit", async () => {
+    const dashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      queues: [
+        createQueueAdapter({
+          key: "email",
+          label: "Email",
+          queueName: "email",
+          jobSummaries: [
+            createJobSummary({
+              id: "old-email",
+              name: "send-old",
+              queueName: "email",
+              status: "completed",
+              timestamp: 100,
+            }),
+            createJobSummary({
+              id: "new-email",
+              name: "send-new",
+              queueName: "email",
+              status: "completed",
+              timestamp: 300,
+            }),
+          ],
+        }),
+        createQueueAdapter({
+          key: "reports",
+          label: "Reports",
+          queueName: "reports",
+          jobSummaries: [
+            createJobSummary({
+              id: "new-report",
+              name: "render",
+              queueName: "reports",
+              status: "failed",
+              timestamp: 200,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    await expect(
+      callPrivateDashboardApi(dashboard, "jobs.listSummary", {
+        limit: 2,
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: [
+        {
+          id: "new-email",
+          queueName: "email",
+          prefix: "bull",
+          queueKey: "email",
+          timestamp: 300,
+        },
+        {
+          id: "new-report",
+          queueName: "reports",
+          prefix: "bull",
+          queueKey: "reports",
+          timestamp: 200,
+        },
+      ],
+    });
+  });
+
+  it("lists full jobs with status filters and queue key or compatibility queue filters", async () => {
+    const dashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      queues: [
+        createQueueAdapter({
+          key: "email-primary",
+          label: "Primary email",
+          queueName: "email",
+          jobs: [
+            createJob({
+              id: "waiting-email",
+              name: "send",
+              queueName: "email",
+              status: "waiting",
+              timestamp: 100,
+            }),
+            createJob({
+              id: "failed-email",
+              name: "send",
+              queueName: "email",
+              status: "failed",
+              timestamp: 400,
+            }),
+          ],
+        }),
+        createQueueAdapter({
+          key: "email-secondary",
+          label: "Secondary email",
+          queueName: "email",
+          prefix: "tenant",
+          jobs: [
+            createJob({
+              id: "failed-tenant-email",
+              name: "send",
+              queueName: "email",
+              prefix: "tenant",
+              status: "failed",
+              timestamp: 300,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    await expect(
+      callPrivateDashboardApi(dashboard, "jobs.list", {
+        queueKey: "email-primary",
+        status: "failed",
+        limit: 10,
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: [
+        {
+          id: "failed-email",
+          queueName: "email",
+          prefix: "bull",
+          queueKey: "email-primary",
+          status: "failed",
+        },
+      ],
+    });
+    await expect(
+      callPrivateDashboardApi(dashboard, "jobs.list", {
+        queueName: "email",
+        prefix: "tenant",
+        status: "failed",
+        limit: 10,
+      }),
+    ).resolves.toMatchObject({
+      status: 200,
+      json: [
+        {
+          id: "failed-tenant-email",
+          queueName: "email",
+          prefix: "tenant",
+          queueKey: "email-secondary",
+          status: "failed",
+        },
+      ],
+    });
+    await expect(
+      callPrivateDashboardApi(dashboard, "jobs.list", {
+        queueName: "email",
+        status: "failed",
+      }),
+    ).resolves.toMatchObject({
+      status: 400,
+      error: {
+        code: -32600,
+        message:
+          'Supplied queue lookup "email" matched more than one queue. Use queueKey instead.',
+      },
+    });
+  });
+});
+
 const emptyJobCounts = {
   waiting: 0,
   active: 0,
@@ -647,6 +816,7 @@ function createQueueAdapter(
     label: string;
     queueName?: string;
     prefix?: string;
+    jobs?: Job[];
     jobSummaries?: JobSummary[];
     pauseQueue?: () => Promise<void>;
     resumeQueue?: () => Promise<void>;
@@ -679,7 +849,8 @@ function createQueueAdapter(
     getJobCounts: async () => emptyJobCounts,
     pauseQueue: options.pauseQueue ?? (async () => {}),
     resumeQueue: options.resumeQueue ?? (async () => {}),
-    getJobs: async () => [],
+    getJobs: async (queryOptions?: JobQueryOptions) =>
+      getJobs(options.jobs ?? [], queryOptions),
     getJobsSummary: async (queryOptions?: JobQueryOptions) =>
       getJobSummaries(options.jobSummaries ?? [], queryOptions),
     getJob: async () => null,
@@ -687,6 +858,24 @@ function createQueueAdapter(
     retryJob: options.retryJob ?? (async () => {}),
     removeJob: options.removeJob ?? (async () => {}),
     getWorkerCount: async () => ({ queueName, count: 0 }),
+  };
+}
+
+function createJob(
+  options: Partial<Job> & {
+    id: string;
+    name: string;
+    queueName: string;
+    status: Job["status"];
+    timestamp: number;
+  },
+): Job {
+  return {
+    data: {},
+    progress: 0,
+    attemptsMade: 0,
+    attemptsLimit: 1,
+    ...options,
   };
 }
 
@@ -710,6 +899,17 @@ function getJobSummaries(
   jobs: JobSummary[],
   options: JobQueryOptions | undefined,
 ): JobSummary[] {
+  return filterJobs(jobs, options);
+}
+
+function getJobs(jobs: Job[], options: JobQueryOptions | undefined): Job[] {
+  return filterJobs(jobs, options);
+}
+
+function filterJobs<T extends Job | JobSummary>(
+  jobs: T[],
+  options: JobQueryOptions | undefined,
+): T[] {
   const statuses = options?.filter?.status
     ? Array.isArray(options.filter.status)
       ? options.filter.status

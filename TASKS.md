@@ -67,18 +67,18 @@ Make the embedded jobs screen list jobs from supplied queues with the current da
 
 ### Acceptance criteria
 
-- [ ] `jobs.listSummary` works in embedded mode for all supplied queues.
-- [ ] `jobs.list` works in embedded mode for all supplied queues.
-- [ ] Queue filtering works with queue key when provided.
-- [ ] Queue filtering accepts queue name/prefix as compatibility input.
-- [ ] Status filtering works for the current dashboard job statuses.
-- [ ] Aggregated results are sorted consistently after merging supplied queue results.
-- [ ] Requested limits apply globally to the returned response after merge and sort.
-- [ ] Embedded aggregate job list items include optional `queueKey`.
-- [ ] The optional `queueKey` field is treated as private dashboard API data, not a public connect-types contract change.
-- [ ] The jobs UI prefers queue key when available and falls back to queue name/prefix for standalone behavior.
-- [ ] Embedded core tests cover aggregation, filtering, sorting, global limits, and optional source queue key.
-- [ ] UI or route tests cover preserving standalone links while adding optional queue key links for embedded mode.
+- [x] `jobs.listSummary` works in embedded mode for all supplied queues.
+- [x] `jobs.list` works in embedded mode for all supplied queues.
+- [x] Queue filtering works with queue key when provided.
+- [x] Queue filtering accepts queue name/prefix as compatibility input.
+- [x] Status filtering works for the current dashboard job statuses.
+- [x] Aggregated results are sorted consistently after merging supplied queue results.
+- [x] Requested limits apply globally to the returned response after merge and sort.
+- [x] Embedded aggregate job list items include optional `queueKey`.
+- [x] The optional `queueKey` field is treated as private dashboard API data, not a public connect-types contract change.
+- [x] The jobs UI prefers queue key when available and falls back to queue name/prefix for standalone behavior.
+- [x] Embedded core tests cover aggregation, filtering, sorting, global limits, and optional source queue key.
+- [x] UI or route tests cover preserving standalone links while adding optional queue key links for embedded mode.
 
 ## 4. Add embedded job detail, logs, retry, and remove parity
 
