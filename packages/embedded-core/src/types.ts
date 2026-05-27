@@ -168,11 +168,7 @@ export interface EmbeddedDashboardInstance {
   removeJob(queueKey: string, jobId: string): Promise<void>;
   getWorkerCount(queueKey: string): Promise<WorkerCount>;
   listFlows(options?: { limit?: number }): Promise<FlowSummary[]>;
-  getFlow(input: {
-    queueName: string;
-    flowId: string;
-    prefix?: string;
-  }): Promise<FlowTree | null>;
+  getFlow(queueKey: string, flowId: string): Promise<FlowTree | null>;
   handle(request: FrameworkRequest): Promise<FrameworkResponse>;
   mountPrivateDashboardApi(): PrivateDashboardApiMount;
 }

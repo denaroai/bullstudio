@@ -6,6 +6,8 @@ import {
   ReadOnlyDashboardError,
 } from "@bullstudio/embedded-core";
 import type {
+  FlowSummary,
+  FlowTree,
   Job,
   JobQueryOptions,
   JobSummary,
@@ -1232,6 +1234,245 @@ describe("embedded private dashboard API job detail operations", () => {
   });
 });
 
+describe("embedded private dashboard API flow operations", () => {
+  it("aggregates flow summaries from flow-capable supplied queues with source queue keys and a global limit", async () => {
+    const emailListFlows = vi.fn(async () => [
+      createFlowSummary({
+        id: "email-old",
+        name: "Email old",
+        queueName: "email",
+        timestamp: 100,
+      }),
+      createFlowSummary({
+        id: "email-new",
+        name: "Email new",
+        queueName: "email",
+        timestamp: 300,
+      }),
+    ]);
+    const unsupportedListFlows = vi.fn(async () => [
+      createFlowSummary({
+        id: "unsupported",
+        name: "Unsupported",
+        queueName: "unsupported",
+        timestamp: 400,
+      }),
+    ]);
+    const reportListFlows = vi.fn(async () => [
+      createFlowSummary({
+        id: "report",
+        name: "Report",
+        queueName: "reports",
+        prefix: "tenant",
+        timestamp: 200,
+      }),
+    ]);
+    const dashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      queues: [
+        createQueueAdapter({
+          key: "email",
+          label: "Email",
+          queueName: "email",
+          listFlows: emailListFlows,
+        }),
+        createQueueAdapter({
+          key: "unsupported",
+          label: "Unsupported",
+          capabilities: {
+            flows: false,
+            jobLogs: true,
+            jobRemoval: true,
+            jobRetry: true,
+            queuePause: true,
+            queueResume: true,
+            workers: true,
+          },
+          listFlows: unsupportedListFlows,
+        }),
+        createQueueAdapter({
+          key: "reports",
+          label: "Reports",
+          queueName: "reports",
+          prefix: "tenant",
+          listFlows: reportListFlows,
+        }),
+      ],
+    });
+
+    await expect(
+      callPrivateDashboardApi(dashboard, "flows.list", { limit: 2 }),
+    ).resolves.toEqual({
+      status: 200,
+      json: [
+        expect.objectContaining({
+          id: "email-new",
+          queueName: "email",
+          queueKey: "email",
+        }),
+        expect.objectContaining({
+          id: "report",
+          queueName: "reports",
+          prefix: "tenant",
+          queueKey: "reports",
+        }),
+      ],
+    });
+    await expect(
+      callPrivateDashboardApi(
+        createEmbeddedDashboard({
+          protection: { type: "disabled" },
+          queues: [
+            createQueueAdapter({
+              key: "unsupported",
+              label: "Unsupported",
+              capabilities: {
+                flows: false,
+                jobLogs: true,
+                jobRemoval: true,
+                jobRetry: true,
+                queuePause: true,
+                queueResume: true,
+                workers: true,
+              },
+              listFlows: unsupportedListFlows,
+            }),
+          ],
+        }),
+        "flows.list",
+      ),
+    ).resolves.toEqual({
+      status: 200,
+      json: [],
+    });
+
+    expect(emailListFlows).toHaveBeenCalledWith({ limit: 2 });
+    expect(unsupportedListFlows).not.toHaveBeenCalled();
+    expect(reportListFlows).toHaveBeenCalledWith({ limit: 2 });
+  });
+
+  it("gets flow details by queue key or compatibility queue identity with clear target errors", async () => {
+    const emailFlow = createFlowTree({
+      id: "email-flow",
+      queueName: "email",
+    });
+    const reportFlow = createFlowTree({
+      id: "report-flow",
+      queueName: "reports",
+    });
+    const dashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      queues: [
+        createQueueAdapter({
+          key: "email",
+          label: "Email",
+          queueName: "email",
+          flows: {
+            "email-flow": emailFlow,
+          },
+        }),
+        createQueueAdapter({
+          key: "reports",
+          label: "Reports",
+          queueName: "reports",
+          prefix: "tenant",
+          flows: {
+            "report-flow": reportFlow,
+          },
+        }),
+        createQueueAdapter({
+          key: "unsupported",
+          label: "Unsupported",
+          queueName: "unsupported",
+          capabilities: {
+            flows: false,
+            jobLogs: true,
+            jobRemoval: true,
+            jobRetry: true,
+            queuePause: true,
+            queueResume: true,
+            workers: true,
+          },
+        }),
+      ],
+    });
+
+    await expect(
+      callPrivateDashboardApi(dashboard, "flows.get", {
+        queueKey: "email",
+        flowId: "email-flow",
+      }),
+    ).resolves.toEqual({
+      status: 200,
+      json: emailFlow,
+    });
+    await expect(
+      callPrivateDashboardApi(dashboard, "flows.get", {
+        queueName: "reports",
+        prefix: "tenant",
+        flowId: "report-flow",
+      }),
+    ).resolves.toEqual({
+      status: 200,
+      json: reportFlow,
+    });
+    await expect(
+      callPrivateDashboardApi(dashboard, "flows.get", {
+        queueKey: "unsupported",
+        flowId: "unsupported-flow",
+      }),
+    ).resolves.toMatchObject({
+      status: 400,
+      error: {
+        code: -32600,
+        message: 'Flows are not supported for supplied queue "unsupported".',
+      },
+    });
+    await expect(
+      callPrivateDashboardApi(dashboard, "flows.get", {
+        queueKey: "email",
+        flowId: "missing",
+      }),
+    ).resolves.toMatchObject({
+      status: 404,
+      error: {
+        code: -32004,
+        message: "Flow missing not found in queue email",
+      },
+    });
+
+    const ambiguousDashboard = createEmbeddedDashboard({
+      protection: { type: "disabled" },
+      queues: [
+        createQueueAdapter({
+          key: "email-a",
+          label: "Email A",
+          queueName: "email",
+        }),
+        createQueueAdapter({
+          key: "email-b",
+          label: "Email B",
+          queueName: "email",
+        }),
+      ],
+    });
+
+    await expect(
+      callPrivateDashboardApi(ambiguousDashboard, "flows.get", {
+        queueName: "email",
+        flowId: "email-flow",
+      }),
+    ).resolves.toMatchObject({
+      status: 400,
+      error: {
+        code: -32600,
+        message:
+          'Supplied queue lookup "email" matched more than one queue. Use queueKey instead.',
+      },
+    });
+  });
+});
+
 describe("embedded private dashboard API queue pause and resume operations", () => {
   it("pauses and resumes supplied queues by queue key or compatibility queue identity", async () => {
     const pauseEmailQueue = vi.fn<() => Promise<void>>(async () => {});
@@ -1432,6 +1673,8 @@ function createQueueAdapter(
     jobs?: Job[];
     jobSummaries?: JobSummary[];
     jobLogs?: Record<string, { logs: string[]; count: number }>;
+    listFlows?: (options?: { limit?: number }) => Promise<FlowSummary[]>;
+    flows?: Record<string, FlowTree>;
     workerCount?: number;
     pauseQueue?: () => Promise<void>;
     resumeQueue?: () => Promise<void>;
@@ -1475,6 +1718,49 @@ function createQueueAdapter(
     retryJob: options.retryJob ?? (async () => {}),
     removeJob: options.removeJob ?? (async () => {}),
     getWorkerCount: async () => ({ queueName, count: options.workerCount ?? 0 }),
+    listFlows: options.listFlows,
+    getFlow: async (flowId) => options.flows?.[flowId] ?? null,
+  };
+}
+
+function createFlowSummary(
+  options: Partial<FlowSummary> & {
+    id: string;
+    name: string;
+    queueName: string;
+    timestamp: number;
+  },
+): FlowSummary {
+  return {
+    prefix: "bull",
+    status: "waiting",
+    totalJobs: 2,
+    completedJobs: 0,
+    failedJobs: 0,
+    ...options,
+  };
+}
+
+function createFlowTree(
+  options: Partial<FlowTree> & {
+    id: string;
+    queueName: string;
+  },
+): FlowTree {
+  return {
+    totalNodes: 1,
+    completedNodes: 0,
+    failedNodes: 0,
+    root: {
+      id: options.id,
+      name: options.id,
+      queueName: options.queueName,
+      status: "waiting",
+      data: {},
+      timestamp: 100,
+      children: [],
+    },
+    ...options,
   };
 }
 

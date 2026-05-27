@@ -69,7 +69,10 @@ export function createEmbeddedDashboard(
     getWorkerCount: (queueKey) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getWorkerCount(),
     listFlows: (options) => listFlows(resolvedConfig.queues, options),
-    getFlow: (input) => getFlow(resolvedConfig.queues, input),
+    getFlow: async (queueKey, flowId) => {
+      const getFlow = getQueueAdapter(queueAdaptersByKey, queueKey).getFlow;
+      return getFlow ? getFlow(flowId) : null;
+    },
     handle: (request) =>
       withDashboardProtection(resolvedConfig.protection, request, () =>
         handleDashboardAsset(request, resolvedConfig),
@@ -126,52 +129,32 @@ async function getDashboardQueue(queue: QueueAdapter): Promise<DashboardQueue> {
   };
 }
 
-async function listFlows(queues: QueueAdapter[], options?: { limit?: number }) {
+type PrivateFlowSummary = FlowSummary & { queueKey?: string };
+
+async function listFlows(
+  queues: QueueAdapter[],
+  options?: { limit?: number },
+): Promise<PrivateFlowSummary[]> {
   const limit = options?.limit ?? 50;
-  const flows: FlowSummary[] = [];
+  const flows: PrivateFlowSummary[] = [];
 
   for (const queue of queues) {
-    if (flows.length >= limit) {
-      break;
-    }
     if (!queue.capabilities.flows || !queue.listFlows) {
       continue;
     }
 
     const queueFlows = await queue.listFlows({
-      limit: limit - flows.length,
+      limit,
     });
-    flows.push(...queueFlows);
+    flows.push(
+      ...queueFlows.map((flow) => ({
+        ...flow,
+        queueKey: queue.key,
+      })),
+    );
   }
 
   return flows.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
-}
-
-async function getFlow(
-  queues: QueueAdapter[],
-  input: {
-    queueName: string;
-    flowId: string;
-    prefix?: string;
-  },
-) {
-  for (const queue of queues) {
-    if (!queue.capabilities.flows || !queue.getFlow) {
-      continue;
-    }
-
-    const suppliedQueue = await queue.getQueue();
-    if (suppliedQueue.name !== input.queueName) {
-      continue;
-    }
-    if (input.prefix && suppliedQueue.prefix !== input.prefix) {
-      continue;
-    }
-
-    return queue.getFlow(input.flowId);
-  }
-
-  return null;
 }
 
 function resolveDashboardConfig(

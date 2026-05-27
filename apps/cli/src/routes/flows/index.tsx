@@ -4,6 +4,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useTRPC } from "@/integrations/trpc/react"
 import { useQuery } from "@tanstack/react-query"
 import Header from "@/components/Header"
+import { getFlowDetailSearch } from "@/lib/flow-detail-navigation"
 import { Button } from "@bullstudio/ui/components/button"
 import {
   Table,
@@ -21,6 +22,17 @@ import {
 } from "@bullstudio/ui/shared"
 import { Workflow, RefreshCw, Inbox, CheckCircle, XCircle } from "lucide-react"
 import dayjs from "@bullstudio/dayjs"
+import type { FlowSummary } from "@bullstudio/connect-types"
+
+type PrivateFlowSummary = FlowSummary & { queueKey?: string }
+
+const flowSkeletonRows = [
+  "flow-skeleton-1",
+  "flow-skeleton-2",
+  "flow-skeleton-3",
+  "flow-skeleton-4",
+  "flow-skeleton-5",
+]
 
 export const Route = createFileRoute("/flows/")({
   component: FlowsPage,
@@ -48,18 +60,11 @@ function FlowsPage() {
     }),
   )
 
-  const navigateToFlow = (
-    flowId: string,
-    queueName: string,
-    flowPrefix?: string,
-  ) => {
+  const navigateToFlow = (flow: PrivateFlowSummary) => {
     navigate({
       to: "/flows/$flowId",
-      params: { flowId },
-      search: {
-        queueName,
-        prefix: flowPrefix,
-      },
+      params: { flowId: flow.id },
+      search: getFlowDetailSearch(flow),
     })
   }
 
@@ -84,8 +89,8 @@ function FlowsPage() {
       {isLoading ? (
         <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
           <div className="p-8 space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
+            {flowSkeletonRows.map((row) => (
+              <Skeleton key={row} className="h-12 w-full" />
             ))}
           </div>
         </div>
@@ -112,9 +117,7 @@ function FlowsPage() {
                 <TableRow
                   key={`${flow.prefix}-${flow.queueName}-${flow.id}`}
                   className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
-                  onClick={() =>
-                    navigateToFlow(flow.id, flow.queueName, flow.prefix)
-                  }
+                  onClick={() => navigateToFlow(flow)}
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">

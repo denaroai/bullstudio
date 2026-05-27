@@ -150,18 +150,18 @@ Make the embedded flows screen and flow detail screen operate against supplied q
 
 ### Acceptance criteria
 
-- [ ] `flows.list` aggregates flows only from supplied queues whose per-queue capabilities include flows.
-- [ ] `flows.list` skips supplied queues that do not support flows.
-- [ ] `flows.list` returns an empty list when no supplied queues support flows.
-- [ ] `flows.list` applies the requested response limit after aggregation.
-- [ ] `flows.get` accepts queue key when provided.
-- [ ] `flows.get` accepts queue name/prefix compatibility input.
-- [ ] `flows.get` returns bad request when the matched supplied queue does not support flows.
-- [ ] `flows.get` returns not found when no matching flow exists.
-- [ ] Ambiguous queue name/prefix lookup fails clearly for flow detail.
-- [ ] Flow routes preserve standalone queue name/prefix links while carrying optional queue key for embedded links.
-- [ ] Embedded core tests cover mixed capability queues, unsupported flows, not found, and ambiguous lookup behavior.
-- [ ] The flows list and flow detail screens can be browser-verified in the Next embedded example when a supplied queue supports flows.
+- [x] `flows.list` aggregates flows only from supplied queues whose per-queue capabilities include flows.
+- [x] `flows.list` skips supplied queues that do not support flows.
+- [x] `flows.list` returns an empty list when no supplied queues support flows.
+- [x] `flows.list` applies the requested response limit after aggregation.
+- [x] `flows.get` accepts queue key when provided.
+- [x] `flows.get` accepts queue name/prefix compatibility input.
+- [x] `flows.get` returns bad request when the matched supplied queue does not support flows.
+- [x] `flows.get` returns not found when no matching flow exists.
+- [x] Ambiguous queue name/prefix lookup fails clearly for flow detail.
+- [x] Flow routes preserve standalone queue name/prefix links while carrying optional queue key for embedded links.
+- [x] Embedded core tests cover mixed capability queues, unsupported flows, not found, and ambiguous lookup behavior.
+- [x] The flows list and flow detail screens can be browser-verified in the Next embedded example when a supplied queue supports flows.
 
 ## 7. Add mounted adapter smoke coverage for the compatibility layer
 

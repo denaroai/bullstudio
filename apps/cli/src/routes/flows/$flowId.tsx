@@ -22,6 +22,7 @@ import { FlowGraph } from "@/components/flows/FlowGraph";
 import type { FlowNode } from "@bullstudio/connect-types";
 
 const searchSchema = z.object({
+  queueKey: z.string().optional(),
   queueName: z.string(),
   prefix: z.string().optional(),
 });
@@ -40,7 +41,7 @@ function checkHasActiveJobs(node: FlowNode): boolean {
 
 function FlowDetailPage() {
   const { flowId } = Route.useParams();
-  const { queueName, prefix } = Route.useSearch();
+  const { queueName, prefix, queueKey } = Route.useSearch();
   const navigate = useNavigate();
   const trpc = useTRPC();
 
@@ -51,7 +52,7 @@ function FlowDetailPage() {
     isFetching,
   } = useQuery(
     trpc.flows.get.queryOptions(
-      { queueName, flowId, prefix },
+      { queueKey, queueName, flowId, prefix },
       {
         refetchInterval(query) {
           const data = query.state.data;

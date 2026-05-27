@@ -1,4 +1,4 @@
-import { type TRPCRouterRecord } from "@trpc/server";
+import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { publicProcedure } from "../init";
@@ -205,6 +205,7 @@ export const flowRouter = {
   get: publicProcedure
     .input(
       z.object({
+        queueKey: z.string().optional(),
         queueName: z.string(),
         flowId: z.string(),
         prefix: z.string().optional(),
