@@ -387,6 +387,8 @@ Progress:
 
 ## 13. Add the Fastify framework adapter
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Tasks 4, 5, 6, 7, 9
@@ -399,13 +401,20 @@ Add the Fastify framework adapter package with a native `bullstudio()` dashboard
 
 ### Acceptance criteria
 
-- [ ] Fastify developers can import `bullstudio()` from the Fastify adapter package.
-- [ ] The Fastify adapter returns a Fastify-native plugin or registerable value.
-- [ ] Dashboard assets and private dashboard API are served under one mount path.
-- [ ] Basic Auth protection works by default.
-- [ ] Read-only mode rejects mutating operations server-side.
-- [ ] Dashboard and document identity work without rebuilding assets.
-- [ ] Tests verify a Fastify app can register and use the dashboard at a non-root path.
+- [x] Fastify developers can import `bullstudio()` from the Fastify adapter package.
+- [x] The Fastify adapter returns a Fastify-native plugin or registerable value.
+- [x] Dashboard assets and private dashboard API are served under one mount path.
+- [x] Basic Auth protection works by default.
+- [x] Read-only mode rejects mutating operations server-side.
+- [x] Dashboard and document identity work without rebuilding assets.
+- [x] Tests verify a Fastify app can register and use the dashboard at a non-root path.
+
+Progress:
+
+- Added `@bullstudio/fastify` with the native `bullstudio()` dashboard factory.
+- Implemented the Fastify adapter as a registerable Fastify plugin that mounts dashboard assets and the private tRPC dashboard API through the embedded core.
+- Added Fastify integration coverage for non-root prefix registration, Basic Auth protection, read-only mutation rejection, and dashboard/document identity.
+- Verified with `pnpm --filter @bullstudio/fastify test`, `pnpm --filter @bullstudio/fastify typecheck`, `pnpm exec biome check packages/fastify-adapter`, `pnpm --filter @bullstudio/embedded-core test`, and `pnpm --filter @bullstudio/hono test`.
 
 ## 14. Add the Next.js App Router adapter
 
