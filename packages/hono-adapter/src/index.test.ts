@@ -233,6 +233,47 @@ describe("bullstudio Hono adapter", () => {
     expect(retryJob).not.toHaveBeenCalled();
     expect(removeJob).not.toHaveBeenCalled();
   });
+
+  it("serves configured dashboard and document identity from the mount path", async () => {
+    const host = new Hono();
+
+    host.route(
+      "/ops/bullstudio",
+      bullstudio({
+        queues: [createQueueAdapter({ key: "email", label: "Email" })],
+        protection: {
+          type: "disabled",
+        },
+        dashboardIdentity: {
+          title: "Production Queues",
+          logo: {
+            src: "/brand/queues.svg",
+            alt: "Acme Queue Ops",
+          },
+        },
+        documentIdentity: {
+          title: "Queue Ops",
+          favicon: "/brand/favicon.ico",
+        },
+      }),
+    );
+
+    const htmlResponse = await host.request("/ops/bullstudio");
+    expect(htmlResponse.status).toBe(200);
+    const html = await htmlResponse.text();
+    expect(html).toContain("<title>Queue Ops</title>");
+    expect(html).toContain('rel="icon"');
+    expect(html).toContain('href="/brand/favicon.ico"');
+    expect(html).toContain("Production Queues");
+    expect(html).toContain('src="/brand/queues.svg"');
+    expect(html).toContain('alt="Acme Queue Ops"');
+
+    const assetResponse = await host.request("/ops/bullstudio/assets/app.js");
+    expect(assetResponse.status).toBe(200);
+    await expect(assetResponse.text()).resolves.toContain(
+      '"dashboardIdentity":{"title":"Production Queues","logo":{"src":"/brand/queues.svg","alt":"Acme Queue Ops"}}',
+    );
+  });
 });
 
 const emptyJobCounts = {

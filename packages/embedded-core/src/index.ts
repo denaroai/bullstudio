@@ -355,7 +355,8 @@ async function handleDashboardAsset(
             ? undefined
             : `window.__BULLSTUDIO__=${JSON.stringify({
                 mode: "embedded",
-                title: config.dashboardIdentity.title,
+                dashboardIdentity: config.dashboardIdentity,
+                documentIdentity: config.documentIdentity,
               })};`,
       };
     }
@@ -371,8 +372,10 @@ async function handleDashboardAsset(
           ? undefined
           : `<!doctype html><html><head><title>${escapeHtml(
               config.documentIdentity.title,
-            )}</title><script type="module" src="./assets/app.js"></script></head><body><div id="root">${escapeHtml(
-              config.dashboardIdentity.title,
+            )}</title>${renderFavicon(
+              config.documentIdentity,
+            )}<script type="module" src="./assets/app.js"></script></head><body><div id="root">${renderDashboardIdentity(
+              config.dashboardIdentity,
             )}</div></body></html>`,
     };
   }
@@ -384,6 +387,28 @@ async function handleDashboardAsset(
     },
     body: "Method Not Allowed",
   };
+}
+
+function renderFavicon(identity: DocumentIdentity): string {
+  if (!identity.favicon) {
+    return "";
+  }
+
+  return `<link rel="icon" href="${escapeHtml(identity.favicon)}">`;
+}
+
+function renderDashboardIdentity(identity: DashboardIdentity): string {
+  return `${renderDashboardLogo(identity.logo)}<span>${escapeHtml(
+    identity.title,
+  )}</span>`;
+}
+
+function renderDashboardLogo(logo: DashboardLogo | undefined): string {
+  if (!logo) {
+    return "";
+  }
+
+  return `<img src="${escapeHtml(logo.src)}" alt="${escapeHtml(logo.alt)}">`;
 }
 
 async function handlePrivateDashboardApi(

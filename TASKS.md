@@ -195,6 +195,8 @@ Progress:
 
 ## 7. Support dashboard and document identity in embedded mode
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Task 4
@@ -207,12 +209,20 @@ Allow embedded dashboards to configure dashboard identity and document identity.
 
 ### Acceptance criteria
 
-- [ ] Dashboard instances accept title and logo configuration.
-- [ ] Dashboard instances accept document title and favicon configuration.
-- [ ] Dashboard assets receive identity configuration without requiring users to rebuild or copy frontend assets.
-- [ ] The UI renders the configured dashboard title and logo.
-- [ ] The served document uses the configured document title and favicon.
-- [ ] Tests verify configured identity values appear in the served dashboard experience.
+- [x] Dashboard instances accept title and logo configuration.
+- [x] Dashboard instances accept document title and favicon configuration.
+- [x] Dashboard assets receive identity configuration without requiring users to rebuild or copy frontend assets.
+- [x] The UI renders the configured dashboard title and logo.
+- [x] The served document uses the configured document title and favicon.
+- [x] Tests verify configured identity values appear in the served dashboard experience.
+
+Progress:
+
+- Embedded dashboard HTML now renders configured dashboard title and logo.
+- Served document HTML now uses configured document title and favicon.
+- Embedded dashboard asset script now receives dashboard and document identity configuration at request time.
+- Added Hono integration coverage for configured dashboard title, dashboard logo, document title, favicon, and runtime identity payload from a non-root mount path.
+- Verified with `pnpm --filter @bullstudio/hono test`, `pnpm --filter @bullstudio/hono typecheck`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, `pnpm exec biome check packages/hono-adapter packages/embedded-core`, and `pnpm typecheck`.
 
 ## 8. Refactor standalone mode onto the embedded core with parity tests
 
