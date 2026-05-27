@@ -1,57 +1,24 @@
-import {
-  createServer,
-  type IncomingMessage,
-  type ServerResponse,
-} from "node:http";
-import { createReadStream, existsSync, statSync } from "node:fs";
-import { join, extname } from "node:path";
+import { existsSync } from "node:fs";
+import { readFile, stat } from "node:fs/promises";
+import { extname, join, normalize, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { pathToFileURL } from "node:url";
+import { serve } from "@hono/node-server";
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { Hono } from "hono";
+import type { Context } from "hono";
+import { trpcRouter } from "../src/integrations/trpc/router";
+import { disconnectProvider } from "../src/integrations/trpc/connection";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
-// Authentication configuration
+// After bundling, this file is at dist/server/production.js,
+// so __dirname is dist/server and the SPA is in dist/client.
+const clientDir = join(__dirname, "..", "client");
+
 const username = process.env.BULLSTUDIO_USERNAME || "bullstudio";
 const password = process.env.BULLSTUDIO_PASSWORD;
-
-function isHealthCheck(pathname: string): boolean {
-  return pathname === "/health" || pathname === "/healthz";
-}
-
-function checkAuth(req: IncomingMessage, res: ServerResponse): boolean {
-  // Skip auth if no password set or health check
-  if (!password || isHealthCheck(req.url || "")) {
-    return true;
-  }
-
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith("Basic ")) {
-    res.writeHead(401, {
-      "WWW-Authenticate": 'Basic realm="bullstudio"',
-      "Content-Type": "text/plain",
-    });
-    res.end("Authentication required");
-    return false;
-  }
-
-  const credentials = Buffer.from(auth.slice(6), "base64").toString();
-  const [user, pass] = credentials.split(":");
-
-  if (user !== username || pass !== password) {
-    res.writeHead(401, {
-      "WWW-Authenticate": 'Basic realm="bullstudio"',
-      "Content-Type": "text/plain",
-    });
-    res.end("Invalid credentials");
-    return false;
-  }
-
-  return true;
-}
-// After bundling, this file is at dist/server/production.js
-// So __dirname is dist/server, and we need dist/client and dist/server/server.js
-const clientDir = join(__dirname, "..", "client");
-const serverFile = join(__dirname, "server.js");
+const port = Number.parseInt(process.env.PORT || "4000", 10);
+const host = process.env.HOST || "localhost";
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html",
@@ -60,6 +27,7 @@ const MIME_TYPES: Record<string, string> = {
   ".json": "application/json",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
   ".gif": "image/gif",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
@@ -70,149 +38,144 @@ const MIME_TYPES: Record<string, string> = {
   ".wasm": "application/wasm",
 };
 
-const port = parseInt(process.env.PORT || "4000", 10);
-const host = process.env.HOST || "localhost";
-
-interface ServerModule {
-  fetch: (request: Request) => Promise<Response>;
+function isHealthCheck(pathname: string): boolean {
+  return pathname === "/health" || pathname === "/healthz";
 }
 
-// Load the TanStack Start server handler dynamically
-let serverModule: ServerModule | null = null;
+function getStaticFilePath(pathname: string): string | null {
+  let decodedPathname: string;
 
-async function getServerModule(): Promise<ServerModule> {
-  if (!serverModule) {
-    const module = await import(pathToFileURL(serverFile).href);
-    serverModule = module.default || module;
+  try {
+    decodedPathname = decodeURIComponent(pathname);
+  } catch {
+    return null;
   }
-  return serverModule!;
+
+  const relativePath =
+    decodedPathname === "/" ? "index.html" : decodedPathname.slice(1);
+  const filePath = normalize(join(clientDir, relativePath));
+  const relativeToClient = relative(clientDir, filePath);
+
+  if (
+    relativeToClient === "" ||
+    relativeToClient.startsWith("..") ||
+    relativeToClient.startsWith("/") ||
+    relativeToClient.startsWith("\\")
+  ) {
+    return null;
+  }
+
+  return filePath;
 }
 
-const server = createServer(async (req, res) => {
-  const url = new URL(req.url || "/", `http://${host}:${port}`);
-  const pathname = url.pathname;
+async function sendFile(
+  c: Context,
+  filePath: string,
+  cacheControl = "public, max-age=3600",
+) {
+  const fileStat = await stat(filePath);
+  const ext = extname(filePath);
+  const contentType = MIME_TYPES[ext] || "application/octet-stream";
+  const headers = {
+    "Cache-Control": cacheControl,
+    "Content-Length": fileStat.size.toString(),
+    "Content-Type": contentType,
+  };
 
-  // Check authentication first
-  if (!checkAuth(req, res)) return;
+  if (c.req.method === "HEAD") {
+    return c.body(null, 200, headers);
+  }
 
-  // Handle health check endpoint
-  if (isHealthCheck(pathname)) {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(
-      JSON.stringify({
-        status: "ok",
-        timestamp: new Date().toISOString(),
-        redis: process.env.REDIS_URL ? "configured" : "not configured",
-      }),
-    );
+  const file = await readFile(filePath);
+  return c.body(new Uint8Array(file), 200, headers);
+}
+
+const app = new Hono();
+
+function healthResponse(c: Context) {
+  return c.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    redis: process.env.REDIS_URL ? "configured" : "not configured",
+  });
+}
+
+app.get("/health", healthResponse);
+app.get("/healthz", healthResponse);
+
+app.use("*", async (c, next) => {
+  if (!password || isHealthCheck(c.req.path)) {
+    await next();
     return;
   }
 
-  // Try to serve static files first
-  // Handle assets, favicon, logo, and fonts
-  if (
-    pathname.startsWith("/assets/") ||
-    pathname.startsWith("/fonts/") ||
-    pathname === "/favicon.ico" ||
-    pathname === "/logo.svg" ||
-    pathname.endsWith(".svg") ||
-    pathname.endsWith(".png") ||
-    pathname.endsWith(".ico") ||
-    pathname.endsWith(".ttf") ||
-    pathname.endsWith(".woff") ||
-    pathname.endsWith(".woff2")
-  ) {
-    const filePath = join(clientDir, pathname);
-
-    if (existsSync(filePath)) {
-      const stat = statSync(filePath);
-      if (stat.isFile()) {
-        const ext = extname(filePath);
-        const contentType = MIME_TYPES[ext] || "application/octet-stream";
-
-        // Use shorter cache for non-hashed assets
-        const cacheControl = pathname.startsWith("/assets/")
-          ? "public, max-age=31536000, immutable"
-          : "public, max-age=3600";
-
-        res.writeHead(200, {
-          "Content-Type": contentType,
-          "Content-Length": stat.size,
-          "Cache-Control": cacheControl,
-        });
-
-        createReadStream(filePath).pipe(res);
-        return;
-      }
-    }
-  }
-
-  // Handle SSR for all other routes
-  try {
-    const handler = await getServerModule();
-
-    // Create a Request object from the incoming request
-    const headers = new Headers();
-    for (const [key, value] of Object.entries(req.headers)) {
-      if (value) {
-        if (Array.isArray(value)) {
-          value.forEach((v) => headers.append(key, v));
-        } else {
-          headers.set(key, value);
-        }
-      }
-    }
-
-    const body =
-      req.method !== "GET" && req.method !== "HEAD"
-        ? await new Promise<Buffer>((resolve) => {
-            const chunks: Buffer[] = [];
-            req.on("data", (chunk) => chunks.push(chunk));
-            req.on("end", () => resolve(Buffer.concat(chunks)));
-          })
-        : undefined;
-
-    const request = new Request(url.toString(), {
-      method: req.method,
-      headers,
-      body: body as unknown as BodyInit | undefined,
+  const auth = c.req.header("Authorization");
+  if (!auth?.startsWith("Basic ")) {
+    return c.text("Authentication required", 401, {
+      "WWW-Authenticate": 'Basic realm="bullstudio"',
     });
-
-    // Call the TanStack Start fetch handler
-    const response = await handler.fetch(request);
-
-    // Send response
-    res.writeHead(response.status, Object.fromEntries(response.headers));
-
-    if (response.body) {
-      const reader = response.body.getReader();
-      const pump = async () => {
-        const { done, value } = await reader.read();
-        if (done) {
-          res.end();
-          return;
-        }
-        res.write(value);
-        await pump();
-      };
-      await pump();
-    } else {
-      res.end();
-    }
-  } catch (error) {
-    console.error("SSR Error:", error);
-    res.writeHead(500, { "Content-Type": "text/plain" });
-    res.end("Internal Server Error");
   }
+
+  const credentials = Buffer.from(auth.slice(6), "base64").toString();
+  const separator = credentials.indexOf(":");
+  const user = separator === -1 ? credentials : credentials.slice(0, separator);
+  const pass = separator === -1 ? "" : credentials.slice(separator + 1);
+
+  if (user !== username || pass !== password) {
+    return c.text("Invalid credentials", 401, {
+      "WWW-Authenticate": 'Basic realm="bullstudio"',
+    });
+  }
+
+  await next();
 });
 
-server.listen(port, host, () => {
-  console.log(`Server running at http://${host}:${port}`);
+app.all("/api/trpc/*", (c) => {
+  return fetchRequestHandler({
+    endpoint: "/api/trpc",
+    req: c.req.raw,
+    router: trpcRouter,
+    createContext: () => ({}),
+  });
 });
+
+app.on(["GET", "HEAD"], "*", async (c) => {
+  const staticFilePath = getStaticFilePath(c.req.path);
+
+  if (staticFilePath && existsSync(staticFilePath)) {
+    const fileStat = await stat(staticFilePath);
+
+    if (fileStat.isFile()) {
+      const cacheControl = c.req.path.startsWith("/assets/")
+        ? "public, max-age=31536000, immutable"
+        : "public, max-age=3600";
+
+      return sendFile(c, staticFilePath, cacheControl);
+    }
+  }
+
+  const indexPath = join(clientDir, "index.html");
+  return sendFile(c, indexPath, "no-cache");
+});
+
+app.notFound((c) => c.text("Not Found", 404));
+
+const server = serve(
+  {
+    fetch: app.fetch,
+    hostname: host,
+    port,
+  },
+  () => {
+    console.log(`Server running at http://${host}:${port}`);
+  },
+);
 
 const shutdown = (signal: string) => {
   console.log(`Process received ${signal}, attempting to shut down gracefully`);
-  server.close(() => {
+
+  server.close(async () => {
+    await disconnectProvider();
     console.log("Server stopped successfully");
     process.exit(0);
   });

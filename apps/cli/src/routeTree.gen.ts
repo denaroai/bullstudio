@@ -14,7 +14,6 @@ import { Route as JobsIndexRouteImport } from './routes/jobs/index'
 import { Route as FlowsIndexRouteImport } from './routes/flows/index'
 import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
 import { Route as FlowsFlowIdRouteImport } from './routes/flows/$flowId'
-import { Route as ApiTrpcSplatRouteImport } from './routes/api.trpc.$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -41,11 +40,6 @@ const FlowsFlowIdRoute = FlowsFlowIdRouteImport.update({
   path: '/flows/$flowId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
-  id: '/api/trpc/$',
-  path: '/api/trpc/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -53,7 +47,6 @@ export interface FileRoutesByFullPath {
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/flows/': typeof FlowsIndexRoute
   '/jobs/': typeof JobsIndexRoute
-  '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,7 +54,6 @@ export interface FileRoutesByTo {
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/flows': typeof FlowsIndexRoute
   '/jobs': typeof JobsIndexRoute
-  '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,25 +62,12 @@ export interface FileRoutesById {
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/flows/': typeof FlowsIndexRoute
   '/jobs/': typeof JobsIndexRoute
-  '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/flows/$flowId'
-    | '/jobs/$jobId'
-    | '/flows/'
-    | '/jobs/'
-    | '/api/trpc/$'
+  fullPaths: '/' | '/flows/$flowId' | '/jobs/$jobId' | '/flows/' | '/jobs/'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/flows/$flowId'
-    | '/jobs/$jobId'
-    | '/flows'
-    | '/jobs'
-    | '/api/trpc/$'
+  to: '/' | '/flows/$flowId' | '/jobs/$jobId' | '/flows' | '/jobs'
   id:
     | '__root__'
     | '/'
@@ -96,7 +75,6 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/flows/'
     | '/jobs/'
-    | '/api/trpc/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -105,7 +83,6 @@ export interface RootRouteChildren {
   JobsJobIdRoute: typeof JobsJobIdRoute
   FlowsIndexRoute: typeof FlowsIndexRoute
   JobsIndexRoute: typeof JobsIndexRoute
-  ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -145,13 +122,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FlowsFlowIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/trpc/$': {
-      id: '/api/trpc/$'
-      path: '/api/trpc/$'
-      fullPath: '/api/trpc/$'
-      preLoaderRoute: typeof ApiTrpcSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -161,17 +131,7 @@ const rootRouteChildren: RootRouteChildren = {
   JobsJobIdRoute: JobsJobIdRoute,
   FlowsIndexRoute: FlowsIndexRoute,
   JobsIndexRoute: JobsIndexRoute,
-  ApiTrpcSplatRoute: ApiTrpcSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

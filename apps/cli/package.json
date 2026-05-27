@@ -8,7 +8,7 @@
     "bullstudio": "./dist/bin/cli.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "keywords": [
     "bullmq",
@@ -28,9 +28,9 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && cp -r public/. dist/client/ && pnpm build:server && pnpm build:cli",
-    "build:server": "esbuild server/production.ts --bundle --platform=node --target=node18 --outfile=dist/server/production.js --format=esm --external:bullmq --external:ioredis --external:open",
-    "build:cli": "esbuild bin/cli.ts --bundle --platform=node --target=node18 --outfile=dist/bin/cli.js --format=esm --external:open",
+    "build": "vite build && pnpm build:server && pnpm build:cli",
+    "build:server": "esbuild server/production.ts --bundle --platform=node --target=node20 --outfile=dist/server/production.js --format=esm --external:bull --external:bullmq --external:ioredis",
+    "build:cli": "esbuild bin/cli.ts --bundle --platform=node --target=node20 --outfile=dist/bin/cli.js --format=esm --external:open",
     "preview": "vite preview",
     "start": "node dist/bin/cli.js",
     "test": "vitest run",
@@ -42,14 +42,13 @@
     "generate:bull-jobs": "npx tsx scripts/generate-bull-jobs.ts"
   },
   "dependencies": {
+    "@hono/node-server": "^2.0.4",
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/react-devtools": "^0.7.0",
     "@tanstack/react-query": "^5.66.5",
     "@tanstack/react-query-devtools": "^5.84.2",
     "@tanstack/react-router": "^1.132.0",
     "@tanstack/react-router-devtools": "^1.132.0",
-    "@tanstack/react-router-ssr-query": "^1.131.7",
-    "@tanstack/react-start": "^1.132.0",
     "@tanstack/router-plugin": "^1.132.0",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
@@ -61,6 +60,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dagre": "^0.8.5",
+    "hono": "^4.12.23",
+    "ioredis": "^5.4.2",
     "lucide-react": "^0.544.0",
     "open": "^10.1.0",
     "react": "19.2.3",

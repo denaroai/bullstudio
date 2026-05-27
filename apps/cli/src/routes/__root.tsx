@@ -1,7 +1,6 @@
 import {
   HeadContent,
   Outlet,
-  Scripts,
   createRootRouteWithContext,
 } from "@tanstack/react-router";
 
@@ -66,22 +65,17 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <HeadContent />
-      </head>
-      <body className="min-h-screen bg-zinc-950 text-zinc-100 antialiased font-sans">
-        <ThemeProvider defaultTheme="dark">
-          <SidebarProvider>
-            <AppSidebar />
-            <SidebarInset className="overflow-y-auto">
-              <main className="flex-1 p-6">{children}</main>
-            </SidebarInset>
-            <Scripts />
-          </SidebarProvider>
-          <Toaster theme="dark" position="bottom-right" richColors />
-        </ThemeProvider>
-      </body>
-    </html>
+    <>
+      <HeadContent />
+      <ThemeProvider defaultTheme="dark">
+        <SidebarProvider>
+          <AppSidebar />
+          <SidebarInset className="overflow-y-auto">
+            <main className="flex-1 p-6">{children}</main>
+          </SidebarInset>
+        </SidebarProvider>
+        <Toaster theme="dark" position="bottom-right" richColors />
+      </ThemeProvider>
+    </>
   );
 }

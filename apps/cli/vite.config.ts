@@ -1,41 +1,35 @@
 import { defineConfig } from "vite";
 import { devtools } from "@tanstack/devtools-vite";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 
 const config = defineConfig({
+  build: {
+    outDir: "dist/client",
+  },
   plugins: [
     devtools(),
     viteTsConfigPaths({
       projects: ["./tsconfig.json"],
     }),
     tailwindcss(),
-    tanstackStart(),
+    tanstackRouter({
+      target: "react",
+    }),
     viteReact(),
   ],
   resolve: {
     dedupe: ["react", "react-dom"],
   },
-  ssr: {
-    // These packages will be bundled instead of externalized
-    noExternal: [
-      "@bullstudio/ui",
-      "@bullstudio/connect-types",
-      "@bullstudio/dayjs",
-      "@bullstudio/queue",
-      /^@radix-ui\//,
-    ],
-    // External packages for SSR - use native require
-    external: ["react", "react-dom"],
-    // Allow CJS modules in SSR
-    optimizeDeps: {
-      include: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
-    },
-  },
   optimizeDeps: {
-    include: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
+    include: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+    ],
     esbuildOptions: {
       // Handle CommonJS modules
       format: "esm",
