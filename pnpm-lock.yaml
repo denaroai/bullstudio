@@ -220,6 +220,34 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  packages/bull-adapter:
+    dependencies:
+      '@bullstudio/connect-types':
+        specifier: workspace:*
+        version: link:../connect-types
+      '@bullstudio/embedded-core':
+        specifier: workspace:*
+        version: link:../embedded-core
+    devDependencies:
+      '@bullstudio/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.7
+      bull:
+        specifier: ^4.16.4
+        version: 4.16.5
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.9.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@24.10.7)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(tsx@4.21.0)
+
   packages/bullmq-adapter:
     dependencies:
       '@bullstudio/connect-types':

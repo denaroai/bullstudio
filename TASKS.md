@@ -323,6 +323,8 @@ Progress:
 
 ## 11. Add the Bull queue adapter
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Tasks 1, 3, 6
@@ -335,12 +337,21 @@ Add the function-based Bull queue adapter package for Bull 4+. The adapter shoul
 
 ### Acceptance criteria
 
-- [ ] Developers can create a Bull queue adapter with a function-based API.
-- [ ] Bull is a peer dependency of the adapter package.
-- [ ] The adapter infers queue key and queue label and supports explicit overrides.
-- [ ] The adapter exposes Bull capabilities accurately, including lack of flow support.
-- [ ] The adapter does not close or otherwise own the supplied Bull queue or its connection.
-- [ ] Tests verify Bull queue reads, job reads, supported mutations, capabilities, key behavior, and host-owned lifecycle behavior.
+- [x] Developers can create a Bull queue adapter with a function-based API.
+- [x] Bull is a peer dependency of the adapter package.
+- [x] The adapter infers queue key and queue label and supports explicit overrides.
+- [x] The adapter exposes Bull capabilities accurately, including lack of flow support.
+- [x] The adapter does not close or otherwise own the supplied Bull queue or its connection.
+- [x] Tests verify Bull queue reads, job reads, supported mutations, capabilities, key behavior, and host-owned lifecycle behavior.
+
+Progress:
+
+- Added `@bullstudio/bull-adapter` with the function-based `createBullQueueAdapter()` API.
+- Declared Bull as a peer dependency and used the host-supplied Bull queue for reads and operations.
+- Implemented inferred and explicit queue key/label behavior, Bull-specific capabilities without flow support, queue reads, job reads, logs, queue pause/resume, job retry/removal, and worker counts.
+- Preserved host-owned queue lifecycle by not exposing or invoking close/disconnect behavior on the adapter.
+- Added Bull adapter tests for capabilities, key behavior, queue reads, job reads, supported operations, and host-owned lifecycle behavior.
+- Verified with `pnpm --filter @bullstudio/bull-adapter test`, `pnpm --filter @bullstudio/bull-adapter typecheck`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm exec biome check packages/bull-adapter packages/embedded-core`, and `pnpm typecheck`.
 
 ## 12. Add the Express framework adapter
 
