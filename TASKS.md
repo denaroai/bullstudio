@@ -290,6 +290,8 @@ Progress:
 
 ## 10. Document and demo the first embedded slice
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Tasks 4, 5, 6, 7, 8, 9
@@ -302,14 +304,22 @@ Add documentation and a minimal Hono + BullMQ example for embedded mode. The doc
 
 ### Acceptance criteria
 
-- [ ] Documentation introduces standalone mode and embedded mode using glossary language.
-- [ ] Documentation includes a Hono + BullMQ embedded example.
-- [ ] Documentation explains that embedded mode exposes only supplied queues.
-- [ ] Documentation explains that supplied queues are host-owned queues.
-- [ ] Documentation explains Basic Auth protection and host-owned access control opt-out.
-- [ ] Documentation explains read-only dashboard behavior.
-- [ ] Documentation explains title, logo, favicon, and document title configuration.
-- [ ] Documentation states that the private dashboard API is private and remains tRPC internally.
+- [x] Documentation introduces standalone mode and embedded mode using glossary language.
+- [x] Documentation includes a Hono + BullMQ embedded example.
+- [x] Documentation explains that embedded mode exposes only supplied queues.
+- [x] Documentation explains that supplied queues are host-owned queues.
+- [x] Documentation explains Basic Auth protection and host-owned access control opt-out.
+- [x] Documentation explains read-only dashboard behavior.
+- [x] Documentation explains title, logo, favicon, and document title configuration.
+- [x] Documentation states that the private dashboard API is private and remains tRPC internally.
+
+Progress:
+
+- Added `docs/embedded-mode.md` introducing standalone mode, embedded mode, queue sources, supplied queues, host-owned queues, mount path behavior, dashboard protection, read-only dashboards, dashboard identity, document identity, and the private tRPC dashboard API.
+- Added a minimal `examples/hono-bullmq-embedded` TypeScript example that mounts `@bullstudio/hono` with a BullMQ queue through `@bullstudio/bullmq-adapter`.
+- Added the example package to the workspace so it is covered by workspace typecheck.
+- Added a documentation coverage test that verifies the first embedded Hono + BullMQ slice remains documented.
+- Verified with `pnpm --filter bullstudio test`, `pnpm --filter @bullstudio/example-hono-bullmq-embedded typecheck`, `pnpm typecheck`, and `pnpm exec biome check ...`.
 
 ## 11. Add the Bull queue adapter
 

@@ -189,6 +189,37 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0
 
+  examples/hono-bullmq-embedded:
+    dependencies:
+      '@bullstudio/bullmq-adapter':
+        specifier: workspace:*
+        version: link:../../packages/bullmq-adapter
+      '@bullstudio/hono':
+        specifier: workspace:*
+        version: link:../../packages/hono-adapter
+      '@hono/node-server':
+        specifier: ^2.0.4
+        version: 2.0.4(hono@4.12.23)
+      bullmq:
+        specifier: ^5.34.8
+        version: 5.66.5
+      hono:
+        specifier: ^4.12.23
+        version: 4.12.23
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.9.1
+    devDependencies:
+      '@bullstudio/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.7
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   packages/bullmq-adapter:
     dependencies:
       '@bullstudio/connect-types':
