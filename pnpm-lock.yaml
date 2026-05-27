@@ -220,8 +220,30 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  packages/adapter-utils:
+    dependencies:
+      '@bullstudio/connect-types':
+        specifier: workspace:*
+        version: link:../connect-types
+    devDependencies:
+      '@bullstudio/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.7
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@24.10.7)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(tsx@4.21.0)
+
   packages/bull-adapter:
     dependencies:
+      '@bullstudio/adapter-utils':
+        specifier: workspace:*
+        version: link:../adapter-utils
       '@bullstudio/connect-types':
         specifier: workspace:*
         version: link:../connect-types
@@ -250,6 +272,9 @@ importers:
 
   packages/bullmq-adapter:
     dependencies:
+      '@bullstudio/adapter-utils':
+        specifier: workspace:*
+        version: link:../adapter-utils
       '@bullstudio/connect-types':
         specifier: workspace:*
         version: link:../connect-types

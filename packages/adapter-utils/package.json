@@ -1,5 +1,5 @@
 {
-  "name": "@bullstudio/bullmq-adapter",
+  "name": "@bullstudio/adapter-utils",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -13,19 +13,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "peerDependencies": {
-    "bullmq": "^5.0.0"
-  },
   "dependencies": {
-    "@bullstudio/adapter-utils": "workspace:*",
-    "@bullstudio/connect-types": "workspace:*",
-    "@bullstudio/embedded-core": "workspace:*"
+    "@bullstudio/connect-types": "workspace:*"
   },
   "devDependencies": {
     "@bullstudio/typescript-config": "workspace:*",
     "@types/node": "^24.10.1",
-    "bullmq": "^5.34.8",
-    "ioredis": "^5.4.2",
     "typescript": "^5.7.3",
     "vitest": "^3.2.4"
   }

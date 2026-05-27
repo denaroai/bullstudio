@@ -1,6 +1,13 @@
+import {
+  createJobNotFoundError,
+  createWorkerCount,
+  filterJobsByName,
+  normalizeJobCounts,
+  sortJobs,
+  toJobSummary,
+} from "@bullstudio/adapter-utils";
 import type {
   Job,
-  JobCounts,
   JobQueryOptions,
   JobStatus,
 } from "@bullstudio/connect-types";
@@ -62,9 +69,7 @@ export function createBullMqQueueAdapter(
           .map((job) => mapJob(job, queue.name)),
       );
 
-      if (filter?.name) {
-        mappedJobs = mappedJobs.filter((job) => job.name === filter.name);
-      }
+      mappedJobs = filterJobsByName(mappedJobs, filter?.name);
 
       if (sort) {
         mappedJobs = sortJobs(mappedJobs, sort.field, sort.order);
@@ -83,10 +88,20 @@ export function createBullMqQueueAdapter(
           .filter((job): job is BullMqJob => job !== undefined)
           .map((job) => mapJob(job, queue.name)),
       );
-
-      return summaries.map(
-        ({ data, returnValue, stacktrace, ...summary }) => summary,
+      let filteredSummaries = filterJobsByName(
+        summaries,
+        options?.filter?.name,
       );
+
+      if (options?.sort) {
+        filteredSummaries = sortJobs(
+          filteredSummaries,
+          options.sort.field,
+          options.sort.order,
+        );
+      }
+
+      return filteredSummaries.map(toJobSummary);
     },
     getJob: async (jobId) => {
       const job = await queue.getJob(jobId);
@@ -96,27 +111,20 @@ export function createBullMqQueueAdapter(
     retryJob: async (jobId) => {
       const job = await queue.getJob(jobId);
       if (!job) {
-        throw new Error(
-          `Job "${jobId}" was not found in queue "${queue.name}".`,
-        );
+        throw createJobNotFoundError(queue.name, jobId);
       }
       await job.retry();
     },
     removeJob: async (jobId) => {
       const job = await queue.getJob(jobId);
       if (!job) {
-        throw new Error(
-          `Job "${jobId}" was not found in queue "${queue.name}".`,
-        );
+        throw createJobNotFoundError(queue.name, jobId);
       }
       await job.remove();
     },
     getWorkerCount: async () => {
       const workers = await queue.getWorkers();
-      return {
-        queueName: queue.name,
-        count: workers.length,
-      };
+      return createWorkerCount(queue.name, workers);
     },
   };
 }
@@ -178,30 +186,7 @@ function normalizeProgress(progress: number | string | object | boolean) {
   return progress;
 }
 
-function sortJobs(
-  jobs: Job[],
-  field: "timestamp" | "processedOn" | "finishedOn" | "progress",
-  order: "asc" | "desc",
-): Job[] {
-  return [...jobs].sort((a, b) => {
-    const aValue =
-      field === "progress"
-        ? typeof a.progress === "number"
-          ? a.progress
-          : 0
-        : (a[field] ?? 0);
-    const bValue =
-      field === "progress"
-        ? typeof b.progress === "number"
-          ? b.progress
-          : 0
-        : (b[field] ?? 0);
-
-    return order === "asc" ? aValue - bValue : bValue - aValue;
-  });
-}
-
-async function getJobCounts(queue: Queue): Promise<JobCounts> {
+async function getJobCounts(queue: Queue) {
   const counts = await queue.getJobCounts(
     "waiting",
     "active",
@@ -213,16 +198,7 @@ async function getJobCounts(queue: Queue): Promise<JobCounts> {
     "waiting-children",
   );
 
-  return {
-    waiting: counts.waiting ?? 0,
-    active: counts.active ?? 0,
-    completed: counts.completed ?? 0,
-    failed: counts.failed ?? 0,
-    delayed: counts.delayed ?? 0,
-    paused: counts.paused ?? 0,
-    prioritized: counts.prioritized ?? 0,
-    waitingChildren: counts["waiting-children"] ?? 0,
-  };
+  return normalizeJobCounts(counts);
 }
 
 function getQueuePrefix(queue: Queue): string {

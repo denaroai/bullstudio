@@ -118,6 +118,59 @@ describe("createBullQueueAdapter", () => {
     ]);
   });
 
+  it("applies name filtering and sorting when reading job summaries", async () => {
+    const queue = {
+      name: "email",
+      getJobs: async () => [
+        createQueueJob({ id: "1", name: "digest", timestamp: 300 }),
+        createQueueJob({ id: "2", name: "welcome", timestamp: 100 }),
+        createQueueJob({ id: "3", name: "welcome", timestamp: 200 }),
+      ],
+    } as unknown as Bull.Queue;
+
+    const adapter = createBullQueueAdapter(queue);
+
+    await expect(
+      adapter.getJobsSummary({
+        filter: { name: "welcome" },
+        sort: { field: "timestamp", order: "desc" },
+      }),
+    ).resolves.toEqual([
+      {
+        id: "3",
+        name: "welcome",
+        queueName: "email",
+        status: "waiting",
+        progress: 0,
+        attemptsMade: 0,
+        failedReason: undefined,
+        timestamp: 200,
+        processedOn: undefined,
+        finishedOn: undefined,
+        delay: undefined,
+        priority: undefined,
+        parentId: undefined,
+        repeatJobKey: undefined,
+      },
+      {
+        id: "2",
+        name: "welcome",
+        queueName: "email",
+        status: "waiting",
+        progress: 0,
+        attemptsMade: 0,
+        failedReason: undefined,
+        timestamp: 100,
+        processedOn: undefined,
+        finishedOn: undefined,
+        delay: undefined,
+        priority: undefined,
+        parentId: undefined,
+        repeatJobKey: undefined,
+      },
+    ]);
+  });
+
   it("delegates supported operations without closing the supplied queue", async () => {
     const retry = vi.fn<() => Promise<void>>();
     const remove = vi.fn<() => Promise<void>>();
@@ -173,3 +226,22 @@ describe("createBullQueueAdapter", () => {
     expect(adapter).not.toHaveProperty("disconnect");
   });
 });
+
+function createQueueJob(overrides: {
+  id: string;
+  name: string;
+  timestamp: number;
+}) {
+  return {
+    data: { userId: 123 },
+    progress: () => 0,
+    attemptsMade: 0,
+    opts: {},
+    failedReason: undefined,
+    stacktrace: [],
+    returnvalue: { ok: true },
+    processedOn: undefined,
+    finishedOn: undefined,
+    ...overrides,
+  };
+}
