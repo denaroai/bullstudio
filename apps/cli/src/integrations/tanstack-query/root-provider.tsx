@@ -6,13 +6,14 @@ import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import type { TRPCRouter } from "@/integrations/trpc/router";
 
 import { TRPCProvider } from "@/integrations/trpc/react";
+import { getApiUrl } from "@/lib/runtime-config";
 
 function getUrl() {
-  const base = (() => {
-    if (typeof window !== "undefined") return "";
-    return `http://localhost:${process.env.PORT ?? 3000}`;
-  })();
-  return `${base}/api/trpc`;
+  if (typeof window !== "undefined") {
+    return getApiUrl();
+  }
+
+  return `http://localhost:${process.env.PORT ?? 3000}/api/trpc`;
 }
 
 export const trpcClient = createTRPCClient<TRPCRouter>({

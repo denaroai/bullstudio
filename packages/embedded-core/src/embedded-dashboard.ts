@@ -183,7 +183,21 @@ function resolveDashboardConfig(
     protection: config.protection ?? defaultProtection,
     dashboardIdentity: config.dashboardIdentity ?? defaultDashboardIdentity,
     documentIdentity: config.documentIdentity ?? defaultDocumentIdentity,
+    basePath: normalizeBasePath(config.basePath),
   };
+}
+
+function normalizeBasePath(basePath: string | undefined): string {
+  if (!basePath) {
+    return "";
+  }
+
+  const trimmed = basePath.trim();
+  if (!trimmed || trimmed === "/") {
+    return "";
+  }
+
+  return `/${trimmed.replace(/^\/+|\/+$/g, "")}`;
 }
 
 function getQueueSourceStatus(

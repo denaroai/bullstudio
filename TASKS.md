@@ -1,485 +1,233 @@
-# Embedded Mode Tasks
+# Embedded Queue Management Parity Tasks
 
-Parent: [Embedded Mode PRD](./docs/prd/embedded-mode.md)
+Parent: [Embedded Queue Management Parity PRD](./docs/prd/embedded-queue-management-parity.md)
 
-These tasks break the PRD into dependency-ordered tracer-bullet slices. Each task should be independently grabbable once its blockers are complete and should preserve the vocabulary and constraints in [CONTEXT.md](./CONTEXT.md), [ADR 0001](./docs/adr/0001-embedded-dashboard-architecture.md), and [ADR 0002](./docs/adr/0002-preserve-standalone-behavior-during-embedded-extraction.md).
+These tasks break the PRD into dependency-ordered tracer-bullet slices. Each task should preserve the vocabulary and constraints in [CONTEXT.md](./CONTEXT.md), [ADR 0001](./docs/adr/0001-embedded-dashboard-architecture.md), [ADR 0002](./docs/adr/0002-preserve-standalone-behavior-during-embedded-extraction.md), and [ADR 0003](./docs/adr/0003-shared-private-dashboard-router-shape.md).
 
-## 1. Define the embedded core and adapter contracts
-
-Status: Complete
+## 1. Add embedded private API queue source compatibility
 
 Type: AFK
 
 Blocked by: None - can start immediately
 
-User stories covered: 31, 32, 33
+User stories covered: 1, 2, 3, 4, 5, 30, 31, 32, 37, 39
 
 ### What to build
 
-Create the first importable embedded core surface and the shared contracts for dashboard instances, queue adapters, adapter capabilities, queue source status, dashboard protection, read-only mode, dashboard identity, document identity, and private dashboard API mounting. This slice does not need a full working Hono mount yet, but it must establish the stable contract that queue and framework adapters will implement.
+Make the embedded private dashboard API answer the connection and queue procedures that the real dashboard assets already call, while keeping supplied queues and queue keys as the embedded-mode source of truth. This slice should make the embedded dashboard shell, sidebar, overview queue selector, and queue source display load without missing-procedure errors.
 
 ### Acceptance criteria
 
-- [x] The embedded core can be imported by other workspace packages.
-- [x] The queue adapter contract is per-queue and capability-based.
-- [x] The dashboard configuration contract includes supplied queues, read-only mode, dashboard protection, dashboard identity, and document identity.
-- [x] The embedded core exposes a small framework-neutral interface that framework adapters can mount.
-- [x] Type tests or compile-time tests cover the intended public contracts.
-- [x] Existing standalone mode behavior is not changed by this slice.
+- [ ] `connection.info` returns embedded queue source status for supplied queues.
+- [ ] `connection.info` does not invent Redis host, port, database, password, or display URL values in embedded mode.
+- [ ] `connection.info` includes any legacy compatibility fields needed by current dashboard assets without changing the canonical queue source status.
+- [ ] `queues.list` returns supplied queues with queue key, queue label, provider, per-queue capabilities, queue name, and prefix when available.
+- [ ] `queues.prefixes` returns only supplied queue prefixes derived from supplied queue metadata.
+- [ ] `queues.get` accepts queue key and standalone-style queue name/prefix compatibility input.
+- [ ] Queue name/prefix lookup returns not found when no supplied queue matches.
+- [ ] Queue name/prefix lookup returns bad request when more than one supplied queue matches.
+- [ ] Embedded core tests cover the private API behavior.
+- [ ] Existing standalone behavior remains unchanged.
 
-Progress:
-
-- Added `@bullstudio/embedded-core` as the first importable embedded core package.
-- Added public contracts for dashboard instances, queue adapters, adapter capabilities, queue source status, dashboard protection, read-only mode, dashboard identity, document identity, and private dashboard API mounting.
-- Added a compile-time/runtime contract test for the public embedded core surface.
-- Verified with `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, and `pnpm typecheck`.
-
-## 2. Implement the BullMQ queue adapter
-
-Status: Complete
+## 2. Add embedded overview metrics parity
 
 Type: AFK
 
 Blocked by: Task 1
 
-User stories covered: 4, 5, 6, 7, 8, 9, 10, 11, 18, 19
+User stories covered: 5, 6, 7, 8, 29, 30, 31, 37, 39
 
 ### What to build
 
-Add the function-based BullMQ queue adapter package for BullMQ 5+. The adapter should expose a host-owned BullMQ queue as a supplied queue, infer queue key and queue label by default, allow explicit key and label overrides, expose adapter capabilities, and implement the queue/job operations required by the current dashboard surface.
+Make the embedded overview screen work end-to-end against supplied queues. The private dashboard API should aggregate completed and failed job summaries from matching supplied queues, apply the requested time range, and return the same overview response shape the current dashboard assets expect.
 
 ### Acceptance criteria
 
-- [x] Developers can create a queue adapter with a function-based API.
-- [x] BullMQ is a peer dependency of the adapter package.
-- [x] The adapter infers a queue key and queue label from the supplied BullMQ queue.
-- [x] The adapter accepts explicit queue key and queue label overrides.
-- [x] The adapter exposes BullMQ capabilities, including flow support where available.
-- [x] The adapter does not close or otherwise own the supplied queue or its connection.
-- [x] Tests verify queue key inference, overrides, capabilities, job reads, queue reads, and host-owned queue lifecycle behavior.
+- [ ] `overview.metrics` works in embedded mode without missing-procedure errors.
+- [ ] Metrics aggregate completed and failed jobs from supplied queues only.
+- [ ] Queue filtering works with queue key when provided.
+- [ ] Queue filtering accepts queue name/prefix as compatibility input.
+- [ ] Ambiguous queue name/prefix filters fail clearly instead of choosing a queue.
+- [ ] Time-range filtering matches the current completed/failed overview behavior.
+- [ ] Response shape remains compatible with the current overview UI.
+- [ ] Embedded core tests cover all-queue metrics, single-queue metrics, time ranges, and ambiguous compatibility lookup.
+- [ ] The overview page can be browser-verified in the Next embedded example.
 
-Progress:
-
-- Added `@bullstudio/bullmq-adapter` with the `createBullMqQueueAdapter()` function-based API.
-- Declared BullMQ as a peer dependency while using the host-supplied queue instance for all queue and job operations.
-- Extended the embedded queue adapter contract with queue reads, job reads, job logs, queue pause/resume, job retry/removal, and worker count operations.
-- Added adapter tests for inferred identity, explicit key/label overrides, BullMQ capabilities, queue reads, job reads, delegated operations, and host-owned lifecycle behavior.
-- Verified with `pnpm --filter @bullstudio/bullmq-adapter test`, `pnpm --filter @bullstudio/bullmq-adapter typecheck`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, and `pnpm exec biome check packages/bullmq-adapter packages/embedded-core`.
-
-## 3. Aggregate supplied queues in the embedded core
-
-Status: Complete
+## 3. Add embedded job list parity and source queue identity
 
 Type: AFK
 
-Blocked by: Tasks 1, 2
+Blocked by: Task 1
 
-User stories covered: 3, 4, 6, 7, 8, 9, 18, 21
+User stories covered: 9, 10, 11, 12, 13, 14, 29, 30, 31, 37, 38, 39
 
 ### What to build
 
-Teach the embedded core to aggregate supplied queue adapters into the dashboard's multi-queue view. Embedded mode must only expose supplied queues, must fail fast on duplicate queue keys, and must produce queue source status instead of Redis connection details.
+Make the embedded jobs screen list jobs from supplied queues with the current dashboard filters and sorting behavior. Aggregated embedded job list responses should carry optional private `queueKey` source identity so clicking a job can navigate to the correct supplied queue even when queue name and prefix are ambiguous.
 
 ### Acceptance criteria
 
-- [x] A dashboard instance can be created from one or more supplied queue adapters.
-- [x] Embedded mode exposes only supplied queues.
-- [x] Duplicate inferred or explicit queue keys fail fast with a clear error.
-- [x] Queue source status reports supplied queue count, adapter/provider types, capabilities, and source health.
-- [x] Embedded queue APIs address queues through queue keys.
-- [x] Tests verify supplied-queue visibility, duplicate-key failure, queue label behavior, and queue source status.
+- [ ] `jobs.listSummary` works in embedded mode for all supplied queues.
+- [ ] `jobs.list` works in embedded mode for all supplied queues.
+- [ ] Queue filtering works with queue key when provided.
+- [ ] Queue filtering accepts queue name/prefix as compatibility input.
+- [ ] Status filtering works for the current dashboard job statuses.
+- [ ] Aggregated results are sorted consistently after merging supplied queue results.
+- [ ] Requested limits apply globally to the returned response after merge and sort.
+- [ ] Embedded aggregate job list items include optional `queueKey`.
+- [ ] The optional `queueKey` field is treated as private dashboard API data, not a public connect-types contract change.
+- [ ] The jobs UI prefers queue key when available and falls back to queue name/prefix for standalone behavior.
+- [ ] Embedded core tests cover aggregation, filtering, sorting, global limits, and optional source queue key.
+- [ ] UI or route tests cover preserving standalone links while adding optional queue key links for embedded mode.
 
-Progress:
-
-- Added keyed supplied-queue aggregation to `@bullstudio/embedded-core`.
-- Added dashboard queue projections that preserve queue key, label, provider, capabilities, and adapter-provided queue state.
-- Added keyed embedded queue APIs for queue reads, job reads, job logs, queue mutations, job mutations, and worker counts.
-- Added duplicate supplied-queue key validation with a clear fail-fast error.
-- Verified with `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, `pnpm --filter @bullstudio/bullmq-adapter test`, `pnpm --filter @bullstudio/bullmq-adapter typecheck`, and `pnpm exec biome check packages/embedded-core`.
-
-## 4. Mount embedded Bullstudio in Hono at one mount path
-
-Status: Complete
+## 4. Add embedded job detail, logs, retry, and remove parity
 
 Type: AFK
 
-Blocked by: Tasks 1, 2, 3
+Blocked by: Tasks 1, 3
 
-User stories covered: 1, 2, 3, 13, 26, 32, 33, 34
+User stories covered: 15, 16, 17, 18, 19, 20, 21, 22, 23, 29, 30, 31, 33, 34, 36, 37, 38, 39
 
 ### What to build
 
-Add the Hono framework adapter package with a native `bullstudio()` dashboard factory. A Hono app should mount the returned value at one mount path and receive the dashboard assets and private dashboard API from that same path.
+Make job detail routes operational in embedded mode. The private dashboard API should resolve target queues by queue key when present, accept queue name/prefix compatibility input, enforce read-only and per-queue capabilities, and return payloads compatible with the current job detail UI.
 
 ### Acceptance criteria
 
-- [x] Hono developers can import `bullstudio()` from the Hono adapter package.
-- [x] The Hono adapter returns a Hono-native mountable value.
-- [x] Dashboard assets are served under the mount path.
-- [x] The private dashboard API is served under the same mount path.
-- [x] The private dashboard API remains tRPC and is not documented as public API.
-- [x] Polling remains the update mechanism; no WebSocket or Server-Sent Events support is introduced.
-- [x] Tests mount the dashboard at a non-root path and verify asset and API responses.
+- [ ] `jobs.get` works in embedded mode with queue key.
+- [ ] `jobs.get` accepts queue name/prefix compatibility input.
+- [ ] `jobs.logs` returns logs and count when the target queue supports job logs.
+- [ ] `jobs.logs` returns bad request when the target queue does not support job logs.
+- [ ] `jobs.retry` requires job retry capability.
+- [ ] `jobs.retry` validates that the target job exists.
+- [ ] `jobs.retry` validates that the target job is failed.
+- [ ] `jobs.retry` checks worker count as a precondition when the target queue supports workers.
+- [ ] `jobs.retry` does not block on worker count when worker visibility is unsupported.
+- [ ] `jobs.retry` returns the current UI-compatible success payload with a numeric worker count.
+- [ ] `jobs.remove` requires job removal capability.
+- [ ] Mutating job operations are rejected for read-only dashboards.
+- [ ] Ambiguous queue name/prefix lookup fails clearly for all job detail procedures.
+- [ ] Job detail routes accept optional queue key while preserving queue name/prefix for standalone and existing links.
+- [ ] Embedded core tests cover success, not found, unsupported capability, read-only rejection, worker precondition, and ambiguous lookup behavior.
+- [ ] The job detail screen can be browser-verified in the Next embedded example.
 
-Progress:
-
-- Added `@bullstudio/hono` with the native `bullstudio()` dashboard factory.
-- Added a Hono integration test that mounts Bullstudio at `/ops/bullstudio` and verifies dashboard HTML, dashboard assets, and private tRPC API responses from that same mount path.
-- Added initial embedded-core dashboard asset handling for the embedded dashboard shell and asset script.
-- Added the first private embedded-core tRPC procedures for supplied queue listing and queue source status.
-- Verified with `pnpm --filter @bullstudio/hono test`, `pnpm --filter @bullstudio/hono typecheck`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, `pnpm exec biome check packages/hono-adapter packages/embedded-core`, and `pnpm typecheck`.
-
-## 5. Add Basic Auth dashboard protection for embedded mode
-
-Status: Complete
+## 5. Add embedded queue pause and resume parity
 
 Type: AFK
 
-Blocked by: Task 4
+Blocked by: Task 1
 
-User stories covered: 13, 14
+User stories covered: 24, 25, 29, 30, 31, 33, 34, 36, 37, 39
 
 ### What to build
 
-Implement Bullstudio-owned dashboard protection in the embedded core, enabled by default through Basic Auth protection. The protection must apply to both dashboard assets and the private dashboard API, while still allowing host applications to disable or replace Bullstudio protection when they intentionally own access control.
+Make queue pause and resume work through the embedded private dashboard API using queue key as canonical identity and queue name/prefix as compatibility lookup input. This task is in scope even if the current React screens expose little or no queue pause/resume UI, because pause and resume are core queue-management operations.
 
 ### Acceptance criteria
 
-- [x] Embedded dashboards are protected by Basic Auth by default.
-- [x] Protection covers dashboard assets and private dashboard API routes.
-- [x] Invalid or missing credentials receive an authentication challenge.
-- [x] Valid credentials can access the dashboard and API.
-- [x] A configured opt-out path supports host-owned access control.
-- [x] Tests cover default Basic Auth, valid credentials, invalid credentials, and disabled/replaced protection behavior.
+- [ ] `queues.pause` accepts queue key.
+- [ ] `queues.pause` accepts queue name/prefix compatibility input.
+- [ ] `queues.pause` requires the target queue's pause capability.
+- [ ] `queues.resume` accepts queue key.
+- [ ] `queues.resume` accepts queue name/prefix compatibility input.
+- [ ] `queues.resume` requires the target queue's resume capability.
+- [ ] Pause and resume return `{ success: true }` on success.
+- [ ] Pause and resume are rejected for read-only dashboards.
+- [ ] Ambiguous queue name/prefix lookup fails clearly for pause and resume.
+- [ ] Embedded core tests cover success, unsupported capability, read-only rejection, not found, and ambiguous lookup behavior.
 
-Progress:
-
-- Added embedded-core dashboard protection enforcement around dashboard assets and the private dashboard API.
-- Basic Auth protection now challenges missing or invalid credentials with `WWW-Authenticate`.
-- Valid default credentials can access embedded dashboard assets and private tRPC API routes.
-- Disabled and custom protection configurations bypass Bullstudio-owned protection so host applications can own access control.
-- Verified with `pnpm --filter @bullstudio/hono test`, `pnpm --filter @bullstudio/hono typecheck`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, `pnpm exec biome check packages/hono-adapter packages/embedded-core`, and `pnpm typecheck`.
-
-## 6. Enforce read-only dashboards in the core operation layer
-
-Status: Complete
+## 6. Add embedded flow list and flow detail parity
 
 Type: AFK
 
-Blocked by: Tasks 3, 4
+Blocked by: Tasks 1, 3
 
-User stories covered: 15, 16, 17, 18
+User stories covered: 26, 27, 28, 29, 30, 31, 34, 35, 36, 37, 38, 39
 
 ### What to build
 
-Add read-only dashboard support in embedded core. Mutating operations remain enabled by default, but when read-only mode is configured, mutating private dashboard API calls must be rejected by the core/server layer even if the request bypasses the UI.
+Make the embedded flows screen and flow detail screen operate against supplied queues. Dashboard-level flow navigation should follow aggregate capabilities, while flow operations should use per-queue capabilities and queue-key-aware target resolution.
 
 ### Acceptance criteria
 
-- [x] Dashboard instances can be configured as read-only.
-- [x] Read-only dashboards still allow non-mutating queue and job reads.
-- [x] Read-only dashboards reject queue pause/resume, job retry, job removal, and other mutating operations exposed by the current dashboard.
-- [x] Rejections use a clear authorization-style error.
-- [x] The UI receives enough capability/state information to hide or disable mutating controls.
-- [x] Tests verify server-side rejection of direct mutating API calls.
+- [ ] `flows.list` aggregates flows only from supplied queues whose per-queue capabilities include flows.
+- [ ] `flows.list` skips supplied queues that do not support flows.
+- [ ] `flows.list` returns an empty list when no supplied queues support flows.
+- [ ] `flows.list` applies the requested response limit after aggregation.
+- [ ] `flows.get` accepts queue key when provided.
+- [ ] `flows.get` accepts queue name/prefix compatibility input.
+- [ ] `flows.get` returns bad request when the matched supplied queue does not support flows.
+- [ ] `flows.get` returns not found when no matching flow exists.
+- [ ] Ambiguous queue name/prefix lookup fails clearly for flow detail.
+- [ ] Flow routes preserve standalone queue name/prefix links while carrying optional queue key for embedded links.
+- [ ] Embedded core tests cover mixed capability queues, unsupported flows, not found, and ambiguous lookup behavior.
+- [ ] The flows list and flow detail screens can be browser-verified in the Next embedded example when a supplied queue supports flows.
 
-Progress:
-
-- Added read-only mutation enforcement in embedded-core dashboard operations.
-- Added private tRPC mutations for queue pause/resume and job retry/removal through the embedded core operation layer.
-- Read-only private API mutation attempts now return a clear forbidden error before adapter operations run.
-- Queue source status now exposes `readOnly` and `mutationsAllowed` for UI-facing state.
-- Added core tests for read-only reads, read-only mutation rejection, and default writable mutation delegation.
-- Added Hono/private API tests for read-only queue and job mutation rejection.
-- Verified with `pnpm --filter @bullstudio/hono test`, `pnpm --filter @bullstudio/hono typecheck`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, `pnpm exec biome check packages/hono-adapter packages/embedded-core`, and `pnpm typecheck`.
-
-## 7. Support dashboard and document identity in embedded mode
-
-Status: Complete
+## 7. Add mounted adapter smoke coverage for the compatibility layer
 
 Type: AFK
 
-Blocked by: Task 4
+Blocked by: Tasks 1, 2, 3, 4, 5, 6
 
-User stories covered: 23, 24, 25
+User stories covered: 1, 5, 33, 34, 37, 39
 
 ### What to build
 
-Allow embedded dashboards to configure dashboard identity and document identity. Dashboard identity covers visible title and logo. Document identity covers browser document title and favicon. This slice should avoid arbitrary metadata display and full theming.
+Add framework-adapter smoke tests that prove mounted private dashboard API requests reach the embedded core compatibility behavior under a non-root mount path. The behavior matrix belongs in embedded core tests; adapter tests should stay narrow and verify integration at the mount boundary.
 
 ### Acceptance criteria
 
-- [x] Dashboard instances accept title and logo configuration.
-- [x] Dashboard instances accept document title and favicon configuration.
-- [x] Dashboard assets receive identity configuration without requiring users to rebuild or copy frontend assets.
-- [x] The UI renders the configured dashboard title and logo.
-- [x] The served document uses the configured document title and favicon.
-- [x] Tests verify configured identity values appear in the served dashboard experience.
+- [ ] At least one framework adapter test verifies `connection.info` through a mounted embedded dashboard.
+- [ ] At least one framework adapter test verifies a read procedure such as `jobs.listSummary` or `overview.metrics` through the mount path.
+- [ ] At least one framework adapter test verifies a mutating procedure still respects read-only protection through the mount path.
+- [ ] Tests prove private dashboard API requests stay under the configured mount path.
+- [ ] Tests avoid duplicating the full embedded core behavior matrix across every framework adapter.
+- [ ] Existing framework adapter tests continue to pass.
 
-Progress:
-
-- Embedded dashboard HTML now renders configured dashboard title and logo.
-- Served document HTML now uses configured document title and favicon.
-- Embedded dashboard asset script now receives dashboard and document identity configuration at request time.
-- Added Hono integration coverage for configured dashboard title, dashboard logo, document title, favicon, and runtime identity payload from a non-root mount path.
-- Verified with `pnpm --filter @bullstudio/hono test`, `pnpm --filter @bullstudio/hono typecheck`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, `pnpm exec biome check packages/hono-adapter packages/embedded-core`, and `pnpm typecheck`.
-
-## 8. Refactor standalone mode onto the embedded core with parity tests
-
-Status: Complete
+## 8. Verify embedded dashboard parity in the Next example
 
 Type: AFK
 
-Blocked by: Tasks 1, 3, 4, 5
+Blocked by: Tasks 1, 2, 3, 4, 5, 6, 7
 
-User stories covered: 22, 30, 31, 35
-
-### What to build
-
-Refactor standalone mode to use the embedded core internally while preserving existing CLI behavior. Standalone mode should continue using Redis discovery as its queue source, keep root-mounted dashboard routes, keep private tRPC route shape, keep Basic Auth behavior, and keep existing CLI flags and environment variables.
-
-### Acceptance criteria
-
-- [x] Existing CLI commands, flags, environment variables, default port, and Redis discovery behavior continue to work.
-- [x] The standalone dashboard remains mounted at root.
-- [x] Existing health check routes continue to work.
-- [x] Existing private tRPC route shape continues to work.
-- [x] Existing production Basic Auth behavior continues to work.
-- [x] Standalone mode uses the embedded core internally.
-- [x] Parity tests verify root asset serving, private dashboard API access, health checks, Basic Auth behavior, and Redis-discovered queue behavior.
-
-Progress:
-
-- Added `createStandaloneDashboard()` to `@bullstudio/embedded-core` for standalone-mode asset/API mounting through the shared dashboard protection layer.
-- Extracted the production Hono app into `apps/cli/server/standalone.ts`.
-- Refactored `apps/cli/server/production.ts` to start the extracted standalone app while preserving port, host, shutdown, and provider disconnect behavior.
-- Kept the existing standalone private tRPC router and Redis-discovery provider path intact.
-- Added standalone parity tests for root asset serving, immutable asset cache headers, health checks, production Basic Auth, private tRPC access, and Redis-discovered queue listing through the real tRPC router with a mocked queue provider.
-- Verified with `pnpm --filter bullstudio test`, `pnpm --filter bullstudio typecheck`, `pnpm --filter bullstudio build`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, `pnpm exec biome check apps/cli/server apps/cli/src/server packages/embedded-core`, and `pnpm typecheck`.
-
-## 9. Make the dashboard UI mode-aware for queue source status
-
-Status: Complete
-
-Type: AFK
-
-Blocked by: Tasks 3, 8
-
-User stories covered: 18, 21, 22
+User stories covered: 1, 5, 9, 15, 16, 18, 23, 26, 28, 38, 39
 
 ### What to build
 
-Update the dashboard UI and private dashboard API responses so standalone mode continues to show Redis connection information while embedded mode shows queue source status. The UI should use adapter capabilities to hide or disable unsupported features.
+Run the real dashboard assets inside the Next.js embedded example and verify the current queue-management screens work against supplied queues from the browser. This task closes the loop between embedded core compatibility, framework mounting, runtime base path handling, and the React dashboard.
 
 ### Acceptance criteria
 
-- [x] Standalone mode still displays Redis connection information.
-- [x] Embedded mode displays queue source status instead of Redis connection details.
-- [x] Embedded mode shows supplied queue count and adapter/provider information.
-- [x] Unsupported features are hidden or disabled based on adapter capabilities.
-- [x] Tests verify mode-specific status responses and UI-facing data shape.
+- [ ] The Next embedded example starts successfully.
+- [ ] The dashboard renders at the configured non-root mount path.
+- [ ] Dashboard assets load from the configured mount path.
+- [ ] Private dashboard API requests use the configured mount path.
+- [ ] Overview loads without missing-procedure errors.
+- [ ] Jobs list loads without missing-procedure errors.
+- [ ] Job detail loads without missing-procedure errors.
+- [ ] Job logs, retry, and remove behavior can be exercised or explicitly verified with fixture constraints.
+- [ ] Flows list and flow detail are verified when the example supplies flow-capable data.
+- [ ] Browser console has no relevant errors or warnings from missing private dashboard API procedures.
+- [ ] Standalone mode still passes its existing tests, typecheck, and build checks after the embedded UI changes.
 
-Progress:
+## 9. Plan the shared private dashboard router refactor
 
-- Added a mode-aware standalone `connection.info` response that preserves Redis connection fields and exposes a UI-facing Redis queue source.
-- Added embedded queue source status mode metadata so supplied-queue dashboards can be distinguished without Redis-specific fields.
-- Added a queue source view model helper for standalone Redis status and embedded supplied-queue status, including adapter capability feature visibility/enabled state.
-- Updated the sidebar, overview, and jobs routes to read queue source details and flow support through the normalized view model.
-- Added tests for standalone Redis status responses, embedded supplied-queue status responses, and UI-facing status/capability normalization.
-- Verified with `pnpm --filter bullstudio test`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/hono test`, `pnpm exec biome check ...`, `pnpm --filter bullstudio build`, and `pnpm typecheck`.
+Type: HITL
 
-## 10. Document and demo the first embedded slice
+Blocked by: Tasks 1, 2, 3, 4, 5, 6, 7, 8
 
-Status: Complete
-
-Type: AFK
-
-Blocked by: Tasks 4, 5, 6, 7, 8, 9
-
-User stories covered: 1, 2, 3, 5, 13, 15, 23, 24, 25, 26, 30
+User stories covered: 37, 38, 39, 40
 
 ### What to build
 
-Add documentation and a minimal Hono + BullMQ example for embedded mode. The docs should distinguish standalone mode from embedded mode, show the function-based queue adapter API, explain mount path behavior, describe Basic Auth protection, show read-only configuration, and document dashboard/document identity options.
+Turn the compatibility-layer learnings into a concrete refactor plan for the long-term shared private dashboard router shape described by ADR 0003. This task should not implement the refactor; it should define the target contract, package boundaries, migration order, and tests needed to move standalone and embedded mode onto one private router shape.
 
 ### Acceptance criteria
 
-- [x] Documentation introduces standalone mode and embedded mode using glossary language.
-- [x] Documentation includes a Hono + BullMQ embedded example.
-- [x] Documentation explains that embedded mode exposes only supplied queues.
-- [x] Documentation explains that supplied queues are host-owned queues.
-- [x] Documentation explains Basic Auth protection and host-owned access control opt-out.
-- [x] Documentation explains read-only dashboard behavior.
-- [x] Documentation explains title, logo, favicon, and document title configuration.
-- [x] Documentation states that the private dashboard API is private and remains tRPC internally.
-
-Progress:
-
-- Added `docs/embedded-mode.md` introducing standalone mode, embedded mode, queue sources, supplied queues, host-owned queues, mount path behavior, dashboard protection, read-only dashboards, dashboard identity, document identity, and the private tRPC dashboard API.
-- Added a minimal `examples/hono-bullmq-embedded` TypeScript example that mounts `@bullstudio/hono` with a BullMQ queue through `@bullstudio/bullmq-adapter`.
-- Added the example package to the workspace so it is covered by workspace typecheck.
-- Added a documentation coverage test that verifies the first embedded Hono + BullMQ slice remains documented.
-- Verified with `pnpm --filter bullstudio test`, `pnpm --filter @bullstudio/example-hono-bullmq-embedded typecheck`, `pnpm typecheck`, and `pnpm exec biome check ...`.
-
-## 11. Add the Bull queue adapter
-
-Status: Complete
-
-Type: AFK
-
-Blocked by: Tasks 1, 3, 6
-
-User stories covered: 4, 5, 10, 12, 18, 20
-
-### What to build
-
-Add the function-based Bull queue adapter package for Bull 4+. The adapter should use Bull as a peer dependency, expose host-owned Bull queues as supplied queues, infer queue identity by default, expose capabilities accurately for Bull, and implement supported queue/job operations through the shared adapter contract.
-
-### Acceptance criteria
-
-- [x] Developers can create a Bull queue adapter with a function-based API.
-- [x] Bull is a peer dependency of the adapter package.
-- [x] The adapter infers queue key and queue label and supports explicit overrides.
-- [x] The adapter exposes Bull capabilities accurately, including lack of flow support.
-- [x] The adapter does not close or otherwise own the supplied Bull queue or its connection.
-- [x] Tests verify Bull queue reads, job reads, supported mutations, capabilities, key behavior, and host-owned lifecycle behavior.
-
-Progress:
-
-- Added `@bullstudio/bull-adapter` with the function-based `createBullQueueAdapter()` API.
-- Declared Bull as a peer dependency and used the host-supplied Bull queue for reads and operations.
-- Implemented inferred and explicit queue key/label behavior, Bull-specific capabilities without flow support, queue reads, job reads, logs, queue pause/resume, job retry/removal, and worker counts.
-- Preserved host-owned queue lifecycle by not exposing or invoking close/disconnect behavior on the adapter.
-- Added Bull adapter tests for capabilities, key behavior, queue reads, job reads, supported operations, and host-owned lifecycle behavior.
-- Verified with `pnpm --filter @bullstudio/bull-adapter test`, `pnpm --filter @bullstudio/bull-adapter typecheck`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm exec biome check packages/bull-adapter packages/embedded-core`, and `pnpm typecheck`.
-
-## 12. Add the Express framework adapter
-
-Status: Complete
-
-Type: AFK
-
-Blocked by: Tasks 4, 5, 6, 7, 9
-
-User stories covered: 1, 2, 3, 13, 15, 27, 32
-
-### What to build
-
-Add the Express framework adapter package with a native `bullstudio()` dashboard factory. Express developers should mount Bullstudio with normal middleware patterns at a single mount path and receive the same core behavior as Hono.
-
-### Acceptance criteria
-
-- [x] Express developers can import `bullstudio()` from the Express adapter package.
-- [x] The Express adapter returns an Express-native mountable value.
-- [x] Dashboard assets and private dashboard API are served under one mount path.
-- [x] Basic Auth protection works by default.
-- [x] Read-only mode rejects mutating operations server-side.
-- [x] Dashboard and document identity work without rebuilding assets.
-- [x] Tests verify an Express app can mount and use the dashboard at a non-root path.
-
-Progress:
-
-- Added `@bullstudio/express` with the native `bullstudio()` dashboard factory.
-- Implemented the Express adapter as an Express `RequestHandler` that mounts dashboard assets and the private tRPC dashboard API through the embedded core.
-- Added Express integration coverage for non-root mount behavior, Basic Auth protection, read-only mutation rejection, and dashboard/document identity.
-- Verified with `pnpm --filter @bullstudio/express test`, `pnpm --filter @bullstudio/express typecheck`, and `pnpm exec biome check packages/express-adapter`.
-- Workspace `pnpm typecheck` currently fails before reaching this adapter because `@bullstudio/typescript-config` cannot resolve its local `@types/node` type library.
-
-## 13. Add the Fastify framework adapter
-
-Status: Complete
-
-Type: AFK
-
-Blocked by: Tasks 4, 5, 6, 7, 9
-
-User stories covered: 1, 2, 3, 13, 15, 28, 32
-
-### What to build
-
-Add the Fastify framework adapter package with a native `bullstudio()` dashboard factory. Fastify developers should register Bullstudio with normal plugin patterns at a single mount path and receive the same core behavior as Hono.
-
-### Acceptance criteria
-
-- [x] Fastify developers can import `bullstudio()` from the Fastify adapter package.
-- [x] The Fastify adapter returns a Fastify-native plugin or registerable value.
-- [x] Dashboard assets and private dashboard API are served under one mount path.
-- [x] Basic Auth protection works by default.
-- [x] Read-only mode rejects mutating operations server-side.
-- [x] Dashboard and document identity work without rebuilding assets.
-- [x] Tests verify a Fastify app can register and use the dashboard at a non-root path.
-
-Progress:
-
-- Added `@bullstudio/fastify` with the native `bullstudio()` dashboard factory.
-- Implemented the Fastify adapter as a registerable Fastify plugin that mounts dashboard assets and the private tRPC dashboard API through the embedded core.
-- Added Fastify integration coverage for non-root prefix registration, Basic Auth protection, read-only mutation rejection, and dashboard/document identity.
-- Verified with `pnpm --filter @bullstudio/fastify test`, `pnpm --filter @bullstudio/fastify typecheck`, `pnpm exec biome check packages/fastify-adapter`, `pnpm --filter @bullstudio/embedded-core test`, and `pnpm --filter @bullstudio/hono test`.
-
-## 14. Add the Next.js App Router adapter
-
-Status: Complete
-
-Type: AFK
-
-Blocked by: Tasks 4, 5, 6, 7, 9
-
-User stories covered: 1, 2, 3, 13, 15, 29, 32, 34
-
-### What to build
-
-Add the Next.js framework adapter package for App Router route handlers. Next.js developers should export route handlers from `bullstudio()` and serve the dashboard from a configured mount path without Pages Router support.
-
-### Acceptance criteria
-
-- [x] Next.js developers can import `bullstudio()` from the Next.js adapter package.
-- [x] The adapter returns App Router-compatible route handlers.
-- [x] Dashboard assets and private dashboard API are served from the configured mount path.
-- [x] Basic Auth protection works by default.
-- [x] Read-only mode rejects mutating operations server-side.
-- [x] Dashboard and document identity work without rebuilding assets.
-- [x] Tests or an example verify App Router route-handler behavior.
-- [x] Pages Router support is not introduced in this slice.
-
-Progress:
-
-- Added `@bullstudio/next` with the native `bullstudio()` dashboard factory for Next.js App Router.
-- Implemented App Router-compatible `GET`, `HEAD`, and `POST` route handlers that serve dashboard assets and the private tRPC dashboard API from a configured mount path.
-- Added App Router route-handler coverage for mount-path routing, Basic Auth protection, read-only mutation rejection, dashboard/document identity, and out-of-mount 404 behavior.
-- Kept Pages Router support out of scope by only returning route-handler functions.
-- Verified with `pnpm --filter @bullstudio/next test`, `pnpm --filter @bullstudio/next typecheck`, `pnpm exec biome check packages/next-adapter`, and `pnpm --filter @bullstudio/embedded-core test`.
-
-## 15. Final embedded-mode verification and release readiness
-
-Status: Complete
-
-Type: AFK
-
-Blocked by: Tasks 10, 11, 12, 13, 14
-
-User stories covered: 1-35
-
-### What to build
-
-Run the full embedded-mode feature through repository-level verification, documentation review, and package readiness checks. This slice should confirm that standalone mode remains compatibility-sensitive and that embedded mode behaves consistently across completed adapters.
-
-### Acceptance criteria
-
-- [x] Workspace typecheck passes.
-- [x] Workspace lint/check passes.
-- [x] Queue and dashboard tests pass.
-- [x] Standalone parity tests pass.
-- [x] Embedded Hono, Express, Fastify, and Next.js adapter tests or examples pass.
-- [x] BullMQ and Bull queue adapter tests pass.
-- [x] Documentation reflects the final public API and package names.
-- [x] Out-of-scope items remain out of scope.
-- [x] No public REST API, WebSockets, SSE, Pages Router support, arbitrary metadata display, or full theming is introduced accidentally.
-
-Progress:
-
-- Added documentation coverage for the final embedded-mode framework and queue adapter surface.
-- Updated `docs/embedded-mode.md` to document Hono, Express, Fastify, Next.js App Router, BullMQ, and Bull package names and public factory APIs.
-- Documented the explicit out-of-scope boundaries: no public REST API, no WebSocket or Server-Sent Events support, no Pages Router support, no arbitrary metadata display, and no full theming.
-- Added local `@types/node` dev dependencies for internal packages that typecheck independently through the shared TypeScript config.
-- Verified with `pnpm typecheck`, `pnpm check`, `pnpm test` with the Redis test container available, `pnpm --filter @bullstudio/hono test`, `pnpm --filter @bullstudio/express test`, `pnpm --filter @bullstudio/fastify test`, `pnpm --filter @bullstudio/next test`, `pnpm --filter @bullstudio/bullmq-adapter test`, `pnpm --filter @bullstudio/bull-adapter test`, and `pnpm build`.
-- Confirmed by source search that embedded framework adapters continue to expose only framework-native mount surfaces and the private `/api/trpc` dashboard API; no public REST API, WebSockets, SSE, or Pages Router support was introduced.
+- [ ] The plan defines the shared private dashboard router contract at the procedure and response-shape level.
+- [ ] The plan defines how standalone discovered queues and embedded supplied queues plug into the shared router through mode-specific queue sources.
+- [ ] The plan identifies which compatibility shims can be removed after the refactor.
+- [ ] The plan identifies package boundary changes and any deep modules worth extracting.
+- [ ] The plan preserves standalone compatibility-sensitive behavior.
+- [ ] The plan includes a test strategy for migrating without regressing embedded parity or standalone behavior.
+- [ ] Maintainer review confirms the refactor direction before implementation starts.

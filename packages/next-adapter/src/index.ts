@@ -15,9 +15,12 @@ export interface NextAppRouterHandlers {
 }
 
 export function bullstudio(config: NextDashboardConfig): NextAppRouterHandlers {
-  const dashboard = createEmbeddedDashboard(config);
-  const privateDashboardApi = dashboard.mountPrivateDashboardApi();
   const mountPath = normalizeMountPath(config.mountPath);
+  const dashboard = createEmbeddedDashboard({
+    ...config,
+    basePath: mountPath,
+  });
+  const privateDashboardApi = dashboard.mountPrivateDashboardApi();
 
   const handle = async (request: Request): Promise<Response> => {
     if (!isMountedRequest(request, mountPath)) {
@@ -79,6 +82,7 @@ async function toFrameworkRequest(
     method: request.method,
     url: `${url.pathname}${url.search}`,
     headers: request.headers,
+    basePath: mountPath,
     body:
       request.method === "GET" || request.method === "HEAD"
         ? undefined

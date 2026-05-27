@@ -220,6 +220,46 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  examples/next-bullmq-embedded:
+    dependencies:
+      '@bullstudio/bullmq-adapter':
+        specifier: workspace:*
+        version: link:../../packages/bullmq-adapter
+      '@bullstudio/next':
+        specifier: workspace:*
+        version: link:../../packages/next-adapter
+      bullmq:
+        specifier: ^5.34.8
+        version: 5.66.5
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.9.1
+      next:
+        specifier: ^16.0.0
+        version: 16.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      react:
+        specifier: 19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: 19.2.3
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@bullstudio/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.7
+      '@types/react':
+        specifier: 19.1.9
+        version: 19.1.9
+      '@types/react-dom':
+        specifier: 19.1.7
+        version: 19.1.7(@types/react@19.1.9)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   packages/adapter-utils:
     dependencies:
       '@bullstudio/connect-types':

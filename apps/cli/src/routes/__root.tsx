@@ -1,21 +1,19 @@
 import {
-  HeadContent,
-  Outlet,
-  createRootRouteWithContext,
-} from "@tanstack/react-router";
-
-import appCss from "../styles.css?url";
-
-import type { QueryClient } from "@tanstack/react-query";
-
-import type { TRPCRouter } from "@/integrations/trpc/router";
-import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
-import {
   SidebarInset,
   SidebarProvider,
 } from "@bullstudio/ui/components/sidebar";
-import { AppSidebar } from "@/components/Sidebar";
+import type { QueryClient } from "@tanstack/react-query";
+import {
+  createRootRouteWithContext,
+  HeadContent,
+  Outlet,
+} from "@tanstack/react-router";
+import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { Toaster } from "sonner";
+import { AppSidebar } from "@/components/Sidebar";
+import type { TRPCRouter } from "@/integrations/trpc/router";
+import { getAssetUrl, getDocumentIdentity } from "@/lib/runtime-config";
+import appCss from "../styles.css?url";
 
 import "../styles.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -36,18 +34,18 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "bullstudio CLI",
+        title: getDocumentIdentity()?.title ?? "bullstudio CLI",
       },
     ],
     links: [
       {
         rel: "stylesheet",
-        href: appCss,
+        href: getAssetUrl(appCss),
       },
       {
         rel: "icon",
         type: "image/svg+xml",
-        href: "/logo.svg",
+        href: getDocumentIdentity()?.favicon ?? getAssetUrl("/logo.svg"),
       },
     ],
   }),

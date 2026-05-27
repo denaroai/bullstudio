@@ -36,6 +36,18 @@ _Avoid_: Raw queue, queue provider
 The features and operations a queue adapter exposes for its supplied queue.
 _Avoid_: Feature flags, supported methods
 
+**Capability enforcement**:
+The server-side rejection of queue operations that a supplied queue's adapter capabilities do not support.
+_Avoid_: UI-only capability checks, disabled buttons
+
+**Aggregate capabilities**:
+The union of capabilities across all supplied queues, used to decide whether a dashboard-level screen or navigation item is relevant.
+_Avoid_: Per-queue permissions, selected queue capabilities
+
+**Per-queue capabilities**:
+The capabilities of a specific supplied queue, used to decide whether an operation can run against that queue.
+_Avoid_: Global capabilities, dashboard capabilities
+
 **Supplied queue**:
 A queue made visible to Bullstudio because the host application passed a queue adapter for it.
 _Avoid_: Discovered queue, registered queue
@@ -47,6 +59,14 @@ _Avoid_: Managed queue, dashboard-owned queue
 **Queue key**:
 Bullstudio's unique identifier for a supplied queue. Queue keys are inferred by default and supplied explicitly only when inference would be ambiguous or collide.
 _Avoid_: Queue id, slug
+
+**Queue name and prefix**:
+The Redis/Bull identity shape used by standalone mode and accepted by embedded mode only as a private API compatibility lookup for supplied queues.
+_Avoid_: Embedded queue identity, queue key
+
+**Supplied queue prefix**:
+A prefix reported by a supplied queue's metadata, not a prefix discovered by scanning Redis.
+_Avoid_: Discovered prefix, Redis prefix scan
 
 **Queue label**:
 The human-facing display name for a supplied queue in the dashboard.
@@ -80,6 +100,10 @@ _Avoid_: Static files, client bundle
 The internal HTTP API used by Bullstudio's dashboard assets to communicate with a dashboard instance.
 _Avoid_: Public API, integration API
 
+**Private job source key**:
+An optional private dashboard API field that identifies the supplied queue a job came from when an aggregated embedded-mode job list would otherwise be ambiguous.
+_Avoid_: Public job field, connect-types job property
+
 **Embedded core**:
 The shared Bullstudio package that defines dashboard instances and the common embedded-mode behavior used by framework adapters.
 _Avoid_: Shared server, common middleware
@@ -91,6 +115,10 @@ _Avoid_: Backend, connector
 **Queue source status**:
 The dashboard's summary of the queue source it is using, such as supplied queue count, adapter types, capabilities, and source health.
 _Avoid_: Redis connection info, connection page
+
+**Queue management parity**:
+Embedded mode offering the same operator-facing inspection and mutation capabilities as standalone mode for supplied queues, without adopting standalone Redis connection or queue discovery behavior.
+_Avoid_: API parity, Redis parity, discovery parity
 
 ## Example Dialogue
 
@@ -122,9 +150,25 @@ Developer: "Why does one supplied queue show flows while another does not?"
 
 Maintainer: "The dashboard follows each queue adapter's capabilities."
 
+Developer: "Is hiding an unsupported action in the UI enough?"
+
+Maintainer: "No. Capability enforcement happens server-side so private dashboard API calls cannot perform unsupported operations."
+
+Developer: "Why does the Flows page show when only one supplied queue supports flows?"
+
+Maintainer: "Navigation follows aggregate capabilities, while actions against a selected queue follow that queue's per-queue capabilities."
+
 Developer: "Do I need to name every supplied queue twice?"
 
 Maintainer: "No. Bullstudio infers a queue key and queue label unless you need to disambiguate queues."
+
+Developer: "Can embedded mode target jobs by queue name and prefix?"
+
+Maintainer: "Only as a compatibility lookup. Embedded mode's canonical queue identity is the queue key because multiple supplied queues may share the same queue name and prefix."
+
+Developer: "Can embedded mode show prefixes?"
+
+Maintainer: "Only supplied queue prefixes. Embedded mode must not discover prefixes from Redis."
 
 Developer: "Can I mount Bullstudio in production without allowing people to retry or remove jobs?"
 
@@ -154,6 +198,10 @@ Developer: "Can other tools rely on the dashboard HTTP API?"
 
 Maintainer: "No. The private dashboard API exists for Bullstudio's own dashboard assets."
 
+Developer: "Why does an embedded job list response include a queue source key?"
+
+Maintainer: "That private job source key lets dashboard assets navigate from aggregated job lists back to the correct supplied queue when queue name and prefix are ambiguous."
+
 Developer: "Do all framework adapters implement Bullstudio behavior themselves?"
 
 Maintainer: "No. Framework adapters mount the embedded core into each host framework."
@@ -169,3 +217,7 @@ Maintainer: "Embedded mode shows queue source status because Bullstudio does not
 Developer: "What if I just want to point it at Redis from my laptop?"
 
 Maintainer: "Use standalone mode: run Bullstudio as its own process and let it discover queues from Redis."
+
+Developer: "Should embedded mode have the same queue management features as standalone mode?"
+
+Maintainer: "Yes, embedded mode should provide queue management parity for supplied queues, while Redis connection details and queue discovery remain standalone-mode concerns."

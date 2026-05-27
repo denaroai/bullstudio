@@ -71,6 +71,11 @@ Embedded mode is exposed through framework-native adapter packages. Each adapter
 
 Next.js support is for App Router route handlers. Pages Router support is not included.
 
+The repository includes a runnable Next.js + BullMQ example at
+`examples/next-bullmq-embedded`. It mounts Bullstudio at `/ops/bullstudio`,
+uses a host-owned BullMQ queue, and includes a small host page for adding sample
+jobs before inspecting them in the embedded dashboard.
+
 ## Queue Adapters
 
 Queue adapters are function-based and wrap host-owned queue instances. Bullstudio uses the host application's installed Bull or BullMQ package and does not close the supplied queue or Redis connection.

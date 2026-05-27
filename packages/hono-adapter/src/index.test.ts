@@ -20,14 +20,16 @@ describe("bullstudio Hono adapter", () => {
     const htmlResponse = await host.request("/ops/bullstudio");
     expect(htmlResponse.status).toBe(200);
     expect(htmlResponse.headers.get("content-type")).toContain("text/html");
-    await expect(htmlResponse.text()).resolves.toContain("Bullstudio");
+    const html = await htmlResponse.text();
+    expect(html).toContain("Bullstudio");
 
-    const assetResponse = await host.request("/ops/bullstudio/assets/app.js");
+    const assetPath = extractScriptPath(html);
+    const assetResponse = await host.request(assetPath);
     expect(assetResponse.status).toBe(200);
     expect(assetResponse.headers.get("content-type")).toContain(
       "application/javascript",
     );
-    await expect(assetResponse.text()).resolves.toContain("Bullstudio");
+    await expect(assetResponse.text()).resolves.toContain("createRoot");
 
     const apiResponse = await host.request(
       "/ops/bullstudio/api/trpc/queues.list",
@@ -319,14 +321,11 @@ describe("bullstudio Hono adapter", () => {
     expect(html).toContain('rel="icon"');
     expect(html).toContain('href="/brand/favicon.ico"');
     expect(html).toContain("Production Queues");
-    expect(html).toContain('src="/brand/queues.svg"');
-    expect(html).toContain('alt="Acme Queue Ops"');
+    expect(html).toContain('"src":"/brand/queues.svg"');
+    expect(html).toContain('"alt":"Acme Queue Ops"');
 
-    const assetResponse = await host.request("/ops/bullstudio/assets/app.js");
+    const assetResponse = await host.request(extractScriptPath(html));
     expect(assetResponse.status).toBe(200);
-    await expect(assetResponse.text()).resolves.toContain(
-      '"dashboardIdentity":{"title":"Production Queues","logo":{"src":"/brand/queues.svg","alt":"Acme Queue Ops"}}',
-    );
   });
 });
 
@@ -388,4 +387,14 @@ function createQueueAdapter(options: {
 
 function basicAuth(username: string, password: string): string {
   return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
+}
+
+function extractScriptPath(html: string): string {
+  const match = html.match(/<script type="module"[^>]+src="([^"]+)"/);
+
+  if (!match?.[1]) {
+    throw new Error("Dashboard script was not found in HTML.");
+  }
+
+  return match[1];
 }

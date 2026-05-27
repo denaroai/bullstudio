@@ -25,11 +25,15 @@ import {
 import { VERSION } from "@/const";
 import { useTRPC } from "@/integrations/trpc/react";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
+import { getAssetUrl, getDashboardIdentity } from "@/lib/runtime-config";
 
 export function AppSidebar() {
   const location = useLocation();
   const pathname = location.pathname;
   const trpc = useTRPC();
+  const dashboardIdentity = getDashboardIdentity();
+  const dashboardLogo = dashboardIdentity?.logo;
+  const dashboardTitle = dashboardIdentity?.title ?? "bullstudio";
 
   const { data: connectionInfo } = useQuery(
     trpc.connection.info.queryOptions(),
@@ -76,13 +80,17 @@ export function AppSidebar() {
       {/* Header with Logo */}
       <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-4">
         <div className="flex items-center gap-3">
-          <img src="/logo.svg" alt="bullstudio" className="size-8 shrink-0" />
+          <img
+            src={dashboardLogo?.src ?? getAssetUrl("/logo.svg")}
+            alt={dashboardLogo?.alt ?? "bullstudio"}
+            className="size-8 shrink-0"
+          />
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
             <span className="font-semibold text-sm text-zinc-100">
-              bullstudio
+              {dashboardTitle}
             </span>
             <span className="text-[10px] text-zinc-500 uppercase tracking-wider">
-              CLI
+              {dashboardIdentity ? "Embedded" : "CLI"}
             </span>
           </div>
         </div>

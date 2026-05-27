@@ -14,8 +14,9 @@ export function bullstudio(config: DashboardConfig): Hono {
     toHonoResponse(
       await privateDashboardApi.handle({
         method: c.req.method,
-        url: c.req.url,
+        url: toMountedUrl(c.req.url),
         headers: c.req.raw.headers,
+        basePath: getBasePath(c.req.url),
       }),
     ),
   );
@@ -24,13 +25,41 @@ export function bullstudio(config: DashboardConfig): Hono {
     toHonoResponse(
       await dashboard.handle({
         method: c.req.method,
-        url: c.req.url,
+        url: toMountedUrl(c.req.url),
         headers: c.req.raw.headers,
+        basePath: getBasePath(c.req.url),
       }),
     ),
   );
 
   return app;
+}
+
+function getBasePath(url: string): string {
+  const pathname = new URL(url).pathname;
+  const assetIndex = pathname.search(/\/(?:assets\/|logo\.svg$)/);
+  const apiIndex = pathname.indexOf("/api/trpc");
+  const endIndex = [assetIndex, apiIndex]
+    .filter((index) => index >= 0)
+    .sort((a, b) => a - b)[0];
+
+  return endIndex === undefined ? pathname : pathname.slice(0, endIndex);
+}
+
+function toMountedUrl(url: string): string {
+  const parsedUrl = new URL(url);
+  const assetIndex = parsedUrl.pathname.search(/\/(?:assets\/|logo\.svg$)/);
+  const apiIndex = parsedUrl.pathname.indexOf("/api/trpc");
+
+  if (apiIndex >= 0) {
+    parsedUrl.pathname = parsedUrl.pathname.slice(apiIndex);
+  } else if (assetIndex >= 0) {
+    parsedUrl.pathname = parsedUrl.pathname.slice(assetIndex);
+  } else {
+    parsedUrl.pathname = "/";
+  }
+
+  return `${parsedUrl.pathname}${parsedUrl.search}`;
 }
 
 function toHonoResponse(response: FrameworkResponse): Response {

@@ -83,6 +83,7 @@ export interface DashboardConfig {
   protection?: DashboardProtection;
   dashboardIdentity?: DashboardIdentity;
   documentIdentity?: DocumentIdentity;
+  basePath?: string;
 }
 
 export interface ResolvedDashboardConfig {
@@ -91,6 +92,7 @@ export interface ResolvedDashboardConfig {
   protection: DashboardProtection;
   dashboardIdentity: DashboardIdentity;
   documentIdentity: DocumentIdentity;
+  basePath: string;
 }
 
 export interface StandaloneDashboardConfig {
@@ -126,6 +128,7 @@ export interface FrameworkRequest {
   url: string;
   headers?: Headers | Record<string, string | string[] | undefined>;
   body?: unknown;
+  basePath?: string;
 }
 
 export interface FrameworkResponse {
