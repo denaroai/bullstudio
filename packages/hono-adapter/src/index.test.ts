@@ -1,7 +1,7 @@
 import type { QueueAdapter } from "@bullstudio/embedded-core";
 import { bullstudio } from "@bullstudio/hono";
 import { Hono } from "hono";
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 describe("bullstudio Hono adapter", () => {
   it("mounts dashboard assets and the private dashboard API at one non-root path", async () => {
@@ -145,6 +145,94 @@ describe("bullstudio Hono adapter", () => {
       status: 200,
     });
   });
+
+  it("enforces read-only dashboards at the private dashboard API layer", async () => {
+    const pauseQueue = vi.fn<() => Promise<void>>();
+    const resumeQueue = vi.fn<() => Promise<void>>();
+    const retryJob = vi.fn<() => Promise<void>>();
+    const removeJob = vi.fn<() => Promise<void>>();
+    const host = new Hono();
+
+    host.route(
+      "/ops/bullstudio",
+      bullstudio({
+        queues: [
+          createQueueAdapter({
+            key: "email",
+            label: "Email",
+            pauseQueue,
+            resumeQueue,
+            retryJob,
+            removeJob,
+          }),
+        ],
+        readOnly: true,
+        protection: {
+          type: "disabled",
+        },
+      }),
+    );
+
+    const listResponse = await host.request(
+      "/ops/bullstudio/api/trpc/queues.list",
+    );
+    expect(listResponse.status).toBe(200);
+
+    const statusResponse = await host.request(
+      "/ops/bullstudio/api/trpc/queueSource.status",
+    );
+    expect(statusResponse.status).toBe(200);
+    await expect(statusResponse.json()).resolves.toMatchObject({
+      result: {
+        data: {
+          readOnly: true,
+          mutationsAllowed: false,
+        },
+      },
+    });
+
+    for (const mutation of [
+      {
+        path: "queues.pause",
+        input: { queueKey: "email" },
+      },
+      {
+        path: "queues.resume",
+        input: { queueKey: "email" },
+      },
+      {
+        path: "jobs.retry",
+        input: { queueKey: "email", jobId: "1" },
+      },
+      {
+        path: "jobs.remove",
+        input: { queueKey: "email", jobId: "1" },
+      },
+    ]) {
+      const response = await host.request(
+        `/ops/bullstudio/api/trpc/${mutation.path}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ json: mutation.input }),
+        },
+      );
+
+      expect(response.status).toBe(403);
+      await expect(response.json()).resolves.toMatchObject({
+        error: {
+          message: "Read-only dashboards cannot mutate queues or jobs.",
+        },
+      });
+    }
+
+    expect(pauseQueue).not.toHaveBeenCalled();
+    expect(resumeQueue).not.toHaveBeenCalled();
+    expect(retryJob).not.toHaveBeenCalled();
+    expect(removeJob).not.toHaveBeenCalled();
+  });
 });
 
 const emptyJobCounts = {
@@ -162,6 +250,10 @@ function createQueueAdapter(options: {
   key: string;
   label: string;
   queueName?: string;
+  pauseQueue?: () => Promise<void>;
+  resumeQueue?: () => Promise<void>;
+  retryJob?: (jobId: string) => Promise<void>;
+  removeJob?: (jobId: string) => Promise<void>;
 }): QueueAdapter {
   const queueName = options.queueName ?? options.key;
 
@@ -185,14 +277,14 @@ function createQueueAdapter(options: {
       jobCounts: emptyJobCounts,
     }),
     getJobCounts: async () => emptyJobCounts,
-    pauseQueue: async () => {},
-    resumeQueue: async () => {},
+    pauseQueue: options.pauseQueue ?? (async () => {}),
+    resumeQueue: options.resumeQueue ?? (async () => {}),
     getJobs: async () => [],
     getJobsSummary: async () => [],
     getJob: async () => null,
     getJobLogs: async () => ({ logs: [], count: 0 }),
-    retryJob: async () => {},
-    removeJob: async () => {},
+    retryJob: options.retryJob ?? (async () => {}),
+    removeJob: options.removeJob ?? (async () => {}),
     getWorkerCount: async () => ({ queueName, count: 0 }),
   };
 }

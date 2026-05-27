@@ -162,6 +162,8 @@ Progress:
 
 ## 6. Enforce read-only dashboards in the core operation layer
 
+Status: Complete
+
 Type: AFK
 
 Blocked by: Tasks 3, 4
@@ -174,12 +176,22 @@ Add read-only dashboard support in embedded core. Mutating operations remain ena
 
 ### Acceptance criteria
 
-- [ ] Dashboard instances can be configured as read-only.
-- [ ] Read-only dashboards still allow non-mutating queue and job reads.
-- [ ] Read-only dashboards reject queue pause/resume, job retry, job removal, and other mutating operations exposed by the current dashboard.
-- [ ] Rejections use a clear authorization-style error.
-- [ ] The UI receives enough capability/state information to hide or disable mutating controls.
-- [ ] Tests verify server-side rejection of direct mutating API calls.
+- [x] Dashboard instances can be configured as read-only.
+- [x] Read-only dashboards still allow non-mutating queue and job reads.
+- [x] Read-only dashboards reject queue pause/resume, job retry, job removal, and other mutating operations exposed by the current dashboard.
+- [x] Rejections use a clear authorization-style error.
+- [x] The UI receives enough capability/state information to hide or disable mutating controls.
+- [x] Tests verify server-side rejection of direct mutating API calls.
+
+Progress:
+
+- Added read-only mutation enforcement in embedded-core dashboard operations.
+- Added private tRPC mutations for queue pause/resume and job retry/removal through the embedded core operation layer.
+- Read-only private API mutation attempts now return a clear forbidden error before adapter operations run.
+- Queue source status now exposes `readOnly` and `mutationsAllowed` for UI-facing state.
+- Added core tests for read-only reads, read-only mutation rejection, and default writable mutation delegation.
+- Added Hono/private API tests for read-only queue and job mutation rejection.
+- Verified with `pnpm --filter @bullstudio/hono test`, `pnpm --filter @bullstudio/hono typecheck`, `pnpm --filter @bullstudio/embedded-core test`, `pnpm --filter @bullstudio/embedded-core typecheck`, `pnpm exec biome check packages/hono-adapter packages/embedded-core`, and `pnpm typecheck`.
 
 ## 7. Support dashboard and document identity in embedded mode
 

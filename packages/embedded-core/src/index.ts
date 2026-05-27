@@ -6,7 +6,7 @@ import type {
   Queue,
   WorkerCount,
 } from "@bullstudio/connect-types";
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
 export type DashboardMode = "embedded";
@@ -97,6 +97,8 @@ export interface QueueSourceStatus {
   queueCount: number;
   providers: QueueAdapterProvider[];
   capabilities: AdapterCapabilities;
+  readOnly: boolean;
+  mutationsAllowed: boolean;
 }
 
 export interface DashboardQueue extends Queue {
@@ -186,7 +188,7 @@ export function createEmbeddedDashboard(
     mode: "embedded",
     config: resolvedConfig,
     queues: resolvedConfig.queues,
-    getQueueSourceStatus: () => getQueueSourceStatus(resolvedConfig.queues),
+    getQueueSourceStatus: () => getQueueSourceStatus(resolvedConfig),
     listQueues: async () =>
       Promise.all(
         resolvedConfig.queues.map((queue) => getDashboardQueue(queue)),
@@ -197,10 +199,14 @@ export function createEmbeddedDashboard(
     },
     getJobCounts: (queueKey) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getJobCounts(),
-    pauseQueue: (queueKey) =>
-      getQueueAdapter(queueAdaptersByKey, queueKey).pauseQueue(),
+    pauseQueue: async (queueKey) => {
+      assertCanMutate(resolvedConfig);
+      await getQueueAdapter(queueAdaptersByKey, queueKey).pauseQueue();
+    },
     resumeQueue: (queueKey) =>
-      getQueueAdapter(queueAdaptersByKey, queueKey).resumeQueue(),
+      withMutationAccess(resolvedConfig, () =>
+        getQueueAdapter(queueAdaptersByKey, queueKey).resumeQueue(),
+      ),
     getJobs: (queueKey, options) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getJobs(options),
     getJobsSummary: (queueKey, options) =>
@@ -210,9 +216,13 @@ export function createEmbeddedDashboard(
     getJobLogs: (queueKey, jobId) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getJobLogs(jobId),
     retryJob: (queueKey, jobId) =>
-      getQueueAdapter(queueAdaptersByKey, queueKey).retryJob(jobId),
+      withMutationAccess(resolvedConfig, () =>
+        getQueueAdapter(queueAdaptersByKey, queueKey).retryJob(jobId),
+      ),
     removeJob: (queueKey, jobId) =>
-      getQueueAdapter(queueAdaptersByKey, queueKey).removeJob(jobId),
+      withMutationAccess(resolvedConfig, () =>
+        getQueueAdapter(queueAdaptersByKey, queueKey).removeJob(jobId),
+      ),
     getWorkerCount: (queueKey) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getWorkerCount(),
     handle: (request) =>
@@ -228,6 +238,27 @@ export function createEmbeddedDashboard(
   };
 
   return dashboard;
+}
+
+export class ReadOnlyDashboardError extends Error {
+  constructor() {
+    super("Read-only dashboards cannot mutate queues or jobs.");
+    this.name = "ReadOnlyDashboardError";
+  }
+}
+
+async function withMutationAccess<T>(
+  config: ResolvedDashboardConfig,
+  operation: () => Promise<T>,
+): Promise<T> {
+  assertCanMutate(config);
+  return operation();
+}
+
+function assertCanMutate(config: ResolvedDashboardConfig): void {
+  if (config.readOnly) {
+    throw new ReadOnlyDashboardError();
+  }
 }
 
 async function withDashboardProtection(
@@ -382,8 +413,105 @@ function createPrivateDashboardApiRouter(dashboard: EmbeddedDashboardInstance) {
     }),
     queues: t.router({
       list: t.procedure.query(() => dashboard.listQueues()),
+      pause: t.procedure.mutation(({ input }) =>
+        runPrivateDashboardMutation(dashboard, () =>
+          dashboard.pauseQueue(getQueueKeyInput(input).queueKey),
+        ),
+      ),
+      resume: t.procedure.mutation(({ input }) =>
+        runPrivateDashboardMutation(dashboard, () =>
+          dashboard.resumeQueue(getQueueKeyInput(input).queueKey),
+        ),
+      ),
+    }),
+    jobs: t.router({
+      retry: t.procedure.mutation(({ input }) =>
+        runPrivateDashboardMutation(dashboard, () => {
+          const { jobId, queueKey } = getJobMutationInput(input);
+          return dashboard.retryJob(queueKey, jobId);
+        }),
+      ),
+      remove: t.procedure.mutation(({ input }) =>
+        runPrivateDashboardMutation(dashboard, () => {
+          const { jobId, queueKey } = getJobMutationInput(input);
+          return dashboard.removeJob(queueKey, jobId);
+        }),
+      ),
     }),
   });
+}
+
+async function runPrivateDashboardMutation(
+  dashboard: EmbeddedDashboardInstance,
+  operation: () => Promise<void>,
+): Promise<{ success: true }> {
+  try {
+    assertCanMutate(dashboard.config);
+    await operation();
+    return { success: true };
+  } catch (error) {
+    if (error instanceof ReadOnlyDashboardError) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: error.message,
+      });
+    }
+
+    throw error;
+  }
+}
+
+function getQueueKeyInput(input: unknown): { queueKey: string } {
+  const value = unwrapJsonInput(input);
+
+  if (
+    value &&
+    typeof value === "object" &&
+    "queueKey" in value &&
+    typeof value.queueKey === "string"
+  ) {
+    return {
+      queueKey: value.queueKey,
+    };
+  }
+
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: "A queueKey string is required.",
+  });
+}
+
+function getJobMutationInput(input: unknown): {
+  jobId: string;
+  queueKey: string;
+} {
+  const value = unwrapJsonInput(input);
+  const { queueKey } = getQueueKeyInput(value);
+
+  if (
+    value &&
+    typeof value === "object" &&
+    "jobId" in value &&
+    typeof value.jobId === "string"
+  ) {
+    return {
+      jobId: value.jobId,
+      queueKey,
+    };
+  }
+
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: "A jobId string is required.",
+  });
+}
+
+function unwrapJsonInput(input: unknown): unknown {
+  if (input && typeof input === "object" && "json" in input) {
+    return input.json;
+  }
+
+  return input;
 }
 
 function toFetchRequest(request: FrameworkRequest): Request {
@@ -507,13 +635,17 @@ function resolveDashboardConfig(
   };
 }
 
-function getQueueSourceStatus(queues: QueueAdapter[]): QueueSourceStatus {
+function getQueueSourceStatus(
+  config: ResolvedDashboardConfig,
+): QueueSourceStatus {
   return {
     source: "supplied",
     status: "healthy",
-    queueCount: queues.length,
-    providers: getProviders(queues),
-    capabilities: aggregateCapabilities(queues),
+    queueCount: config.queues.length,
+    providers: getProviders(config.queues),
+    capabilities: aggregateCapabilities(config.queues),
+    readOnly: config.readOnly,
+    mutationsAllowed: !config.readOnly,
   };
 }
 

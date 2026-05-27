@@ -3,8 +3,9 @@ import {
   type DashboardConfig,
   type EmbeddedDashboardInstance,
   type QueueAdapter,
+  ReadOnlyDashboardError,
 } from "@bullstudio/embedded-core";
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 describe("embedded core public contracts", () => {
   it("creates an importable framework-neutral dashboard instance from supplied queue adapters", () => {
@@ -48,6 +49,8 @@ describe("embedded core public contracts", () => {
       status: "healthy",
       queueCount: 1,
       providers: ["bullmq"],
+      readOnly: true,
+      mutationsAllowed: false,
       capabilities: {
         flows: true,
         jobLogs: true,
@@ -133,6 +136,8 @@ describe("embedded core public contracts", () => {
       status: "healthy",
       queueCount: 2,
       providers: ["bull", "bullmq"],
+      readOnly: false,
+      mutationsAllowed: true,
       capabilities: {
         flows: true,
         jobLogs: true,
@@ -157,6 +162,72 @@ describe("embedded core public contracts", () => {
       'Duplicate supplied queue key "email". Queue keys must be unique.',
     );
   });
+
+  it("allows reads but rejects mutating operations when configured read-only", async () => {
+    const pauseQueue = vi.fn<() => Promise<void>>();
+    const resumeQueue = vi.fn<() => Promise<void>>();
+    const retryJob = vi.fn<() => Promise<void>>();
+    const removeJob = vi.fn<() => Promise<void>>();
+    const readOnlyDashboard = createEmbeddedDashboard({
+      queues: [
+        createQueueAdapter({
+          key: "email",
+          label: "Email",
+          pauseQueue,
+          resumeQueue,
+          retryJob,
+          removeJob,
+        }),
+      ],
+      readOnly: true,
+    });
+
+    await expect(readOnlyDashboard.listQueues()).resolves.toHaveLength(1);
+    await expect(readOnlyDashboard.getJobCounts("email")).resolves.toEqual(
+      emptyJobCounts,
+    );
+
+    await expect(readOnlyDashboard.pauseQueue("email")).rejects.toBeInstanceOf(
+      ReadOnlyDashboardError,
+    );
+    await expect(readOnlyDashboard.resumeQueue("email")).rejects.toBeInstanceOf(
+      ReadOnlyDashboardError,
+    );
+    await expect(
+      readOnlyDashboard.retryJob("email", "1"),
+    ).rejects.toBeInstanceOf(ReadOnlyDashboardError);
+    await expect(
+      readOnlyDashboard.removeJob("email", "1"),
+    ).rejects.toBeInstanceOf(ReadOnlyDashboardError);
+
+    expect(pauseQueue).not.toHaveBeenCalled();
+    expect(resumeQueue).not.toHaveBeenCalled();
+    expect(retryJob).not.toHaveBeenCalled();
+    expect(removeJob).not.toHaveBeenCalled();
+
+    const writableDashboard = createEmbeddedDashboard({
+      queues: [
+        createQueueAdapter({
+          key: "email",
+          label: "Email",
+          pauseQueue,
+          resumeQueue,
+          retryJob,
+          removeJob,
+        }),
+      ],
+    });
+
+    await writableDashboard.pauseQueue("email");
+    await writableDashboard.resumeQueue("email");
+    await writableDashboard.retryJob("email", "1");
+    await writableDashboard.removeJob("email", "1");
+
+    expect(pauseQueue).toHaveBeenCalledOnce();
+    expect(resumeQueue).toHaveBeenCalledOnce();
+    expect(retryJob).toHaveBeenCalledWith("1");
+    expect(removeJob).toHaveBeenCalledWith("1");
+  });
 });
 
 const emptyJobCounts = {
@@ -175,6 +246,10 @@ function createQueueAdapter(
     key: string;
     label: string;
     queueName?: string;
+    pauseQueue?: () => Promise<void>;
+    resumeQueue?: () => Promise<void>;
+    retryJob?: (jobId: string) => Promise<void>;
+    removeJob?: (jobId: string) => Promise<void>;
   },
 ): QueueAdapter {
   const capabilities = options.capabilities ?? {
@@ -200,14 +275,14 @@ function createQueueAdapter(
       jobCounts: emptyJobCounts,
     }),
     getJobCounts: async () => emptyJobCounts,
-    pauseQueue: async () => {},
-    resumeQueue: async () => {},
+    pauseQueue: options.pauseQueue ?? (async () => {}),
+    resumeQueue: options.resumeQueue ?? (async () => {}),
     getJobs: async () => [],
     getJobsSummary: async () => [],
     getJob: async () => null,
     getJobLogs: async () => ({ logs: [], count: 0 }),
-    retryJob: async () => {},
-    removeJob: async () => {},
+    retryJob: options.retryJob ?? (async () => {}),
+    removeJob: options.removeJob ?? (async () => {}),
     getWorkerCount: async () => ({ queueName, count: 0 }),
   };
 }
