@@ -44,6 +44,7 @@ describe("shared private dashboard router refactor plan", () => {
       "Migration Order",
       "Test Strategy",
       "Maintainer Review Gate",
+      "Review Request",
     ]) {
       expect(plan).toContain(section);
     }
@@ -55,6 +56,8 @@ describe("shared private dashboard router refactor plan", () => {
     expect(plan).toContain("apps/cli");
     expect(plan).toContain("@bullstudio/embedded-core");
     expect(plan).toContain("@bullstudio/private-router");
+    expect(plan).toContain("Reviewer decision");
+    expect(plan).toContain("Approved to implement");
   });
 });
 

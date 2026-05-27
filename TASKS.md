@@ -230,4 +230,4 @@ Turn the compatibility-layer learnings into a concrete refactor plan for the lon
 - [x] The plan identifies package boundary changes and any deep modules worth extracting.
 - [x] The plan preserves standalone compatibility-sensitive behavior.
 - [x] The plan includes a test strategy for migrating without regressing embedded parity or standalone behavior.
-- [ ] Maintainer review confirms the refactor direction before implementation starts.
+- [ ] Maintainer review confirms the refactor direction before implementation starts. Review request prepared in `docs/prd/shared-private-dashboard-router-refactor.md`.

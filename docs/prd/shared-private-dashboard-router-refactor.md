@@ -476,3 +476,36 @@ Implementation of this refactor should not start until a maintainer confirms:
 
 If review changes the package boundary, update this plan before starting the
 implementation slice.
+
+## Review Request
+
+Reviewer decision:
+
+- [ ] Approved to implement as written.
+- [ ] Approved to implement after the changes noted below.
+- [ ] Not approved; revise the plan and request another review.
+
+Review checklist:
+
+- Confirm that `@bullstudio/private-router` is the right internal package for
+  the shared router rather than folding the router into `apps/cli` or
+  `@bullstudio/embedded-core`.
+- Confirm that `PrivateDashboardQueueSource` is the right deep module boundary
+  between the private router and mode-specific queue discovery or supplied queue
+  behavior.
+- Confirm that the shared procedure contract covers the current dashboard asset
+  surface: `connection.info`, `queueSource.status`, `overview.metrics`,
+  `queues.list`, `queues.prefixes`, `queues.get`, `queues.pause`,
+  `queues.resume`, `jobs.list`, `jobs.listSummary`, `jobs.get`, `jobs.logs`,
+  `jobs.retry`, `jobs.remove`, `flows.list`, and `flows.get`.
+- Confirm that standalone Redis discovery, prefix discovery, connection display,
+  root-mounted routes, and Basic Auth behavior are preserved.
+- Confirm that embedded mode still uses supplied queues only, prefers `queueKey`
+  when available, and rejects ambiguous queue name and prefix compatibility
+  lookups.
+- Confirm that the migration order is acceptable and each step can land with
+  tests before deleting duplicated router behavior.
+
+Requested changes:
+
+- None yet.
