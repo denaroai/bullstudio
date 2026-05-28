@@ -21,7 +21,7 @@ import {
 } from "@bullstudio/ui/components/tooltip";
 import { Badge } from "@bullstudio/ui/components/badge";
 import dayjs from "@bullstudio/dayjs";
-import type { OverviewMetricsResponse } from "@/integrations/trpc/routers/overview";
+import type { OverviewMetricsResponse } from "@bullstudio/private-router";
 
 type FailingJobType = OverviewMetricsResponse["failingJobTypes"][number];
 

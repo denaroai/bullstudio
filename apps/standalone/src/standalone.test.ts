@@ -4,14 +4,14 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {
-  vi.doUnmock("../integrations/trpc/connection");
+  vi.doUnmock("./connection");
   vi.unstubAllEnvs();
   vi.resetModules();
 });
 
 describe("standalone dashboard parity", () => {
   it("serves root assets, health checks, private API, and production Basic Auth behavior", async () => {
-    const { createStandaloneApp } = await import("../../server/standalone");
+    const { createStandaloneApp } = await import("../server/standalone");
     const clientDir = join(
       tmpdir(),
       "bullstudio",
@@ -85,9 +85,23 @@ describe("standalone dashboard parity", () => {
   });
 
   it("keeps private tRPC queue access backed by Redis-discovered queues", async () => {
-    vi.doMock("../integrations/trpc/connection", () => ({
+    vi.doMock("./connection", () => ({
       disconnectProvider: async () => {},
       getQueueProvider: async () => ({
+        getCapabilities: () => ({
+          providerType: "bullmq",
+          displayName: "BullMQ",
+          supportsFlows: true,
+          supportedJobStates: [
+            "waiting",
+            "active",
+            "completed",
+            "failed",
+            "delayed",
+            "paused",
+            "waiting-children",
+          ],
+        }),
         getQueues: async () => [
           {
             name: "email",
@@ -108,7 +122,7 @@ describe("standalone dashboard parity", () => {
       }),
     }));
 
-    const { createStandaloneApp } = await import("../../server/standalone");
+    const { createStandaloneApp } = await import("../server/standalone");
     const clientDir = join(
       tmpdir(),
       "bullstudio",
@@ -141,10 +155,10 @@ describe("standalone dashboard parity", () => {
 
   it("reports standalone Redis connection information as a mode-aware queue source", async () => {
     vi.stubEnv("REDIS_URL", "redis://:secret@cache.internal:6380/2");
-    vi.doMock("../integrations/trpc/connection", async (importOriginal) => {
+    vi.doMock("./connection", async (importOriginal) => {
       const actual =
         await importOriginal<
-          typeof import("../integrations/trpc/connection")
+          typeof import("./connection")
         >();
 
       return {
@@ -169,7 +183,7 @@ describe("standalone dashboard parity", () => {
       };
     });
 
-    const { createStandaloneApp } = await import("../../server/standalone");
+    const { createStandaloneApp } = await import("../server/standalone");
     const clientDir = join(
       tmpdir(),
       "bullstudio",

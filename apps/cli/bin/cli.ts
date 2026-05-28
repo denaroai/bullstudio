@@ -130,11 +130,9 @@ async function openBrowser(url: string) {
   }
 }
 
-// Get the CLI app directory
-// When bundled, __dirname is dist/bin, so appDir should be dist (parent)
-// The production server is at dist/server/production.js
 const appDir = resolve(__dirname, "..");
-const productionServerFile = resolve(appDir, "server", "production.js");
+const clientDir = isDev ? appDir : resolve(appDir, "client");
+const productionServerFile = findProductionServerFile(appDir);
 
 // Check if we should run in production mode
 const hasBuiltServer = existsSync(productionServerFile);
@@ -159,6 +157,7 @@ if (isDev) {
         ...process.env,
         REDIS_URL: redisUrl,
         PORT: port,
+        BULLSTUDIO_CLIENT_DIR: clientDir,
         ...(prefixArg
           ? { REDIS_PREFIX: prefixArg }
           : {}),
@@ -177,6 +176,7 @@ if (isDev) {
       REDIS_URL: redisUrl,
       PORT: port,
       HOST: "localhost",
+      BULLSTUDIO_CLIENT_DIR: clientDir,
       BULLSTUDIO_USERNAME: username,
       BULLSTUDIO_PASSWORD: password,
       ...(prefixArg
@@ -235,3 +235,13 @@ process.on("SIGINT", () => {
 process.on("SIGTERM", () => {
   child.kill("SIGTERM");
 });
+
+function findProductionServerFile(currentAppDir: string): string {
+  const candidates = [
+    resolve(currentAppDir, "server", "production.js"),
+    resolve(currentAppDir, "../../standalone/dist/server/production.js"),
+    resolve(currentAppDir, "../standalone/dist/server/production.js"),
+  ];
+
+  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
+}

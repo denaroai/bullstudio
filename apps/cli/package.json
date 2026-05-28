@@ -28,8 +28,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && pnpm build:server && pnpm build:cli",
-    "build:server": "esbuild server/production.ts --bundle --platform=node --target=node20 --outfile=dist/server/production.js --format=esm --external:bull --external:bullmq --external:ioredis",
+    "build": "vite build && pnpm --filter @bullstudio/standalone build && mkdir -p dist/server && cp ../standalone/dist/server/production.js dist/server/production.js && pnpm build:cli",
     "build:cli": "esbuild bin/cli.ts --bundle --platform=node --target=node20 --outfile=dist/bin/cli.js --format=esm --external:open",
     "preview": "vite preview",
     "start": "node dist/bin/cli.js",
@@ -42,9 +41,7 @@
     "generate:bull-jobs": "npx tsx scripts/generate-bull-jobs.ts"
   },
   "dependencies": {
-    "@bullstudio/embedded-core": "workspace:*",
     "@bullstudio/private-router": "workspace:*",
-    "@hono/node-server": "^2.0.4",
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/react-devtools": "^0.7.0",
     "@tanstack/react-query": "^5.66.5",
@@ -53,7 +50,6 @@
     "@tanstack/react-router-devtools": "^1.132.0",
     "@tanstack/router-plugin": "^1.132.0",
     "@trpc/client": "^11.4.3",
-    "@trpc/server": "^11.4.3",
     "@trpc/tanstack-react-query": "^11.4.3",
     "@types/dagre": "^0.7.53",
     "@xyflow/react": "^12.10.0",
@@ -62,7 +58,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dagre": "^0.8.5",
-    "hono": "^4.12.23",
     "ioredis": "^5.4.2",
     "lucide-react": "^0.544.0",
     "open": "^10.1.0",
@@ -80,7 +75,6 @@
   "devDependencies": {
     "@bullstudio/connect-types": "workspace:*",
     "@bullstudio/dayjs": "workspace:*",
-    "@bullstudio/queue": "workspace:*",
     "@bullstudio/ui": "workspace:*",
     "@tanstack/devtools-vite": "^0.3.11",
     "@testing-library/dom": "^10.4.0",
@@ -89,6 +83,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "@trpc/server": "^11.4.3",
     "esbuild": "^0.24.0",
     "jsdom": "^27.0.0",
     "typescript": "^5.7.2",

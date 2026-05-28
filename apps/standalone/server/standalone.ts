@@ -6,10 +6,11 @@ import {
   type DashboardProtection,
   type FrameworkResponse,
 } from "@bullstudio/embedded-core";
+import { createPrivateDashboardRouter } from "@bullstudio/private-router";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import type { Context } from "hono";
 import { Hono } from "hono";
-import { trpcRouter } from "../src/integrations/trpc/router";
+import { createStandaloneQueueSource } from "../src/standalone-source";
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html",
@@ -38,6 +39,9 @@ export interface StandaloneAppOptions {
 export function createStandaloneApp(options: StandaloneAppOptions): Hono {
   const env = options.env ?? process.env;
   const app = new Hono();
+  const trpcRouter = createPrivateDashboardRouter(
+    createStandaloneQueueSource(),
+  );
   const dashboard = createStandaloneDashboard({
     protection: getStandaloneProtection(env),
     handleDashboardAsset: (request) =>

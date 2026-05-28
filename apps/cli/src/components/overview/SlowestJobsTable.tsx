@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@bullstudio/ui/components/table";
 import { useNavigate } from "@tanstack/react-router";
-import type { OverviewMetricsResponse } from "@/integrations/trpc/routers/overview";
+import type { OverviewMetricsResponse } from "@bullstudio/private-router";
 import { formatDuration } from "@bullstudio/ui/shared";
 
 type SlowJob = OverviewMetricsResponse["slowestJobs"][number];

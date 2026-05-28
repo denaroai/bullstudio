@@ -15,7 +15,7 @@ import {
 } from "@bullstudio/ui/components/chart";
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from "recharts";
 import dayjs from "@bullstudio/dayjs";
-import type { OverviewMetricsResponse } from "@/integrations/trpc/routers/overview";
+import type { OverviewMetricsResponse } from "@bullstudio/private-router";
 
 type TimeSeriesDataPoint = OverviewMetricsResponse["timeSeries"][number];
 
