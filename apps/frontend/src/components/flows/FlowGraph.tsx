@@ -21,8 +21,8 @@ const nodeTypes = {
   flowJob: FlowJobNode,
 };
 
-const NODE_WIDTH = 220;
-const NODE_HEIGHT = 100;
+const NODE_WIDTH = 240;
+const NODE_HEIGHT = 92;
 
 interface FlowGraphProps {
   root: FlowNodeType;
@@ -55,8 +55,7 @@ function buildNodesAndEdges(root: FlowNodeType): {
     });
 
     if (parentId) {
-      const isActive =
-        node.status === "active" || node.status === "waiting";
+      const isActive = node.status === "active" || node.status === "waiting";
       const statusColor = getStatusColor(node.status as JobStatus);
 
       edges.push({
@@ -92,16 +91,16 @@ function buildNodesAndEdges(root: FlowNodeType): {
 function getLayoutedElements(
   nodes: Node[],
   edges: Edge[],
-  direction = "TB"
+  direction = "TB",
 ): { nodes: Node[]; edges: Edge[] } {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   dagreGraph.setGraph({
     rankdir: direction,
-    nodesep: 80,
-    ranksep: 100,
-    marginx: 50,
-    marginy: 50,
+    nodesep: 64,
+    ranksep: 88,
+    marginx: 40,
+    marginy: 40,
   });
 
   nodes.forEach((node) => {
@@ -128,33 +127,35 @@ function getLayoutedElements(
   return { nodes: layoutedNodes, edges };
 }
 
-
 export function FlowGraph({ root, onNodeClick }: FlowGraphProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     const { nodes, edges } = buildNodesAndEdges(root);
     return getLayoutedElements(nodes, edges);
   }, [root]);
 
-  const [nodes, setNodes , onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges , onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
       const nodeData = node.data as FlowJobNodeData;
       onNodeClick(node.id, nodeData.queueName);
     },
-    [onNodeClick]
+    [onNodeClick],
   );
 
   useEffect(() => {
     const { nodes, edges } = buildNodesAndEdges(root);
-    const { nodes: layoutedNodes, edges: layoutedEdges } =  getLayoutedElements(nodes, edges);
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+      nodes,
+      edges,
+    );
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
-  }, [root, setNodes, setEdges]); 
+  }, [root, setNodes, setEdges]);
 
   return (
-    <div className="h-[600px] rounded-lg border bg-card overflow-hidden">
+    <div className="h-[calc(100vh-260px)] min-h-[520px] overflow-hidden rounded-lg border bg-card/80">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -163,7 +164,7 @@ export function FlowGraph({ root, onNodeClick }: FlowGraphProps) {
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={{ padding: 0.16 }}
         minZoom={0.1}
         maxZoom={2}
         defaultEdgeOptions={{
@@ -172,14 +173,14 @@ export function FlowGraph({ root, onNodeClick }: FlowGraphProps) {
         proOptions={{ hideAttribution: true }}
       >
         <Background
-          gap={20}
+          gap={24}
           size={1}
           color="var(--border)"
-          className="bg-muted/35"
+          className="bg-muted/30"
         />
         <Controls
           showInteractive={false}
-          className="!bg-card !border-border !rounded-lg !shadow-lg [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-muted-foreground [&>button:hover]:!bg-muted"
+          className="!rounded-md !border-border !bg-card !shadow-lg [&>button]:!border-border [&>button]:!bg-card [&>button]:!text-muted-foreground [&>button:hover]:!bg-muted"
         />
       </ReactFlow>
     </div>

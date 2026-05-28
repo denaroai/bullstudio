@@ -35,21 +35,26 @@ function FlowJobNodeComponent({ data }: FlowJobNodeProps) {
       <Handle
         type="target"
         position={Position.Top}
-        className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-background"
+        className="!h-2.5 !w-2.5 !border-2 !border-background !bg-muted-foreground"
       />
 
       <div
-        className="min-w-[200px] bg-card rounded-lg border-2 overflow-hidden shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
+        className="w-60 cursor-pointer overflow-hidden rounded-md border bg-card shadow-lg transition-[border-color,box-shadow] hover:shadow-xl"
         style={{ borderColor: statusColor }}
       >
         <div
-          className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-b"
+          className="flex items-center justify-between gap-3 border-b px-3 py-2"
           style={{ backgroundColor: `${statusColor}15` }}
         >
           <JobStatusBadge status={nodeData.status} size="sm" showDot={false} />
+          {nodeData.duration !== undefined && (
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {formatDuration(nodeData.duration)}
+            </span>
+          )}
         </div>
 
-        <div className="p-3 space-y-1.5">
+        <div className="space-y-1 px-3 py-2.5">
           <div className="font-medium text-sm text-foreground truncate">
             {nodeData.name}
           </div>
@@ -57,19 +62,13 @@ function FlowJobNodeComponent({ data }: FlowJobNodeProps) {
           <div className="text-xs text-muted-foreground font-mono truncate">
             {nodeData.queueName}
           </div>
-
-          {nodeData.duration !== undefined && (
-            <div className="text-xs text-muted-foreground font-mono">
-              {formatDuration(nodeData.duration)}
-            </div>
-          )}
         </div>
       </div>
 
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-background"
+        className="!h-2.5 !w-2.5 !border-2 !border-background !bg-muted-foreground"
       />
     </>
   );

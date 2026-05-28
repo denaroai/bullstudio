@@ -4,14 +4,7 @@ import { useState, useMemo, memo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useTRPC } from "@/integrations/trpc/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Header from "@/components/Header";
 import { Button } from "@bullstudio/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@bullstudio/ui/components/card";
 import {
   Tabs,
   TabsContent,
@@ -25,9 +18,6 @@ import {
   RefreshCw,
   Trash2,
   RotateCcw,
-  Clock,
-  CheckCircle,
-  XCircle,
   AlertTriangle,
 } from "lucide-react";
 import dayjs from "@bullstudio/dayjs";
@@ -125,9 +115,10 @@ function JobDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Header title="Job Details" />
-        <Skeleton className="h-64 w-full bg-zinc-800/50" />
+      <div className="space-y-4">
+        <Skeleton className="h-20 w-full bg-zinc-800/50" />
+        <Skeleton className="h-24 w-full bg-zinc-800/50" />
+        <Skeleton className="h-[420px] w-full bg-zinc-800/50" />
       </div>
     );
   }
@@ -135,7 +126,6 @@ function JobDetailPage() {
   if (!job) {
     return (
       <div className="space-y-6">
-        <Header title="Job Not Found" />
         <div className="text-center py-12">
           <AlertTriangle className="size-12 text-zinc-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-zinc-300">Job not found</h3>
@@ -150,19 +140,6 @@ function JobDetailPage() {
       </div>
     );
   }
-
-  const StatusIcon = () => {
-    switch (job.status) {
-      case "completed":
-        return <CheckCircle className="size-5 text-emerald-400" />;
-      case "failed":
-        return <XCircle className="size-5 text-red-400" />;
-      case "active":
-        return <Clock className="size-5 text-blue-400 animate-pulse" />;
-      default:
-        return <Clock className="size-5 text-zinc-400" />;
-    }
-  };
 
   const handleRetry = () => {
     retryMutation.mutate({
@@ -182,204 +159,181 @@ function JobDetailPage() {
     });
   };
 
+  const createdAt = dayjs(job.timestamp);
+  const duration =
+    job.finishedOn && job.processedOn
+      ? formatDuration(job.finishedOn - job.processedOn)
+      : job.processedOn
+        ? "In progress"
+        : "Pending";
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={goBack}>
-          <ArrowLeft className="size-4" />
-        </Button>
-        <div>
-          <Header title={job.name} />
-          <p className="text-xs text-muted-foreground font-mono pl-4 -mt-2">
-            {job.id}
-          </p>
+    <div className="space-y-5">
+      <header className="flex flex-col gap-4 border-b pb-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goBack}
+            aria-label="Back to jobs"
+            className="mt-0.5"
+          >
+            <ArrowLeft className="size-4" />
+          </Button>
+          <div className="min-w-0 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-xl font-semibold leading-tight text-foreground">
+                {job.name}
+              </h1>
+              <JobStatusBadge status={job.status as JobStatus} size="sm" />
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <span className="font-mono">#{job.id}</span>
+              <span className="font-mono">{job.queueName}</span>
+              <span>{createdAt.fromNow()}</span>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Action Bar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <JobStatusBadge status={job.status as JobStatus} size="lg" />
-
-        <div className="flex-1" />
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="bg-card"
-        >
-          <RefreshCw
-            className={`size-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
-          />
-          Refresh
-        </Button>
-
-        {job.status === "failed" && (
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRetry}
-            disabled={retryMutation.isPending}
-            className="bg-card text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="bg-card"
           >
-            <RotateCcw
-              className={`size-4 mr-2 ${retryMutation.isPending ? "animate-spin" : ""}`}
+            <RefreshCw
+              className={`size-4 ${isFetching ? "animate-spin" : ""}`}
             />
-            {retryMutation.isPending ? "Retrying..." : "Retry"}
+            Refresh
           </Button>
-        )}
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRemove}
-          disabled={removeMutation.isPending}
-          className="bg-card text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-        >
-          <Trash2 className="size-4 mr-2" />
-          {removeMutation.isPending ? "Removing..." : "Remove"}
-        </Button>
-      </div>
+          {job.status === "failed" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRetry}
+              disabled={retryMutation.isPending}
+              className="bg-card text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+            >
+              <RotateCcw
+                className={`size-4 ${retryMutation.isPending ? "animate-spin" : ""}`}
+              />
+              {retryMutation.isPending ? "Retrying" : "Retry"}
+            </Button>
+          )}
 
-      {/* Metadata Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetadataCard
-          title="Queue"
-          value={job.queueName}
-          icon={<StatusIcon />}
-        />
-        <MetadataCard
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRemove}
+            disabled={removeMutation.isPending}
+            className="bg-card text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+          >
+            <Trash2 className="size-4" />
+            {removeMutation.isPending ? "Removing" : "Remove"}
+          </Button>
+        </div>
+      </header>
+
+      <dl className="grid overflow-hidden rounded-lg border bg-card/80 sm:grid-cols-2 xl:grid-cols-4">
+        <MetadataItem title="Queue" value={job.queueName} />
+        <MetadataItem
           title="Created"
-          value={dayjs(job.timestamp).format("MMM D, HH:mm:ss")}
-          subtitle={dayjs(job.timestamp).fromNow()}
+          value={createdAt.format("MMM D, HH:mm:ss")}
+          subtitle={createdAt.format("YYYY-MM-DD")}
         />
-        <MetadataCard
+        <MetadataItem
           title="Attempts"
           value={`${job.attemptsMade} / ${job.attemptsLimit}`}
         />
-        <MetadataCard
-          title="Duration"
-          value={
-            job.finishedOn && job.processedOn
-              ? formatDuration(job.finishedOn - job.processedOn)
-              : job.processedOn
-                ? "In progress"
-                : "Pending"
-          }
-        />
-      </div>
+        <MetadataItem title="Duration" value={duration} />
+      </dl>
 
-      {/* Tabs for Data, Return Value, Error */}
-      <Tabs defaultValue="data" className="w-full">
-        <TabsList className="border border-border">
-          <TabsTrigger value="data" className="data-[state=active]:bg-background">
+      <Tabs defaultValue="data" className="w-full gap-3">
+        <TabsList className="h-8 rounded-md border border-border bg-muted/60 p-1">
+          <TabsTrigger value="data" className="h-6 rounded-sm px-3 text-xs">
             Input Data
           </TabsTrigger>
-          <TabsTrigger value="logs" className="data-[state=active]:bg-background">
+          <TabsTrigger value="logs" className="h-6 rounded-sm px-3 text-xs">
             Logs
           </TabsTrigger>
-          <TabsTrigger
-            value="result"
-            className="data-[state=active]:bg-background"
-          >
+          <TabsTrigger value="result" className="h-6 rounded-sm px-3 text-xs">
             Result
           </TabsTrigger>
           {job.status === "failed" && (
-            <TabsTrigger
-              value="error"
-              className="data-[state=active]:bg-background"
-            >
+            <TabsTrigger value="error" className="h-6 rounded-sm px-3 text-xs">
               Error
             </TabsTrigger>
           )}
         </TabsList>
 
-        <TabsContent value="data" className="mt-4">
-          <Card className="bg-card">
-            <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">
-                Input Data
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <JsonViewer data={job.data} />
-            </CardContent>
-          </Card>
+        <TabsContent value="data">
+          <DetailPanel title="Input Data">
+            <JsonViewer data={job.data} />
+          </DetailPanel>
         </TabsContent>
 
-        <TabsContent value="logs" className="mt-4">
-          <Card className="bg-card">
-            <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">
-                Job Logs
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {logsData && logsData.logs.length > 0 ? (
-                <div className="bg-muted rounded-lg overflow-x-auto max-h-[600px] overflow-y-auto">
-                  {logsData.logs.map((line) => (
-                    <div
-                      key={line}
-                      className="px-4 py-1.5 text-sm font-mono text-foreground hover:bg-background/70 border-b last:border-b-0 whitespace-pre-wrap break-all"
-                    >
-                      {line}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-sm">No logs recorded</p>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="logs">
+          <DetailPanel title="Job Logs">
+            {logsData && logsData.logs.length > 0 ? (
+              <div className="overflow-x-auto overflow-y-auto rounded-md bg-muted/70 max-h-[min(620px,calc(100vh-300px))]">
+                {logsData.logs.map((line) => (
+                  <div
+                    key={line}
+                    className="border-b px-4 py-1.5 font-mono text-sm text-foreground whitespace-pre-wrap break-all last:border-b-0 hover:bg-background/70"
+                  >
+                    {line}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No logs recorded</p>
+            )}
+          </DetailPanel>
         </TabsContent>
 
-        <TabsContent value="result" className="mt-4">
-          <Card className="bg-card">
-            <CardHeader>
-              <CardTitle className="text-sm text-muted-foreground">
-                Return Value
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {job.returnValue ? (
-                <JsonViewer data={job.returnValue} />
-              ) : (
-                <p className="text-muted-foreground text-sm">No return value</p>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="result">
+          <DetailPanel title="Return Value">
+            {job.returnValue ? (
+              <JsonViewer data={job.returnValue} />
+            ) : (
+              <p className="text-sm text-muted-foreground">No return value</p>
+            )}
+          </DetailPanel>
         </TabsContent>
 
         {job.status === "failed" && (
-          <TabsContent value="error" className="mt-4">
-            <Card className="bg-red-900/10 border-red-900/30">
-              <CardHeader>
-                <CardTitle className="text-sm text-red-400">
-                  Error Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+          <TabsContent value="error">
+            <DetailPanel
+              title="Error Details"
+              className="border-red-900/30 bg-red-950/10"
+              titleClassName="text-red-400"
+            >
+              <div className="space-y-4">
                 {job.failedReason && (
                   <div>
-                    <h4 className="text-xs text-muted-foreground mb-1">Message</h4>
-                    <p className="text-sm text-red-300 font-mono">
+                    <h4 className="mb-1 text-xs text-muted-foreground">
+                      Message
+                    </h4>
+                    <p className="font-mono text-sm text-red-300">
                       {job.failedReason}
                     </p>
                   </div>
                 )}
                 {job.stacktrace && job.stacktrace.length > 0 && (
                   <div>
-                    <h4 className="text-xs text-muted-foreground mb-1">
+                    <h4 className="mb-1 text-xs text-muted-foreground">
                       Stack Trace
                     </h4>
-                    <pre className="text-xs text-foreground font-mono bg-muted p-4 rounded-lg overflow-x-auto">
+                    <pre className="overflow-x-auto rounded-md bg-muted/70 p-4 font-mono text-xs text-foreground">
                       {job.stacktrace.join("\n")}
                     </pre>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </DetailPanel>
           </TabsContent>
         )}
       </Tabs>
@@ -387,36 +341,52 @@ function JobDetailPage() {
   );
 }
 
-function MetadataCard({
+function MetadataItem({
   title,
   value,
   subtitle,
-  icon,
 }: {
   title: string;
   value: string;
   subtitle?: string;
-  icon?: React.ReactNode;
 }) {
   return (
-    <Card className="bg-card">
-      <CardContent className="pt-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground">{title}</p>
-            <p className="text-sm font-medium text-foreground mt-1 font-mono">
-              {value}
-            </p>
-            {subtitle && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {subtitle}
-              </p>
-            )}
-          </div>
-          {icon}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="min-w-0 border-b p-4 last:border-b-0 sm:odd:border-r sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0">
+      <dt className="text-[11px] font-medium uppercase tracking-normal text-muted-foreground">
+        {title}
+      </dt>
+      <dd className="mt-1 truncate font-mono text-sm text-foreground">
+        {value}
+      </dd>
+      {subtitle && (
+        <dd className="mt-0.5 font-mono text-xs text-muted-foreground">
+          {subtitle}
+        </dd>
+      )}
+    </div>
+  );
+}
+
+function DetailPanel({
+  title,
+  children,
+  className,
+  titleClassName,
+}: {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+  titleClassName?: string;
+}) {
+  return (
+    <section className={`rounded-lg border bg-card/80 p-4 ${className ?? ""}`}>
+      <h2
+        className={`mb-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground ${titleClassName ?? ""}`}
+      >
+        {title}
+      </h2>
+      {children}
+    </section>
   );
 }
 
@@ -445,7 +415,7 @@ const JsonViewer = memo(function JsonViewer({ data }: { data: unknown }) {
 
   return (
     <div>
-      <pre className="text-sm text-foreground font-mono bg-muted p-4 rounded-lg overflow-x-auto max-h-[600px] overflow-y-auto">
+      <pre className="overflow-x-auto overflow-y-auto rounded-md bg-muted/70 p-4 font-mono text-sm text-foreground max-h-[min(620px,calc(100vh-300px))]">
         {formatted}
         {isTruncated && (
           <span className="text-muted-foreground">{"\n\n... (truncated)"}</span>
