@@ -1,4 +1,4 @@
-import { FlowProducer, Worker, Job, Queue } from "bullmq";
+import { FlowProducer, type Job, Queue, Worker } from "bullmq";
 
 const connection = { host: "localhost", port: 6378 };
 

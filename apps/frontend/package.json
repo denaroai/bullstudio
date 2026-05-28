@@ -1,44 +1,21 @@
 {
-  "name": "bullstudio",
-  "version": "1.4.0",
-  "description": "A lightweight queue management dashboard for Bull and BullMQ",
-  "private": false,
+  "name": "@bullstudio/frontend",
+  "version": "0.0.1",
+  "description": "Bullstudio dashboard frontend",
+  "private": true,
   "type": "module",
-  "bin": {
-    "bullstudio": "./dist/bin/cli.js"
-  },
   "engines": {
     "node": ">=20"
   },
-  "keywords": [
-    "bullmq",
-    "bull",
-    "queue",
-    "redis",
-    "dashboard",
-    "cli",
-    "monitoring",
-    "jobs"
-  ],
-  "readme": "README.md",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/emirce/bullstudio"
-  },
-  "license": "MIT",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && pnpm --filter @bullstudio/standalone build && mkdir -p dist/server && cp ../standalone/dist/server/production.js dist/server/production.js && pnpm build:cli",
-    "build:cli": "esbuild bin/cli.ts --bundle --platform=node --target=node20 --outfile=dist/bin/cli.js --format=esm --external:open",
+    "build": "vite build",
     "preview": "vite preview",
-    "start": "node dist/bin/cli.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write .",
     "lint": "biome lint",
-    "check": "biome lint",
-    "prepublishOnly": "pnpm build",
-    "generate:bull-jobs": "npx tsx scripts/generate-bull-jobs.ts"
+    "check": "biome lint"
   },
   "dependencies": {
     "@bullstudio/private-router": "workspace:*",
@@ -53,14 +30,10 @@
     "@trpc/tanstack-react-query": "^11.4.3",
     "@types/dagre": "^0.7.53",
     "@xyflow/react": "^12.10.0",
-    "bull": "^4.16.4",
-    "bullmq": "^5.34.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dagre": "^0.8.5",
-    "ioredis": "^5.4.2",
     "lucide-react": "^0.544.0",
-    "open": "^10.1.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "2.15.4",

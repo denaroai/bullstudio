@@ -20,16 +20,15 @@ USER bullstudio
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 
-COPY --from=builder --chown=bullstudio:nodejs /app/apps/cli/dist/ ./apps/cli/dist/
-COPY --from=builder --chown=bullstudio:nodejs /app/apps/standalone/dist/ ./apps/standalone/dist/
+COPY --from=builder --chown=bullstudio:nodejs /app/packages/cli/dist/ ./packages/cli/dist/
 COPY --from=builder --chown=bullstudio:nodejs /app/node_modules/ ./node_modules/
-COPY --from=builder --chown=bullstudio:nodejs /app/apps/cli/node_modules/ ./apps/cli/node_modules/
+COPY --from=builder --chown=bullstudio:nodejs /app/packages/cli/node_modules/ ./packages/cli/node_modules/
 
 ARG PORT=4000
 
 EXPOSE ${PORT}
 ENV PORT=${PORT}
 
-ENV BULLSTUDIO_CLIENT_DIR=/app/apps/cli/dist/client
+ENV BULLSTUDIO_CLIENT_DIR=/app/packages/cli/dist/client
 
-CMD ["node", "./apps/standalone/dist/server/production.js"]
+CMD ["node", "./packages/cli/dist/server/production.js"]

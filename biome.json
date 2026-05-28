@@ -9,8 +9,8 @@
     "ignoreUnknown": false,
     "includes": [
       "**",
-      "!apps/cli/src/routeTree.gen.ts",
-      "!apps/cli/src/styles.css"
+      "!apps/frontend/src/routeTree.gen.ts",
+      "!apps/frontend/src/styles.css"
     ]
   },
   "formatter": {

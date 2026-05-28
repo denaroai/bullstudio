@@ -8,6 +8,7 @@ import { existsSync } from "node:fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const packageDir = findPackageDir(__dirname);
 
 const { values, positionals } = parseArgs({
   options: {
@@ -130,9 +131,10 @@ async function openBrowser(url: string) {
   }
 }
 
-const appDir = resolve(__dirname, "..");
-const clientDir = isDev ? appDir : resolve(appDir, "client");
-const productionServerFile = findProductionServerFile(appDir);
+const distDir = resolve(packageDir, "dist");
+const frontendDir = resolve(packageDir, "../../apps/frontend");
+const clientDir = isDev ? frontendDir : resolve(distDir, "client");
+const productionServerFile = resolve(distDir, "server", "production.js");
 
 // Check if we should run in production mode
 const hasBuiltServer = existsSync(productionServerFile);
@@ -146,13 +148,20 @@ if (!isDev && !hasBuiltServer) {
 let child: ReturnType<typeof spawn>;
 
 if (isDev) {
+  if (!existsSync(frontendDir)) {
+    console.error(
+      "Frontend source app not found. The --dev flag requires a source checkout.",
+    );
+    process.exit(1);
+  }
+
   // Development mode: use vite dev
   console.log("Starting development server...\n");
   child = spawn(
     "npx",
     ["vite", "dev", "--port", port],
     {
-      cwd: appDir,
+      cwd: frontendDir,
       env: {
         ...process.env,
         REDIS_URL: redisUrl,
@@ -170,7 +179,7 @@ if (isDev) {
   // Production mode: run the built production server
   console.log("Starting production server...\n");
   child = spawn("node", [productionServerFile], {
-    cwd: appDir,
+    cwd: packageDir,
     env: {
       ...process.env,
       REDIS_URL: redisUrl,
@@ -236,12 +245,15 @@ process.on("SIGTERM", () => {
   child.kill("SIGTERM");
 });
 
-function findProductionServerFile(currentAppDir: string): string {
+function findPackageDir(startDir: string): string {
   const candidates = [
-    resolve(currentAppDir, "server", "production.js"),
-    resolve(currentAppDir, "../../standalone/dist/server/production.js"),
-    resolve(currentAppDir, "../standalone/dist/server/production.js"),
+    resolve(startDir, ".."),
+    resolve(startDir, "../.."),
   ];
 
-  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
+  return (
+    candidates.find((candidate) =>
+      existsSync(resolve(candidate, "package.json")),
+    ) ?? startDir
+  );
 }

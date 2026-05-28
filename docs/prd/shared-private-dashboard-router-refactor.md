@@ -5,7 +5,7 @@
 This plan turns the embedded compatibility work into the next architecture slice:
 one private dashboard router contract shared by standalone mode and embedded
 mode, backed by mode-specific queue sources. The goal is to remove the copied
-procedure behavior now living in `apps/cli` and `@bullstudio/embedded-core`
+procedure behavior now living in `apps/frontend` and `@bullstudio/embedded-core`
 without changing the React dashboard client shape or regressing standalone Redis
 discovery behavior.
 
@@ -330,7 +330,7 @@ interface PrivateDashboardQueueSource {
 }
 ```
 
-`StandaloneQueueSource` plugs the existing `apps/cli` queue provider into this
+`StandaloneQueueSource` plugs the existing standalone queue provider into this
 interface. It owns Redis connection parsing, Redis prefix discovery, standalone
 queue discovery, and standalone compatibility-sensitive error messages.
 
@@ -350,7 +350,7 @@ or reduced:
 
 - The separate embedded `createPrivateDashboardApiRouter` procedure matrix in
   `@bullstudio/embedded-core`.
-- Duplicate overview aggregation code between `apps/cli` and
+- Duplicate overview aggregation code between `apps/frontend` and
   `@bullstudio/embedded-core`.
 - Duplicate job list merge, sort, and global pagination code.
 - Duplicate job retry and remove response message construction.
@@ -373,7 +373,7 @@ Proposed ownership:
 - `@bullstudio/private-router`: tRPC router factory, procedure input schemas,
   response contracts, shared aggregation, target resolution orchestration,
   mutation guard orchestration, and contract tests.
-- `apps/cli`: `StandaloneQueueSource`, Redis URL parsing, Redis provider
+- `packages/cli` and `@bullstudio/standalone`: `StandaloneQueueSource`, Redis URL parsing, Redis provider
   lifecycle, standalone server wiring, standalone auth, and CLI production
   server behavior.
 - `@bullstudio/embedded-core`: `EmbeddedQueueSource`, embedded dashboard asset
@@ -417,7 +417,7 @@ keys.
    helpers, and contract tests driven by fake queue sources.
 2. Port embedded core to `EmbeddedQueueSource` behind the shared router while
    keeping framework adapter tests green.
-3. Port standalone `apps/cli` routers to `StandaloneQueueSource` behind the
+3. Port standalone routers to `StandaloneQueueSource` behind the
    shared router while keeping standalone server tests green.
 4. Delete duplicate embedded compatibility router helpers after both modes use
    the shared router.
@@ -456,7 +456,7 @@ Mode integration tests should then verify:
 
 - `@bullstudio/embedded-core` uses `EmbeddedQueueSource` and still passes the
   embedded parity matrix.
-- `apps/cli` uses `StandaloneQueueSource` and still passes standalone server
+- `@bullstudio/standalone` uses `StandaloneQueueSource` and still passes standalone server
   behavior.
 - Hono, Express, Fastify, and Next adapter smoke tests still prove mounted
   private API requests remain under the configured mount path.
@@ -488,7 +488,7 @@ Reviewer decision:
 Review checklist:
 
 - Confirm that `@bullstudio/private-router` is the right internal package for
-  the shared router rather than folding the router into `apps/cli` or
+  the shared router rather than folding the router into `apps/frontend` or
   `@bullstudio/embedded-core`.
 - Confirm that `PrivateDashboardQueueSource` is the right deep module boundary
   between the private router and mode-specific queue discovery or supplied queue

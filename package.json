@@ -8,7 +8,7 @@
     "start": "turbo start",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "test": "turbo test --filter=@bullstudio/queue --filter=bullstudio --filter=@bullstudio/standalone",
+    "test": "turbo test --filter=@bullstudio/queue --filter=@bullstudio/frontend --filter=@bullstudio/standalone",
     "format": "biome format --write .",
     "check": "biome lint ."
   },

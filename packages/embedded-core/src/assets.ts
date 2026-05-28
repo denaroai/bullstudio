@@ -86,9 +86,12 @@ async function readAssetFile(
 
 function findClientDistPath(): string | null {
   const candidates = [
-    join(process.cwd(), "apps/cli/dist/client"),
-    join(process.cwd(), "../../apps/cli/dist/client"),
-    join(process.cwd(), "../apps/cli/dist/client"),
+    join(process.cwd(), "apps/frontend/dist/client"),
+    join(process.cwd(), "../../apps/frontend/dist/client"),
+    join(process.cwd(), "../apps/frontend/dist/client"),
+    join(process.cwd(), "packages/cli/dist/client"),
+    join(process.cwd(), "../../packages/cli/dist/client"),
+    join(process.cwd(), "../packages/cli/dist/client"),
   ];
 
   for (const candidate of candidates) {

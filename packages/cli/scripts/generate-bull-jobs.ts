@@ -27,7 +27,13 @@ function randomInt(min: number, max: number): number {
 }
 
 function randomElement<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
+  const item = arr[Math.floor(Math.random() * arr.length)];
+
+  if (item === undefined) {
+    throw new Error("Cannot pick a random element from an empty array");
+  }
+
+  return item;
 }
 
 function generateJobData() {
@@ -118,10 +124,16 @@ async function main() {
 
     // Process jobs with success
     const successQueue = queues[0];
+    if (!successQueue) {
+      throw new Error("Expected at least one queue for success processing");
+    }
     createProcessor(successQueue, false);
 
     // Process jobs with some failures
     const failQueue = queues[1];
+    if (!failQueue) {
+      throw new Error("Expected at least two queues for failure processing");
+    }
     createProcessor(failQueue, true);
 
     // Wait for some processing
@@ -147,7 +159,7 @@ async function main() {
     }
 
     console.log("\nDone! You can now run bullstudio to view the jobs.");
-    console.log("Run: REDIS_URL=" + REDIS_URL + " pnpm start");
+    console.log(`Run: REDIS_URL=${REDIS_URL} pnpm start`);
 
   } catch (error) {
     console.error("Error:", error);

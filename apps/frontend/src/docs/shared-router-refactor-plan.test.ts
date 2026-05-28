@@ -53,7 +53,7 @@ describe("shared private dashboard router refactor plan", () => {
     expect(plan).toContain("EmbeddedQueueSource");
     expect(plan).toContain("queueKey");
     expect(plan).toContain("queue name and prefix");
-    expect(plan).toContain("apps/cli");
+    expect(plan).toContain("apps/frontend");
     expect(plan).toContain("@bullstudio/embedded-core");
     expect(plan).toContain("@bullstudio/private-router");
     expect(plan).toContain("Reviewer decision");

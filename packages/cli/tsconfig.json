@@ -1,0 +1,7 @@
+{
+  "extends": "@bullstudio/typescript-config/base.json",
+  "include": ["index.ts", "scripts/**/*.ts"],
+  "compilerOptions": {
+    "noEmit": true
+  }
+}
