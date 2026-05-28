@@ -4,12 +4,14 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
+import { standaloneApiPlugin } from "./dev/standalone-api-plugin";
 
 const config = defineConfig({
   build: {
     outDir: "dist/client",
   },
   plugins: [
+    standaloneApiPlugin(),
     devtools(),
     viteTsConfigPaths({
       projects: ["./tsconfig.json"],
