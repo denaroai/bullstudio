@@ -94,6 +94,35 @@ describe("bullstudio Fastify adapter", () => {
     expect(validApiResponse.statusCode).toBe(200);
   });
 
+  it("serves the dashboard shell for deep client routes with the mount path base", async () => {
+    const app = Fastify();
+
+    await app.register(
+      bullstudio({
+        queues: [createQueueAdapter({ key: "email", label: "Email" })],
+        protection: {
+          type: "disabled",
+        },
+      }),
+      { prefix: "/ops/bullstudio" },
+    );
+
+    const htmlResponse = await app.inject("/ops/bullstudio/jobs");
+    expect(htmlResponse.statusCode).toBe(200);
+    expect(htmlResponse.headers["content-type"]).toContain("text/html");
+    expect(htmlResponse.body).toContain('"basePath":"/ops/bullstudio"');
+    expect(htmlResponse.body).not.toContain(
+      '"basePath":"/ops/bullstudio/jobs"',
+    );
+
+    const apiResponse = await app.inject(
+      "/ops/bullstudio/api/trpc/queues.list",
+    );
+    expect(apiResponse.statusCode).toBe(200);
+
+    await app.close();
+  });
+
   it("enforces read-only dashboards at the private dashboard API layer", async () => {
     const pauseQueue = vi.fn<() => Promise<void>>();
     const retryJob = vi.fn<() => Promise<void>>();

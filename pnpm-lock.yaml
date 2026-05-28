@@ -220,6 +220,77 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(tsx@4.21.0)
 
+  examples/express-bullmq-embedded:
+    dependencies:
+      '@bullstudio/bullmq-adapter':
+        specifier: workspace:*
+        version: link:../../packages/bullmq-adapter
+      '@bullstudio/express':
+        specifier: workspace:*
+        version: link:../../packages/express-adapter
+      bullmq:
+        specifier: ^5.34.8
+        version: 5.66.5
+      express:
+        specifier: ^5.0.0
+        version: 5.2.1
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.9.1
+    devDependencies:
+      '@bullstudio/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.7
+      esbuild:
+        specifier: ^0.24.0
+        version: 0.24.2
+      tsx:
+        specifier: ^4.20.6
+        version: 4.21.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  examples/fastify-bullmq-embedded:
+    dependencies:
+      '@bullstudio/bullmq-adapter':
+        specifier: workspace:*
+        version: link:../../packages/bullmq-adapter
+      '@bullstudio/fastify':
+        specifier: workspace:*
+        version: link:../../packages/fastify-adapter
+      bullmq:
+        specifier: ^5.34.8
+        version: 5.66.5
+      fastify:
+        specifier: ^5.0.0
+        version: 5.8.5
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.9.1
+    devDependencies:
+      '@bullstudio/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.7
+      esbuild:
+        specifier: ^0.24.0
+        version: 0.24.2
+      tsx:
+        specifier: ^4.20.6
+        version: 4.21.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   examples/hono-bullmq-embedded:
     dependencies:
       '@bullstudio/bullmq-adapter':

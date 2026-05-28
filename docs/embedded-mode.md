@@ -71,10 +71,22 @@ Embedded mode is exposed through framework-native adapter packages. Each adapter
 
 Next.js support is for App Router route handlers. Pages Router support is not included.
 
-The repository includes a runnable Next.js + BullMQ example at
-`examples/next-bullmq-embedded`. It mounts Bullstudio at `/ops/bullstudio`,
-uses a host-owned BullMQ queue, and includes a small host page for adding sample
-jobs before inspecting them in the embedded dashboard.
+## Runnable Examples
+
+The repository includes simple BullMQ embedded examples for every supported
+framework adapter:
+
+| Framework | Example | Run command |
+| --- | --- | --- |
+| Hono | `examples/hono-bullmq-embedded` | `pnpm --filter @bullstudio/example-hono-bullmq-embedded dev` |
+| Express | `examples/express-bullmq-embedded` | `pnpm --filter @bullstudio/example-express-bullmq-embedded dev` |
+| Fastify | `examples/fastify-bullmq-embedded` | `pnpm --filter @bullstudio/example-fastify-bullmq-embedded dev` |
+| Next.js App Router | `examples/next-bullmq-embedded` | `pnpm --filter @bullstudio/example-next-bullmq-embedded dev` |
+
+Each example mounts Bullstudio at `/ops/bullstudio`, uses a host-owned BullMQ
+queue, and defaults to `operator / change-me` dashboard credentials. The Next.js
+example also includes a small host page for adding sample jobs before inspecting
+them in the embedded dashboard.
 
 ## Queue Adapters
 

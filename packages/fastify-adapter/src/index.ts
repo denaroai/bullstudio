@@ -43,20 +43,17 @@ function toFrameworkRequest(request: FastifyRequest) {
     method: request.method,
     url: toMountedUrl(request.url),
     headers: request.headers,
-    basePath: getBasePath(request.url),
+    basePath: getBasePath(request.routeOptions.url ?? "/"),
     body: toRequestBody(request.body),
   };
 }
 
-function getBasePath(url: string): string {
-  const pathname = new URL(url, "http://bullstudio.local").pathname;
-  const assetIndex = pathname.search(/\/(?:assets\/|logo\.svg$)/);
-  const apiIndex = pathname.indexOf("/api/trpc");
-  const endIndex = [assetIndex, apiIndex]
-    .filter((index) => index >= 0)
-    .sort((a, b) => a - b)[0];
+function getBasePath(routeUrl: string): string {
+  const basePath = routeUrl
+    .replace(/\/api\/trpc\/\*$/, "")
+    .replace(/\/\*$/, "");
 
-  return endIndex === undefined ? pathname : pathname.slice(0, endIndex);
+  return basePath || "/";
 }
 
 function toMountedUrl(url: string): string {

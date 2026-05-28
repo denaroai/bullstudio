@@ -51,6 +51,20 @@ npm install -g bullstudio
 bullstudio
 ```
 
+## Embedded Examples
+
+Bullstudio can also be mounted inside host applications through framework
+adapters. Runnable BullMQ examples are available for every supported framework:
+
+| Framework | Example |
+| --- | --- |
+| Hono | `examples/hono-bullmq-embedded` |
+| Express | `examples/express-bullmq-embedded` |
+| Fastify | `examples/fastify-bullmq-embedded` |
+| Next.js App Router | `examples/next-bullmq-embedded` |
+
+See `docs/embedded-mode.md` for mounting details and adapter configuration.
+
 ---
 
 ## Docker

@@ -107,6 +107,29 @@ describe("bullstudio Next.js App Router adapter", () => {
     expect(validApiResponse.status).toBe(200);
   });
 
+  it("serves the dashboard shell for deep client routes with the mount path base", async () => {
+    const handlers = bullstudio({
+      mountPath: "/ops/bullstudio",
+      queues: [createQueueAdapter({ key: "email", label: "Email" })],
+      protection: {
+        type: "disabled",
+      },
+    });
+
+    const htmlResponse = await handlers.GET(
+      request("http://localhost/ops/bullstudio/jobs"),
+    );
+    expect(htmlResponse.status).toBe(200);
+    expect(htmlResponse.headers.get("content-type")).toContain("text/html");
+    const html = await htmlResponse.text();
+    expect(html).toContain('"basePath":"/ops/bullstudio"');
+
+    const apiResponse = await handlers.GET(
+      request("http://localhost/ops/bullstudio/api/trpc/queues.list"),
+    );
+    expect(apiResponse.status).toBe(200);
+  });
+
   it("enforces read-only dashboards at the private dashboard API layer", async () => {
     const pauseQueue = vi.fn<() => Promise<void>>();
     const retryJob = vi.fn<() => Promise<void>>();

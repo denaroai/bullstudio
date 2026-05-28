@@ -111,6 +111,32 @@ describe("bullstudio Hono adapter", () => {
     expect(pauseQueue).not.toHaveBeenCalled();
   });
 
+  it("serves the dashboard shell for deep client routes with the mount path base", async () => {
+    const host = new Hono();
+
+    host.route(
+      "/ops/bullstudio",
+      bullstudio({
+        queues: [createQueueAdapter({ key: "email", label: "Email" })],
+        protection: {
+          type: "disabled",
+        },
+      }),
+    );
+
+    const htmlResponse = await host.request("/ops/bullstudio/jobs");
+    expect(htmlResponse.status).toBe(200);
+    expect(htmlResponse.headers.get("content-type")).toContain("text/html");
+    const html = await htmlResponse.text();
+    expect(html).toContain('"basePath":"/ops/bullstudio"');
+    expect(html).not.toContain('"basePath":"/ops/bullstudio/jobs"');
+
+    const apiResponse = await host.request(
+      "/ops/bullstudio/api/trpc/queues.list",
+    );
+    expect(apiResponse.status).toBe(200);
+  });
+
   it("protects dashboard assets and private dashboard API with Basic Auth by default", async () => {
     const host = new Hono();
     const dashboard = bullstudio({

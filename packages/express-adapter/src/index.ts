@@ -13,7 +13,7 @@ export function bullstudio(config: DashboardConfig): RequestHandler {
     try {
       const frameworkRequest = {
         method: request.method,
-        url: request.url,
+        url: toMountedUrl(request.url),
         headers: request.headers,
         basePath: request.baseUrl,
         body: await readRequestBody(request),
@@ -30,9 +30,26 @@ export function bullstudio(config: DashboardConfig): RequestHandler {
 }
 
 function isPrivateDashboardApiRequest(request: Request): boolean {
-  return new URL(request.url, "http://bullstudio.local").pathname.startsWith(
-    "/api/trpc",
-  );
+  return new URL(
+    toMountedUrl(request.url),
+    "http://bullstudio.local",
+  ).pathname.startsWith("/api/trpc");
+}
+
+function toMountedUrl(url: string): string {
+  const parsedUrl = new URL(url, "http://bullstudio.local");
+  const assetIndex = parsedUrl.pathname.search(/\/(?:assets\/|logo\.svg$)/);
+  const apiIndex = parsedUrl.pathname.indexOf("/api/trpc");
+
+  if (apiIndex >= 0) {
+    parsedUrl.pathname = parsedUrl.pathname.slice(apiIndex);
+  } else if (assetIndex >= 0) {
+    parsedUrl.pathname = parsedUrl.pathname.slice(assetIndex);
+  } else {
+    parsedUrl.pathname = "/";
+  }
+
+  return `${parsedUrl.pathname}${parsedUrl.search}`;
 }
 
 async function readRequestBody(request: Request): Promise<unknown> {

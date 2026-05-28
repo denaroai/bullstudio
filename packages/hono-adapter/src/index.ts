@@ -16,7 +16,7 @@ export function bullstudio(config: DashboardConfig): Hono {
         method: c.req.method,
         url: toMountedUrl(c.req.url),
         headers: c.req.raw.headers,
-        basePath: getBasePath(c.req.url),
+        basePath: getBasePath(c.req.routePath),
         body: await getRequestBody(c.req.raw),
       }),
     ),
@@ -28,7 +28,7 @@ export function bullstudio(config: DashboardConfig): Hono {
         method: c.req.method,
         url: toMountedUrl(c.req.url),
         headers: c.req.raw.headers,
-        basePath: getBasePath(c.req.url),
+        basePath: getBasePath(c.req.routePath),
       }),
     ),
   );
@@ -36,15 +36,12 @@ export function bullstudio(config: DashboardConfig): Hono {
   return app;
 }
 
-function getBasePath(url: string): string {
-  const pathname = new URL(url).pathname;
-  const assetIndex = pathname.search(/\/(?:assets\/|logo\.svg$)/);
-  const apiIndex = pathname.indexOf("/api/trpc");
-  const endIndex = [assetIndex, apiIndex]
-    .filter((index) => index >= 0)
-    .sort((a, b) => a - b)[0];
+function getBasePath(routePath: string): string {
+  const basePath = routePath
+    .replace(/\/api\/trpc\/\*$/, "")
+    .replace(/\/\*$/, "");
 
-  return endIndex === undefined ? pathname : pathname.slice(0, endIndex);
+  return basePath || "/";
 }
 
 function toMountedUrl(url: string): string {
