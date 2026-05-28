@@ -28,13 +28,6 @@ const dashboard = bullstudio({
     username: process.env.BULLSTUDIO_USERNAME ?? "operator",
     password: process.env.BULLSTUDIO_PASSWORD ?? "change-me",
   },
-  dashboardIdentity: {
-    title: "Production Queues",
-    logo: {
-      src: "/assets/queue-logo.svg",
-      alt: "Production queue operations",
-    },
-  },
   documentIdentity: {
     title: "Queue Ops",
     favicon: "/favicon.ico",
