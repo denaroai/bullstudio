@@ -1,9 +1,10 @@
+import type { PrivateDashboardRouter } from "@bullstudio/private-router";
 import { createTRPCRouter } from "./init";
-import { jobRouter } from "./routers/job";
-import { queueRouter } from "./routers/queue";
-import { overviewRouter } from "./routers/overview";
 import { connectionRouter } from "./routers/connection";
 import { flowRouter } from "./routers/flow";
+import { jobRouter } from "./routers/job";
+import { overviewRouter } from "./routers/overview";
+import { queueRouter } from "./routers/queue";
 
 export const trpcRouter = createTRPCRouter({
   jobs: jobRouter,
@@ -13,4 +14,4 @@ export const trpcRouter = createTRPCRouter({
   flows: flowRouter,
 });
 
-export type TRPCRouter = typeof trpcRouter;
+export type TRPCRouter = PrivateDashboardRouter;

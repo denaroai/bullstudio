@@ -1,5 +1,5 @@
 type QueueSourceMode = "standalone" | "embedded";
-type QueueSourceStatus = "healthy" | "degraded" | "unhealthy";
+type QueueSourceStatus = "healthy" | "degraded" | "unhealthy" | "unavailable";
 type ProviderType = "bull" | "bullmq" | string;
 
 interface QueueSourceFeature {
@@ -43,6 +43,7 @@ interface EmbeddedQueueSourceStatus {
     queuePause: boolean;
     queueResume: boolean;
     workers: boolean;
+    mutationsAllowed?: boolean;
   };
 }
 

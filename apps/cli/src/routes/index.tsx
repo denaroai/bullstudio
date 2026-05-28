@@ -99,8 +99,8 @@ function OverviewPage() {
               </SelectItem>
               {queues?.map((queue) => (
                 <SelectItem
-                  key={queueKey(queue.prefix, queue.name)}
-                  value={queueKey(queue.prefix, queue.name)}
+                  key={queueKey(queue.prefix ?? "", queue.name)}
+                  value={queueKey(queue.prefix ?? "", queue.name)}
                   className="text-zinc-100 font-mono"
                 >
                   {hasMultiplePrefixes && (

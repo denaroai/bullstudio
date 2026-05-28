@@ -281,8 +281,8 @@ function JobsPage() {
               ) : (
                 queues?.map((queue) => (
                   <SelectItem
-                    key={queueKey(queue.prefix, queue.name)}
-                    value={queueKey(queue.prefix, queue.name)}
+                    key={queueKey(queue.prefix ?? "", queue.name)}
+                    value={queueKey(queue.prefix ?? "", queue.name)}
                   >
                     <span className="font-mono">
                       {hasMultiplePrefixes && (
