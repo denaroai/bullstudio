@@ -5,7 +5,7 @@ import {
   createTestRedis,
   ensureRedisAvailable,
   flushTestDb,
-} from "../../test-utils/redis";
+} from "../test-utils/redis";
 
 describe("discoverPrefixes", () => {
   let redis: Redis;

@@ -16,6 +16,6 @@ Bullstudio is a modern Bull/BullMQ dashboard.
 - `pnpm build` - build the workspace through Turbo.
 - `pnpm lint` - run workspace lint tasks.
 - `pnpm typecheck` - run TypeScript checks across the workspace.
-- `pnpm test` - run the configured test suite for `@bullstudio/queue`, `@bullstudio/frontend`, and `@bullstudio/standalone`.
+- `pnpm test` - run the configured test suite for `@bullstudio/frontend` and `@bullstudio/standalone`.
 - `pnpm format` - format the repository with Biome.
 - `pnpm check` - run Biome lint checks from the repository root.

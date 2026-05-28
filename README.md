@@ -387,11 +387,11 @@ if you run Redis elsewhere (e.g. a non-default port).
 ### Running a subset
 
 ```bash
-# One package
-pnpm --filter @bullstudio/queue test
+# Standalone app, including the queue tests
+pnpm --filter @bullstudio/standalone test
 
 # One test file
-pnpm --filter @bullstudio/queue test src/detection/prefix-discovery.test.ts
+pnpm --filter @bullstudio/standalone test src/queue/detection/prefix-discovery.test.ts
 ```
 
 ### Stopping the test Redis

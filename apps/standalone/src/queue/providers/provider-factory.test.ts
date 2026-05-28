@@ -6,15 +6,15 @@ import {
   ensureRedisAvailable,
   flushTestDb,
   TEST_REDIS_URL,
-} from "../../test-utils/redis";
+} from "../test-utils/redis";
 import {
   seedBullMqQueue,
   type SeededQueue,
-} from "../../test-utils/seed-bullmq";
+} from "../test-utils/seed-bullmq";
 import {
   seedBullQueue,
   type SeededBullQueue,
-} from "../../test-utils/seed-bull";
+} from "../test-utils/seed-bull";
 import type { QueueService } from "../types";
 
 describe("createQueueProvider", () => {

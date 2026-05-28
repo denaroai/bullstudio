@@ -1,6 +1,6 @@
-import { BullMqProvider } from "../src/providers/bullmq";
-import { BullProvider } from "../src/providers/bull";
-import type { QueueServiceConfig } from "../src/types";
+import { BullMqProvider } from "../providers/bullmq";
+import { BullProvider } from "../providers/bull";
+import type { QueueServiceConfig } from "../types";
 import { TEST_REDIS_URL } from "./redis";
 
 type BullMqFn<T> = (provider: BullMqProvider) => Promise<T>;

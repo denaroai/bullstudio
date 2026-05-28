@@ -6,12 +6,12 @@ import {
   ensureRedisAvailable,
   flushTestDb,
   TEST_REDIS_URL,
-} from "../../../test-utils/redis";
+} from "../../test-utils/redis";
 import {
   seedBullQueue,
   type SeededBullQueue,
-} from "../../../test-utils/seed-bull";
-import { withBullProvider } from "../../../test-utils/provider-fixture";
+} from "../../test-utils/seed-bull";
+import { withBullProvider } from "../../test-utils/provider-fixture";
 
 describe("BullProvider (multi-prefix)", () => {
   let redis: Redis;

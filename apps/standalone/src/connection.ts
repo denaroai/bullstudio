@@ -2,7 +2,7 @@ import {
   createQueueProvider,
   type QueueService,
   type QueueServiceConfig,
-} from "@bullstudio/queue";
+} from "./queue";
 import { getPrefixes } from "./prefixes";
 
 let provider: QueueService | null = null;

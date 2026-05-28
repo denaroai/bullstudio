@@ -170,6 +170,12 @@ importers:
 
   apps/standalone:
     dependencies:
+      '@bullstudio/bull-adapter':
+        specifier: workspace:*
+        version: link:../../packages/bull-adapter
+      '@bullstudio/bullmq-adapter':
+        specifier: workspace:*
+        version: link:../../packages/bullmq-adapter
       '@bullstudio/connect-types':
         specifier: workspace:*
         version: link:../../packages/connect-types
@@ -179,21 +185,24 @@ importers:
       '@bullstudio/private-router':
         specifier: workspace:*
         version: link:../../packages/private-router
-      '@bullstudio/queue':
-        specifier: workspace:*
-        version: link:../../packages/queue
       '@hono/node-server':
         specifier: ^2.0.4
         version: 2.0.4(hono@4.12.23)
       '@trpc/server':
         specifier: ^11.4.3
         version: 11.8.1(typescript@5.9.3)
+      bull:
+        specifier: ^4.16.4
+        version: 4.16.5
       bullmq:
         specifier: ^5.34.8
         version: 5.66.5
       hono:
         specifier: ^4.12.23
         version: 4.12.23
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.9.1
     devDependencies:
       '@bullstudio/typescript-config':
         specifier: workspace:*
@@ -559,40 +568,6 @@ importers:
       zod:
         specifier: ^4.1.11
         version: 4.3.5
-    devDependencies:
-      '@bullstudio/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      '@types/node':
-        specifier: ^24.10.1
-        version: 24.10.7
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/node@24.10.7)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(tsx@4.21.0)
-
-  packages/queue:
-    dependencies:
-      '@bullstudio/bull-adapter':
-        specifier: workspace:*
-        version: link:../bull-adapter
-      '@bullstudio/bullmq-adapter':
-        specifier: workspace:*
-        version: link:../bullmq-adapter
-      '@bullstudio/connect-types':
-        specifier: workspace:*
-        version: link:../connect-types
-      bull:
-        specifier: ^4.16.4
-        version: 4.16.5
-      bullmq:
-        specifier: ^5.34.8
-        version: 5.66.5
-      ioredis:
-        specifier: ^5.4.2
-        version: 5.9.1
     devDependencies:
       '@bullstudio/typescript-config':
         specifier: workspace:*
