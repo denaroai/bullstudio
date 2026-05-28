@@ -1,5 +1,5 @@
 import Bull from "bull";
-import type { Job as BullJob } from "bull";
+import { createBullQueueAdapter } from "@bullstudio/bull-adapter";
 import Redis from "ioredis";
 import type {
   QueueService,
@@ -14,21 +14,14 @@ import type {
   Queue as IQueue,
   JobCounts,
   JobQueryOptions,
-  JobStatus,
   WorkerCount,
+  QueueAdapter,
 } from "@bullstudio/connect-types";
-import { NotConnectedError, JobNotFoundError } from "../../errors";
+import { NotConnectedError } from "../../errors";
 import { getProviderCapabilities } from "../../types";
 import { discoverPrefixes } from "../../detection/prefix-discovery";
 
 const DEFAULT_PREFIX = "bull";
-
-type BullJobStatus =
-  | "waiting"
-  | "active"
-  | "completed"
-  | "failed"
-  | "delayed";
 
 export class BullProvider implements QueueService {
   readonly providerType: QueueProviderType = "bull";
@@ -37,6 +30,7 @@ export class BullProvider implements QueueService {
   private readonly eventCallbacks: QueueServiceEventCallbacks;
   private connection: Redis | null = null;
   private queues = new Map<string, Bull.Queue>();
+  private queueAdapters = new Map<string, QueueAdapter>();
   private _isConnected = false;
   private _isReconnecting = false;
 
@@ -50,9 +44,7 @@ export class BullProvider implements QueueService {
 
   private resolvedPrefixes: string[] | null = null;
 
-  private queueKey(
-    prefix: string, name: string,
-  ): string {
+  private queueKey(prefix: string, name: string): string {
     return `${prefix}\0${name}`;
   }
 
@@ -60,12 +52,10 @@ export class BullProvider implements QueueService {
     if (this.config.prefix) {
       return this.config.prefix;
     }
-    const explicit =
-      this.config.prefixes?.filter(
-        (p) => p !== "*",
-      );
+    const explicit = this.config.prefixes?.filter((p) => p !== "*");
     if (explicit?.length === 1) {
-      return explicit[0]!;
+      const [prefix] = explicit;
+      return prefix ?? DEFAULT_PREFIX;
     }
     return DEFAULT_PREFIX;
   }
@@ -75,25 +65,13 @@ export class BullProvider implements QueueService {
       return this.resolvedPrefixes;
     }
     const explicit = this.config.prefixes;
-    if (
-      explicit &&
-      explicit.length > 0 &&
-      !explicit.includes("*")
-    ) {
+    if (explicit && explicit.length > 0 && !explicit.includes("*")) {
       this.resolvedPrefixes = explicit;
       return explicit;
     }
-    if (
-      explicit?.includes("*") &&
-      this.connection
-    ) {
-      const found = await discoverPrefixes(
-        this.connection,
-      );
-      this.resolvedPrefixes =
-        found.length > 0
-          ? found
-          : [this.defaultPrefix];
+    if (explicit?.includes("*") && this.connection) {
+      const found = await discoverPrefixes(this.connection);
+      this.resolvedPrefixes = found.length > 0 ? found : [this.defaultPrefix];
       return this.resolvedPrefixes;
     }
     this.resolvedPrefixes = [this.defaultPrefix];
@@ -188,6 +166,7 @@ export class BullProvider implements QueueService {
     );
     await Promise.all(closePromises);
     this.queues.clear();
+    this.queueAdapters.clear();
 
     if (this.connection) {
       await this.connection.quit();
@@ -208,77 +187,25 @@ export class BullProvider implements QueueService {
   async getQueues(): Promise<IQueue[]> {
     const discovered = await this.discoverQueues();
     const queues = await Promise.all(
-      discovered.map((q) =>
-        this.getQueue(q.name, q.prefix),
-      ),
+      discovered.map((q) => this.getQueue(q.name, q.prefix)),
     );
-    return queues.filter(
-      (q): q is IQueue => q !== null,
-    );
+    return queues.filter((q): q is IQueue => q !== null);
   }
 
-  async getQueue(
-    name: string,
-    prefix?: string,
-  ): Promise<IQueue | null> {
-    const pfx = prefix ?? this.defaultPrefix;
-    const queue = this.getOrCreateQueue(name, pfx);
-    const [isPaused, jobCounts] = await Promise.all([
-      queue.isPaused(),
-      this.getJobCounts(name, pfx),
-    ]);
-
-    return {
-      name,
-      prefix: pfx,
-      isPaused,
-      jobCounts,
-    };
+  async getQueue(name: string, prefix?: string): Promise<IQueue | null> {
+    return this.getOrCreateQueueAdapter(name, prefix).getQueue();
   }
 
-  async getJobCounts(
-    queueName: string,
-    prefix?: string,
-  ): Promise<JobCounts> {
-    const pfx = prefix ?? this.defaultPrefix;
-    const queue = this.getOrCreateQueue(
-      queueName, pfx,
-    );
-    const counts = await queue.getJobCounts();
-    // Bull's JobCounts only has: active, completed, failed, delayed, waiting
-    // Paused jobs are in the 'waiting' count but queue itself can be paused
-
-    return {
-      waiting: counts.waiting ?? 0,
-      active: counts.active ?? 0,
-      completed: counts.completed ?? 0,
-      failed: counts.failed ?? 0,
-      delayed: counts.delayed ?? 0,
-      paused: 0, // Bull doesn't track paused separately
-      // Bull doesn't support these states
-      prioritized: 0,
-      waitingChildren: 0,
-    };
+  async getJobCounts(queueName: string, prefix?: string): Promise<JobCounts> {
+    return this.getOrCreateQueueAdapter(queueName, prefix).getJobCounts();
   }
 
-  async pauseQueue(
-    queueName: string, prefix?: string,
-  ): Promise<void> {
-    const pfx = prefix ?? this.defaultPrefix;
-    const queue = this.getOrCreateQueue(
-      queueName, pfx,
-    );
-    await queue.pause();
+  async pauseQueue(queueName: string, prefix?: string): Promise<void> {
+    await this.getOrCreateQueueAdapter(queueName, prefix).pauseQueue();
   }
 
-  async resumeQueue(
-    queueName: string, prefix?: string,
-  ): Promise<void> {
-    const pfx = prefix ?? this.defaultPrefix;
-    const queue = this.getOrCreateQueue(
-      queueName, pfx,
-    );
-    await queue.resume();
+  async resumeQueue(queueName: string, prefix?: string): Promise<void> {
+    await this.getOrCreateQueueAdapter(queueName, prefix).resumeQueue();
   }
 
   async getJobs(
@@ -286,30 +213,7 @@ export class BullProvider implements QueueService {
     options?: JobQueryOptions,
     prefix?: string,
   ): Promise<Job[]> {
-    const pfx = prefix ?? this.defaultPrefix;
-    const queue = this.getOrCreateQueue(
-      queueName, pfx,
-    );
-    const { filter, sort, limit = 100, offset = 0 } = options ?? {};
-
-    const statuses = this.resolveStatuses(filter?.status);
-
-    // Bull's getJobs can accept an array of states
-    const jobs = await queue.getJobs(statuses, offset, offset + limit - 1);
-
-    let mappedJobs = jobs
-      .filter((job): job is BullJob => job !== null && job !== undefined)
-      .map((job) => this.mapJob(job, queueName));
-
-    if (filter?.name) {
-      mappedJobs = mappedJobs.filter((job) => job.name === filter.name);
-    }
-
-    if (sort) {
-      mappedJobs = this.sortJobs(mappedJobs, sort.field, sort.order);
-    }
-
-    return mappedJobs.slice(0, limit);
+    return this.getOrCreateQueueAdapter(queueName, prefix).getJobs(options);
   }
 
   async getJobsSummary(
@@ -317,25 +221,9 @@ export class BullProvider implements QueueService {
     options?: JobQueryOptions,
     prefix?: string,
   ): Promise<JobSummary[]> {
-    const jobs = await this.getJobs(
-      queueName, options, prefix,
+    return this.getOrCreateQueueAdapter(queueName, prefix).getJobsSummary(
+      options,
     );
-    return jobs.map((job) => ({
-      id: job.id,
-      name: job.name,
-      queueName: job.queueName,
-      status: job.status,
-      progress: job.progress,
-      attemptsMade: job.attemptsMade,
-      timestamp: job.timestamp,
-      processedOn: job.processedOn,
-      finishedOn: job.finishedOn,
-      delay: job.delay,
-      priority: job.priority,
-      parentId: undefined, // Bull doesn't support parent-child
-      repeatJobKey: job.repeatJobKey,
-      failedReason: job.failedReason,
-    }));
   }
 
   async getJob(
@@ -343,16 +231,7 @@ export class BullProvider implements QueueService {
     jobId: string,
     prefix?: string,
   ): Promise<Job | null> {
-    const pfx = prefix ?? this.defaultPrefix;
-    const queue = this.getOrCreateQueue(
-      queueName, pfx,
-    );
-    const job = await queue.getJob(jobId);
-    if (!job) {
-      return null;
-    }
-
-    return this.mapJob(job, queueName);
+    return this.getOrCreateQueueAdapter(queueName, prefix).getJob(jobId);
   }
 
   async getJobLogs(
@@ -360,11 +239,7 @@ export class BullProvider implements QueueService {
     jobId: string,
     prefix?: string,
   ): Promise<{ logs: string[]; count: number }> {
-    const pfx = prefix ?? this.defaultPrefix;
-    const queue = this.getOrCreateQueue(
-      queueName, pfx,
-    );
-    return queue.getJobLogs(jobId);
+    return this.getOrCreateQueueAdapter(queueName, prefix).getJobLogs(jobId);
   }
 
   async retryJob(
@@ -372,17 +247,7 @@ export class BullProvider implements QueueService {
     jobId: string,
     prefix?: string,
   ): Promise<void> {
-    const pfx = prefix ?? this.defaultPrefix;
-    const queue = this.getOrCreateQueue(
-      queueName, pfx,
-    );
-    const job = await queue.getJob(jobId);
-
-    if (!job) {
-      throw new JobNotFoundError(queueName, jobId);
-    }
-
-    await job.retry();
+    await this.getOrCreateQueueAdapter(queueName, prefix).retryJob(jobId);
   }
 
   async removeJob(
@@ -390,50 +255,43 @@ export class BullProvider implements QueueService {
     jobId: string,
     prefix?: string,
   ): Promise<void> {
-    const pfx = prefix ?? this.defaultPrefix;
-    const queue = this.getOrCreateQueue(
-      queueName, pfx,
-    );
-    const job = await queue.getJob(jobId);
-
-    if (!job) {
-      throw new JobNotFoundError(queueName, jobId);
-    }
-
-    await job.remove();
+    await this.getOrCreateQueueAdapter(queueName, prefix).removeJob(jobId);
   }
 
   async getWorkerCount(
     queueName: string,
     prefix?: string,
   ): Promise<WorkerCount> {
-    const pfx = prefix ?? this.defaultPrefix;
-    const queue = this.getOrCreateQueue(
-      queueName, pfx,
-    );
-    const workers = await queue.getWorkers();
-
-    return {
-      queueName,
-      count: workers.length,
-    };
+    return this.getOrCreateQueueAdapter(queueName, prefix).getWorkerCount();
   }
 
-  private getOrCreateQueue(
-    name: string,
-    prefix: string,
-  ): Bull.Queue {
+  private getOrCreateQueueAdapter(name: string, prefix?: string): QueueAdapter {
+    const pfx = prefix ?? this.defaultPrefix;
+    const key = this.queueKey(pfx, name);
+    let adapter = this.queueAdapters.get(key);
+    if (!adapter) {
+      adapter = createBullQueueAdapter(this.getOrCreateQueue(name, pfx), {
+        key,
+        label: name,
+      });
+      this.queueAdapters.set(key, adapter);
+    }
+    return adapter;
+  }
+
+  private getOrCreateQueue(name: string, prefix: string): Bull.Queue {
     const key = this.queueKey(prefix, name);
     let queue = this.queues.get(key);
     if (!queue) {
       if (!this.connection) {
         throw new NotConnectedError();
       }
+      const connection = this.connection;
 
       queue = new Bull(name, {
         createClient: (type) => {
           if (type === "client") {
-            return this.connection!.duplicate();
+            return connection.duplicate();
           }
           return new Redis(this.config.redisUrl, {
             maxRetriesPerRequest: null,
@@ -447,37 +305,32 @@ export class BullProvider implements QueueService {
     return queue;
   }
 
-  private async discoverQueues(): Promise<
-    { name: string; prefix: string }[]
-  > {
+  private async discoverQueues(): Promise<{ name: string; prefix: string }[]> {
     if (!this.connection) {
       throw new NotConnectedError();
     }
 
     const prefixes = await this.getActivePrefixes();
-    const result: { name: string; prefix: string }[] =
-      [];
+    const result: { name: string; prefix: string }[] = [];
     const seen = new Set<string>();
 
     for (const prefix of prefixes) {
       const pattern = `${prefix}:*:id`;
       let cursor = "0";
       do {
-        const [next, keys] =
-          await this.connection.scan(
-            cursor,
-            "MATCH",
-            pattern,
-            "COUNT",
-            100,
-          );
+        const [next, keys] = await this.connection.scan(
+          cursor,
+          "MATCH",
+          pattern,
+          "COUNT",
+          100,
+        );
         cursor = next;
         for (const key of keys) {
           const parts = key.split(":");
           const name = parts[1] ?? "";
           if (!name) continue;
-          const composite =
-            this.queueKey(prefix, name);
+          const composite = this.queueKey(prefix, name);
           if (seen.has(composite)) continue;
           seen.add(composite);
           result.push({ name, prefix });
@@ -486,96 +339,5 @@ export class BullProvider implements QueueService {
     }
 
     return result;
-  }
-
-  private resolveStatuses(status?: JobStatus | JobStatus[]): BullJobStatus[] {
-    if (!status) {
-      return ["waiting", "active", "completed", "failed", "delayed"];
-    }
-
-    const statuses = Array.isArray(status) ? status : [status];
-    // Filter out unsupported statuses (prioritized, waiting-children, paused)
-    return statuses.filter((s): s is BullJobStatus =>
-      ["waiting", "active", "completed", "failed", "delayed"].includes(s),
-    );
-  }
-
-  private mapJob(job: BullJob, queueName: string): Job {
-    const state = this.getJobState(job);
-    const progress = job.progress();
-
-    return {
-      id: String(job.id),
-      name: job.name,
-      queueName,
-      data: job.data,
-      status: state,
-      progress: this.normalizeProgress(progress),
-      attemptsMade: job.attemptsMade,
-      attemptsLimit: job.opts.attempts ?? 1,
-      failedReason: job.failedReason,
-      stacktrace: job.stacktrace,
-      returnValue: job.returnvalue,
-      timestamp: job.timestamp,
-      processedOn: job.processedOn,
-      finishedOn: job.finishedOn,
-      delay: job.opts.delay,
-      priority: job.opts.priority,
-      parentId: undefined, // Bull doesn't support parent-child
-      repeatJobKey: job.opts.repeat ? job.id?.toString() : undefined,
-    };
-  }
-
-  private getJobState(job: BullJob): JobStatus {
-    // Check finished states first
-    if (job.finishedOn) {
-      if (job.failedReason) {
-        return "failed";
-      }
-      return "completed";
-    }
-
-    // Check if processing
-    if (job.processedOn) {
-      return "active";
-    }
-
-    // Check if delayed
-    if (job.opts.delay && job.timestamp + job.opts.delay > Date.now()) {
-      return "delayed";
-    }
-
-    return "waiting";
-  }
-
-  private normalizeProgress(progress: number | object): number | object {
-    if (typeof progress === "number") {
-      return progress;
-    }
-    if (typeof progress === "object" && progress !== null) {
-      return progress;
-    }
-    return 0;
-  }
-
-  private sortJobs(
-    jobs: Job[],
-    field: "timestamp" | "processedOn" | "finishedOn" | "progress",
-    order: "asc" | "desc",
-  ): Job[] {
-    return [...jobs].sort((a, b) => {
-      let aValue: number;
-      let bValue: number;
-
-      if (field === "progress") {
-        aValue = typeof a.progress === "number" ? a.progress : 0;
-        bValue = typeof b.progress === "number" ? b.progress : 0;
-      } else {
-        aValue = a[field] ?? 0;
-        bValue = b[field] ?? 0;
-      }
-
-      return order === "asc" ? aValue - bValue : bValue - aValue;
-    });
   }
 }

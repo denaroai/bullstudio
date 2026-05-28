@@ -309,9 +309,6 @@ importers:
       '@bullstudio/connect-types':
         specifier: workspace:*
         version: link:../connect-types
-      '@bullstudio/embedded-core':
-        specifier: workspace:*
-        version: link:../embedded-core
     devDependencies:
       '@bullstudio/typescript-config':
         specifier: workspace:*
@@ -340,9 +337,6 @@ importers:
       '@bullstudio/connect-types':
         specifier: workspace:*
         version: link:../connect-types
-      '@bullstudio/embedded-core':
-        specifier: workspace:*
-        version: link:../embedded-core
     devDependencies:
       '@bullstudio/typescript-config':
         specifier: workspace:*
@@ -581,6 +575,12 @@ importers:
 
   packages/queue:
     dependencies:
+      '@bullstudio/bull-adapter':
+        specifier: workspace:*
+        version: link:../bull-adapter
+      '@bullstudio/bullmq-adapter':
+        specifier: workspace:*
+        version: link:../bullmq-adapter
       '@bullstudio/connect-types':
         specifier: workspace:*
         version: link:../connect-types

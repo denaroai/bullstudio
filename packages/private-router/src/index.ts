@@ -1,4 +1,5 @@
 import type {
+  AdapterCapabilities as QueueAdapterCapabilities,
   FlowSummary,
   FlowTree,
   Job,
@@ -69,15 +70,7 @@ export type ConnectionInfo = {
   displayUrl?: string;
 };
 
-export type AdapterCapabilities = {
-  flows: boolean;
-  jobLogs: boolean;
-  jobRemoval: boolean;
-  jobRetry: boolean;
-  queuePause: boolean;
-  queueResume: boolean;
-  workers: boolean;
-};
+export type AdapterCapabilities = QueueAdapterCapabilities;
 
 export type DashboardQueue = {
   key?: string;

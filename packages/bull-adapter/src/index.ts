@@ -6,8 +6,12 @@ import {
   sortJobs,
   toJobSummary,
 } from "@bullstudio/adapter-utils";
-import type { Job, JobCounts, JobStatus } from "@bullstudio/connect-types";
-import type { QueueAdapter } from "@bullstudio/embedded-core";
+import type {
+  Job,
+  JobCounts,
+  JobStatus,
+  QueueAdapter,
+} from "@bullstudio/connect-types";
 import type Bull from "bull";
 
 export interface BullQueueAdapterOptions {

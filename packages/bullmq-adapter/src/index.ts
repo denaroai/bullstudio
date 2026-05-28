@@ -13,8 +13,9 @@ import type {
   Job,
   JobQueryOptions,
   JobStatus,
+  JobSummary,
+  QueueAdapter,
 } from "@bullstudio/connect-types";
-import type { QueueAdapter } from "@bullstudio/embedded-core";
 import {
   type Job as BullMqJob,
   FlowProducer,
@@ -92,15 +93,11 @@ export function createBullMqQueueAdapter(
       return mappedJobs;
     },
     getJobsSummary: async (options) => {
-      const jobs = await queue.getJobs(
+      const summaries = await getJobsTrimmed(
+        queue,
         resolveStatuses(options?.filter?.status),
         options?.offset ?? 0,
         (options?.offset ?? 0) + (options?.limit ?? 100) - 1,
-      );
-      const summaries = await Promise.all(
-        jobs
-          .filter((job): job is BullMqJob => job !== undefined)
-          .map((job) => mapJob(job, queue.name)),
       );
       let filteredSummaries = filterJobsByName(
         summaries,
@@ -115,7 +112,7 @@ export function createBullMqQueueAdapter(
         );
       }
 
-      return filteredSummaries.map(toJobSummary);
+      return filteredSummaries;
     },
     getJob: async (jobId) => {
       const job = await queue.getJob(jobId);
@@ -338,6 +335,112 @@ function resolveStatuses(
   }
 
   return (Array.isArray(status) ? status : [status]) as JobType[];
+}
+
+function sanitizeJobTypes(types: JobType[] | JobType | undefined): JobType[] {
+  const currentTypes = typeof types === "string" ? [types] : types;
+
+  if (Array.isArray(currentTypes) && currentTypes.length > 0) {
+    const sanitizedTypes = [...currentTypes];
+
+    if (sanitizedTypes.includes("waiting")) {
+      sanitizedTypes.push("paused");
+    }
+
+    return [...new Set(sanitizedTypes)];
+  }
+
+  return [
+    "active",
+    "completed",
+    "delayed",
+    "failed",
+    "paused",
+    "prioritized",
+    "waiting",
+    "waiting-children",
+  ];
+}
+
+async function getJobMetaFromKey(
+  queue: Queue,
+  jobId: string,
+  jobKey: string,
+): Promise<JobSummary | null> {
+  const client = await queue.client;
+  const [
+    name,
+    timestamp,
+    progress,
+    attemptsMade,
+    processedOn,
+    finishedOn,
+    failedReason,
+    delay,
+    priority,
+    parent,
+  ] = await client.hmget(
+    jobKey,
+    "name",
+    "timestamp",
+    "progress",
+    "attemptsMade",
+    "processedOn",
+    "finishedOn",
+    "failedReason",
+    "delay",
+    "priority",
+    "parent",
+  );
+
+  const jobStatus = await queue.getJobState(jobId);
+  const parentId = parent ? JSON.parse(parent).id : undefined;
+
+  return {
+    id: jobId,
+    name: name || "",
+    queueName: queue.name,
+    status: jobStatus as JobStatus,
+    timestamp: timestamp ? Number.parseInt(timestamp, 10) : 0,
+    progress: progress ? normalizeProgress(progress) : 0,
+    attemptsMade: attemptsMade ? Number.parseInt(attemptsMade, 10) : 0,
+    processedOn: processedOn ? Number.parseInt(processedOn, 10) : undefined,
+    finishedOn: finishedOn ? Number.parseInt(finishedOn, 10) : undefined,
+    failedReason: failedReason || undefined,
+    delay: delay ? Number.parseInt(delay, 10) : undefined,
+    priority: priority ? Number.parseInt(priority, 10) : undefined,
+    parentId,
+  };
+}
+
+async function getJobsTrimmed(
+  queue: Queue,
+  types?: JobType[],
+  start = 0,
+  end = -1,
+  asc = false,
+): Promise<JobSummary[]> {
+  if (typeof queue.getRanges !== "function") {
+    const jobs = await queue.getJobs(types, start, end, asc);
+    const mappedJobs = await Promise.all(
+      jobs
+        .filter((job): job is BullMqJob => job !== undefined)
+        .map((job) => mapJob(job, queue.name)),
+    );
+    return mappedJobs.map(toJobSummary);
+  }
+
+  const jobIds = await queue.getRanges(
+    sanitizeJobTypes(types),
+    start,
+    end,
+    asc,
+  );
+  const jobs = await Promise.all(
+    jobIds.map((id) => getJobMetaFromKey(queue, id, queue.toKey(id))),
+  );
+
+  return jobs.filter((job): job is JobSummary => job !== null);
 }
 
 async function mapJob(job: BullMqJob, queueName: string): Promise<Job> {

@@ -18,8 +18,7 @@
   },
   "dependencies": {
     "@bullstudio/adapter-utils": "workspace:*",
-    "@bullstudio/connect-types": "workspace:*",
-    "@bullstudio/embedded-core": "workspace:*"
+    "@bullstudio/connect-types": "workspace:*"
   },
   "devDependencies": {
     "@bullstudio/typescript-config": "workspace:*",
