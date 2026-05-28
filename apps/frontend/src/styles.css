@@ -4,12 +4,12 @@
 @import "@bullstudio/ui/globals.css";
 
 @font-face {
-  font-family: "DM Sans";
-  src: url(./assets/fonts/DM\ Sans/DMSans-VariableFont_opsz,wght.ttf) format("truetype");
+  font-family: "Oxanium";
+  src: url(./assets/fonts/Oxanium/Oxanium-VariableFont_wght.ttf) format("truetype");
   font-weight: 400 1000;
   font-style: normal;
 }
 
 @theme inline {
-  --font-sans: "DM Sans", sans-serif;
+  --font-sans: "Oxanium", sans-serif;
 }
