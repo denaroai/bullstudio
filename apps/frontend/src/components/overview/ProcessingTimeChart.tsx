@@ -47,10 +47,10 @@ export function ProcessingTimeChart({
   }));
 
   return (
-    <Card className="bg-zinc-900/50 border-zinc-800">
+    <Card className="bg-card">
       <CardHeader>
-        <CardTitle className="text-zinc-100">Processing Performance</CardTitle>
-        <CardDescription className="text-zinc-500">
+        <CardTitle>Processing Performance</CardTitle>
+        <CardDescription>
           Average processing time and queue delay over the last {timeRange}h
         </CardDescription>
       </CardHeader>
@@ -59,7 +59,7 @@ export function ProcessingTimeChart({
           <LineChart data={formattedData} accessibilityLayer>
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="hsl(var(--border))"
+              stroke="var(--border)"
               vertical={false}
             />
             <XAxis
@@ -67,13 +67,13 @@ export function ProcessingTimeChart({
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
               tickFormatter={(value: number) => formatMs(value)}
             />
             <ChartTooltip

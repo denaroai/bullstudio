@@ -49,9 +49,9 @@ export function MetricCard({
   const gradientId = `gradient-${title.replace(/\s+/g, "-")}`;
 
   return (
-    <Card className="bg-zinc-900/50 border-zinc-800">
+    <Card className="bg-card">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
           {icon}
           {title}
         </CardTitle>
@@ -59,9 +59,11 @@ export function MetricCard({
       <CardContent className="space-y-2">
         <div className="flex items-end justify-between">
           <div>
-            <div className="text-2xl font-bold text-zinc-100">{value}</div>
+            <div className="text-2xl font-bold text-card-foreground">
+              {value}
+            </div>
             {subtitle && (
-              <div className="text-xs text-zinc-500">{subtitle}</div>
+              <div className="text-xs text-muted-foreground">{subtitle}</div>
             )}
           </div>
           {trend && trend.direction !== "neutral" && (

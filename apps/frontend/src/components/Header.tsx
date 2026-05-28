@@ -13,7 +13,7 @@ export default function Header({ title, children }: HeaderProps) {
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         {title && (
-          <h1 className="text-lg font-semibold text-zinc-100">{title}</h1>
+          <h1 className="text-lg font-semibold text-foreground">{title}</h1>
         )}
       </div>
       {children && <div className="ml-auto pr-4">{children}</div>}

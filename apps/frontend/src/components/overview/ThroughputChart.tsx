@@ -42,10 +42,10 @@ export function ThroughputChart({ data, timeRange }: ThroughputChartProps) {
   }));
 
   return (
-    <Card className="bg-zinc-900/50 border-zinc-800">
+    <Card className="bg-card">
       <CardHeader>
-        <CardTitle className="text-zinc-100">Job Throughput</CardTitle>
-        <CardDescription className="text-zinc-500">
+        <CardTitle>Job Throughput</CardTitle>
+        <CardDescription>
           Completed vs failed jobs over the last {timeRange}h
         </CardDescription>
       </CardHeader>
@@ -54,7 +54,7 @@ export function ThroughputChart({ data, timeRange }: ThroughputChartProps) {
           <BarChart data={formattedData} accessibilityLayer>
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="hsl(var(--border))"
+              stroke="var(--border)"
               vertical={false}
             />
             <XAxis
@@ -62,13 +62,13 @@ export function ThroughputChart({ data, timeRange }: ThroughputChartProps) {
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
             />
             <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />

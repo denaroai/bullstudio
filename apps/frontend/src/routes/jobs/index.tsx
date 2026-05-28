@@ -239,7 +239,7 @@ function JobsPage() {
         </span>
       );
     }
-    return <span className="text-zinc-600">—</span>;
+    return <span className="text-muted-foreground">—</span>;
   };
 
   const navigateToJob = (jobId: string, job: JobDetailNavigationSource) => {
@@ -264,8 +264,8 @@ function JobsPage() {
             }
             disabled={loadingQueues}
           >
-            <SelectTrigger className="w-[250px] bg-zinc-900 border-zinc-800">
-              <Layers className="size-4 mr-2 text-zinc-500" />
+            <SelectTrigger className="w-[250px] bg-card">
+              <Layers className="size-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="Select queue" />
             </SelectTrigger>
             <SelectContent>
@@ -275,7 +275,7 @@ function JobsPage() {
                   <Skeleton className="h-8 w-full" />
                 </div>
               ) : queues?.length === 0 ? (
-                <div className="p-4 text-center text-sm text-zinc-500">
+                <div className="p-4 text-center text-sm text-muted-foreground">
                   No queues found
                 </div>
               ) : (
@@ -286,7 +286,7 @@ function JobsPage() {
                   >
                     <span className="font-mono">
                       {hasMultiplePrefixes && (
-                        <span className="text-zinc-500 mr-1">
+                        <span className="text-muted-foreground mr-1">
                           {queue.prefix}/
                         </span>
                       )}
@@ -303,7 +303,7 @@ function JobsPage() {
             variant="outline"
             size="icon"
             onClick={() => refetchJobs()}
-            className="border-zinc-800 hover:bg-zinc-800"
+            className="bg-card"
           >
             <RefreshCw className="size-4" />
           </Button>
@@ -311,12 +311,12 @@ function JobsPage() {
 
         {/* Search */}
         <div className="relative w-full sm:w-[300px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             placeholder="Search jobs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-zinc-900 border-zinc-800"
+            className="pl-10 bg-card"
           />
         </div>
       </div>
@@ -326,12 +326,12 @@ function JobsPage() {
         value={statusFilter}
         onValueChange={(v) => setStatusFilter(v as FilterableStatus | "all")}
       >
-        <TabsList className="bg-zinc-900 border border-zinc-800">
+        <TabsList className="border border-border">
           {statusTabs.map((tab) => (
             <TabsTrigger
               key={tab.value}
               value={tab.value}
-              className="data-[state=active]:bg-zinc-800"
+              className="data-[state=active]:bg-background"
             >
               {tab.label}
             </TabsTrigger>
@@ -341,7 +341,7 @@ function JobsPage() {
 
       {/* Jobs Table */}
       {loadingJobs ? (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
+        <div className="rounded-lg border bg-card overflow-hidden">
           <div className="p-8 space-y-4">
             {JOBS_SKELETON_KEYS.map((key) => (
               <Skeleton key={key} className="h-12 w-full" />
@@ -359,12 +359,12 @@ function JobsPage() {
           }
         />
       ) : (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
+        <div className="rounded-lg border bg-card overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="border-zinc-800 hover:bg-transparent">
+              <TableRow className="hover:bg-transparent">
                 <TableHead
-                  className="cursor-pointer hover:text-white transition-colors"
+                  className="cursor-pointer hover:text-foreground transition-colors"
                   onClick={() => handleSort("name")}
                 >
                   <div className="flex items-center gap-2">
@@ -373,7 +373,7 @@ function JobsPage() {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="cursor-pointer hover:text-white transition-colors"
+                  className="cursor-pointer hover:text-foreground transition-colors"
                   onClick={() => handleSort("queueName")}
                 >
                   <div className="flex items-center gap-2">
@@ -382,7 +382,7 @@ function JobsPage() {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="cursor-pointer hover:text-white transition-colors"
+                  className="cursor-pointer hover:text-foreground transition-colors"
                   onClick={() => handleSort("status")}
                 >
                   <div className="flex items-center gap-2">
@@ -391,7 +391,7 @@ function JobsPage() {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="cursor-pointer hover:text-white transition-colors"
+                  className="cursor-pointer hover:text-foreground transition-colors"
                   onClick={() => handleSort("timestamp")}
                 >
                   <div className="flex items-center gap-2">
@@ -400,7 +400,7 @@ function JobsPage() {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="cursor-pointer hover:text-white transition-colors text-right"
+                  className="cursor-pointer hover:text-foreground transition-colors text-right"
                   onClick={() => handleSort("duration")}
                 >
                   <div className="flex items-center justify-end gap-2">
@@ -414,23 +414,23 @@ function JobsPage() {
               {filteredAndSortedJobs.map((job) => (
                 <TableRow
                   key={`${job.prefix ?? ""}-${job.queueName}-${job.id}`}
-                  className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
+                  className="cursor-pointer hover:bg-muted/60 transition-colors"
                   onClick={() => navigateToJob(job.id, job)}
                 >
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-medium text-zinc-100">
+                      <span className="font-medium text-foreground">
                         {job.name}
                       </span>
-                      <span className="text-xs text-zinc-500 font-mono">
+                      <span className="text-xs text-muted-foreground font-mono">
                         {job.id}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="font-mono text-sm text-zinc-400">
+                    <span className="font-mono text-sm text-muted-foreground">
                       {hasMultiplePrefixes && job.prefix && (
-                        <span className="text-zinc-500 mr-1">
+                        <span className="text-muted-foreground mr-1">
                           {job.prefix}/
                         </span>
                       )}
@@ -445,10 +445,10 @@ function JobsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="text-sm text-zinc-300">
+                      <span className="text-sm text-foreground">
                         {dayjs(job.timestamp).fromNow()}
                       </span>
-                      <span className="text-xs text-zinc-500 font-mono">
+                      <span className="text-xs text-muted-foreground font-mono">
                         {dayjs(job.timestamp).format("MMM D, HH:mm:ss")}
                       </span>
                     </div>
@@ -462,7 +462,7 @@ function JobsPage() {
           </Table>
 
           {/* Results Count */}
-          <div className="px-4 py-3 border-t border-zinc-800 text-sm text-zinc-500">
+          <div className="px-4 py-3 border-t text-sm text-muted-foreground">
             Showing {filteredAndSortedJobs.length} of {jobs?.length ?? 0} jobs
           </div>
         </div>

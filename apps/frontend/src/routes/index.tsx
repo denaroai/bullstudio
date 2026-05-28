@@ -89,22 +89,24 @@ function OverviewPage() {
             }
             disabled={loadingQueues}
           >
-            <SelectTrigger className="w-[250px] bg-zinc-900/50 border-zinc-800">
-              <Layers className="size-4 mr-2 text-zinc-500" />
+            <SelectTrigger className="w-[250px] bg-card">
+              <Layers className="size-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="Select queue" />
             </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-zinc-800">
-              <SelectItem value={ALL_QUEUES_VALUE} className="text-zinc-100">
+            <SelectContent>
+              <SelectItem value={ALL_QUEUES_VALUE}>
                 All queues
               </SelectItem>
               {queues?.map((queue) => (
                 <SelectItem
                   key={queueKey(queue.prefix ?? "", queue.name)}
                   value={queueKey(queue.prefix ?? "", queue.name)}
-                  className="text-zinc-100 font-mono"
+                  className="font-mono"
                 >
                   {hasMultiplePrefixes && (
-                    <span className="text-zinc-500 mr-1">{queue.prefix}/</span>
+                    <span className="text-muted-foreground mr-1">
+                      {queue.prefix}/
+                    </span>
                   )}
                   {queue.name}
                 </SelectItem>
@@ -116,16 +118,12 @@ function OverviewPage() {
             value={String(timeRange)}
             onValueChange={(value) => setTimeRange(Number(value))}
           >
-            <SelectTrigger className="w-[130px] bg-zinc-900/50 border-zinc-800">
+            <SelectTrigger className="w-[130px] bg-card">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-zinc-800">
+            <SelectContent>
               {TIME_RANGES.map((range) => (
-                <SelectItem
-                  key={range.value}
-                  value={range.value}
-                  className="text-zinc-100"
-                >
+                <SelectItem key={range.value} value={range.value}>
                   {range.label}
                 </SelectItem>
               ))}
@@ -135,7 +133,7 @@ function OverviewPage() {
 
         <div className="flex items-center gap-3">
           {metrics?.lastUpdated && (
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-muted-foreground">
               Updated {dayjs(metrics.lastUpdated).fromNow()}
             </span>
           )}
@@ -144,7 +142,7 @@ function OverviewPage() {
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800"
+            className="bg-card"
           >
             <RefreshCw
               className={`size-4 mr-2 ${isFetching ? "animate-spin" : ""}`}

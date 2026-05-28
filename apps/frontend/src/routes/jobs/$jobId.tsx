@@ -190,7 +190,9 @@ function JobDetailPage() {
         </Button>
         <div>
           <Header title={job.name} />
-          <p className="text-xs text-zinc-500 font-mono pl-4 -mt-2">{job.id}</p>
+          <p className="text-xs text-muted-foreground font-mono pl-4 -mt-2">
+            {job.id}
+          </p>
         </div>
       </div>
 
@@ -205,7 +207,7 @@ function JobDetailPage() {
           size="sm"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="border-zinc-800 hover:bg-zinc-800"
+          className="bg-card"
         >
           <RefreshCw
             className={`size-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
@@ -219,7 +221,7 @@ function JobDetailPage() {
             size="sm"
             onClick={handleRetry}
             disabled={retryMutation.isPending}
-            className="border-zinc-800 hover:bg-zinc-800 text-amber-400 hover:text-amber-300"
+            className="bg-card text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
           >
             <RotateCcw
               className={`size-4 mr-2 ${retryMutation.isPending ? "animate-spin" : ""}`}
@@ -233,7 +235,7 @@ function JobDetailPage() {
           size="sm"
           onClick={handleRemove}
           disabled={removeMutation.isPending}
-          className="border-zinc-800 hover:bg-red-900/20 text-red-400 hover:text-red-300"
+          className="bg-card text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
         >
           <Trash2 className="size-4 mr-2" />
           {removeMutation.isPending ? "Removing..." : "Remove"}
@@ -270,23 +272,23 @@ function JobDetailPage() {
 
       {/* Tabs for Data, Return Value, Error */}
       <Tabs defaultValue="data" className="w-full">
-        <TabsList className="bg-zinc-900 border border-zinc-800">
-          <TabsTrigger value="data" className="data-[state=active]:bg-zinc-800">
+        <TabsList className="border border-border">
+          <TabsTrigger value="data" className="data-[state=active]:bg-background">
             Input Data
           </TabsTrigger>
-          <TabsTrigger value="logs" className="data-[state=active]:bg-zinc-800">
+          <TabsTrigger value="logs" className="data-[state=active]:bg-background">
             Logs
           </TabsTrigger>
           <TabsTrigger
             value="result"
-            className="data-[state=active]:bg-zinc-800"
+            className="data-[state=active]:bg-background"
           >
             Result
           </TabsTrigger>
           {job.status === "failed" && (
             <TabsTrigger
               value="error"
-              className="data-[state=active]:bg-zinc-800"
+              className="data-[state=active]:bg-background"
             >
               Error
             </TabsTrigger>
@@ -294,9 +296,9 @@ function JobDetailPage() {
         </TabsList>
 
         <TabsContent value="data" className="mt-4">
-          <Card className="bg-zinc-900/50 border-zinc-800">
+          <Card className="bg-card">
             <CardHeader>
-              <CardTitle className="text-sm text-zinc-400">
+              <CardTitle className="text-sm text-muted-foreground">
                 Input Data
               </CardTitle>
             </CardHeader>
@@ -307,33 +309,35 @@ function JobDetailPage() {
         </TabsContent>
 
         <TabsContent value="logs" className="mt-4">
-          <Card className="bg-zinc-900/50 border-zinc-800">
+          <Card className="bg-card">
             <CardHeader>
-              <CardTitle className="text-sm text-zinc-400">Job Logs</CardTitle>
+              <CardTitle className="text-sm text-muted-foreground">
+                Job Logs
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {logsData && logsData.logs.length > 0 ? (
-                <div className="bg-zinc-900 rounded-lg overflow-x-auto max-h-[600px] overflow-y-auto">
+                <div className="bg-muted rounded-lg overflow-x-auto max-h-[600px] overflow-y-auto">
                   {logsData.logs.map((line) => (
                     <div
                       key={line}
-                      className="px-4 py-1.5 text-sm font-mono text-zinc-300 hover:bg-zinc-800/50 border-b border-zinc-800/50 last:border-b-0 whitespace-pre-wrap break-all"
+                      className="px-4 py-1.5 text-sm font-mono text-foreground hover:bg-background/70 border-b last:border-b-0 whitespace-pre-wrap break-all"
                     >
                       {line}
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-zinc-500 text-sm">No logs recorded</p>
+                <p className="text-muted-foreground text-sm">No logs recorded</p>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="result" className="mt-4">
-          <Card className="bg-zinc-900/50 border-zinc-800">
+          <Card className="bg-card">
             <CardHeader>
-              <CardTitle className="text-sm text-zinc-400">
+              <CardTitle className="text-sm text-muted-foreground">
                 Return Value
               </CardTitle>
             </CardHeader>
@@ -341,7 +345,7 @@ function JobDetailPage() {
               {job.returnValue ? (
                 <JsonViewer data={job.returnValue} />
               ) : (
-                <p className="text-zinc-500 text-sm">No return value</p>
+                <p className="text-muted-foreground text-sm">No return value</p>
               )}
             </CardContent>
           </Card>
@@ -358,7 +362,7 @@ function JobDetailPage() {
               <CardContent className="space-y-4">
                 {job.failedReason && (
                   <div>
-                    <h4 className="text-xs text-zinc-500 mb-1">Message</h4>
+                    <h4 className="text-xs text-muted-foreground mb-1">Message</h4>
                     <p className="text-sm text-red-300 font-mono">
                       {job.failedReason}
                     </p>
@@ -366,8 +370,10 @@ function JobDetailPage() {
                 )}
                 {job.stacktrace && job.stacktrace.length > 0 && (
                   <div>
-                    <h4 className="text-xs text-zinc-500 mb-1">Stack Trace</h4>
-                    <pre className="text-xs text-zinc-400 font-mono bg-zinc-900 p-4 rounded-lg overflow-x-auto">
+                    <h4 className="text-xs text-muted-foreground mb-1">
+                      Stack Trace
+                    </h4>
+                    <pre className="text-xs text-foreground font-mono bg-muted p-4 rounded-lg overflow-x-auto">
                       {job.stacktrace.join("\n")}
                     </pre>
                   </div>
@@ -393,16 +399,18 @@ function MetadataCard({
   icon?: React.ReactNode;
 }) {
   return (
-    <Card className="bg-zinc-900/50 border-zinc-800">
+    <Card className="bg-card">
       <CardContent className="pt-4">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs text-zinc-500">{title}</p>
-            <p className="text-sm font-medium text-zinc-100 mt-1 font-mono">
+            <p className="text-xs text-muted-foreground">{title}</p>
+            <p className="text-sm font-medium text-foreground mt-1 font-mono">
               {value}
             </p>
             {subtitle && (
-              <p className="text-xs text-zinc-500 mt-0.5">{subtitle}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {subtitle}
+              </p>
             )}
           </div>
           {icon}
@@ -437,15 +445,15 @@ const JsonViewer = memo(function JsonViewer({ data }: { data: unknown }) {
 
   return (
     <div>
-      <pre className="text-sm text-zinc-300 font-mono bg-zinc-900 p-4 rounded-lg overflow-x-auto max-h-[600px] overflow-y-auto">
+      <pre className="text-sm text-foreground font-mono bg-muted p-4 rounded-lg overflow-x-auto max-h-[600px] overflow-y-auto">
         {formatted}
         {isTruncated && (
-          <span className="text-zinc-500">{"\n\n... (truncated)"}</span>
+          <span className="text-muted-foreground">{"\n\n... (truncated)"}</span>
         )}
       </pre>
       {(isTruncated || showFull) && fullSize > TRUNCATION_THRESHOLD && (
         <div className="mt-2 flex items-center gap-3">
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-muted-foreground">
             Size: {formatSize(fullSize)}
           </span>
           <button

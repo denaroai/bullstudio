@@ -154,7 +154,7 @@ export function FlowGraph({ root, onNodeClick }: FlowGraphProps) {
   }, [root, setNodes, setEdges]); 
 
   return (
-    <div className="h-[600px] rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden">
+    <div className="h-[600px] rounded-lg border bg-card overflow-hidden">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -174,12 +174,12 @@ export function FlowGraph({ root, onNodeClick }: FlowGraphProps) {
         <Background
           gap={20}
           size={1}
-          color="#27272a"
-          className="bg-zinc-950"
+          color="var(--border)"
+          className="bg-muted/35"
         />
         <Controls
           showInteractive={false}
-          className="!bg-zinc-900 !border-zinc-800 !rounded-lg !shadow-lg [&>button]:!bg-zinc-800 [&>button]:!border-zinc-700 [&>button]:!text-zinc-400 [&>button:hover]:!bg-zinc-700"
+          className="!bg-card !border-border !rounded-lg !shadow-lg [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-muted-foreground [&>button:hover]:!bg-muted"
         />
       </ReactFlow>
     </div>

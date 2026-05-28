@@ -35,25 +35,25 @@ export function SlowestJobsTable({ jobs }: SlowestJobsTableProps) {
   };
 
   return (
-    <Card className="bg-zinc-900/50 border-zinc-800">
+    <Card className="bg-card">
       <CardHeader>
-        <CardTitle className="text-zinc-100">Slowest Jobs</CardTitle>
-        <CardDescription className="text-zinc-500">
+        <CardTitle>Slowest Jobs</CardTitle>
+        <CardDescription>
           Top 10 jobs by processing time
         </CardDescription>
       </CardHeader>
       <CardContent>
         {jobs.length === 0 ? (
-          <div className="text-center py-8 text-zinc-500">
+          <div className="text-center py-8 text-muted-foreground">
             No completed jobs in this time range
           </div>
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-zinc-800 hover:bg-transparent">
-                <TableHead className="text-zinc-400">Job</TableHead>
-                <TableHead className="text-zinc-400">Queue</TableHead>
-                <TableHead className="text-zinc-400 text-right">
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Job</TableHead>
+                <TableHead>Queue</TableHead>
+                <TableHead className="text-right">
                   Duration
                 </TableHead>
               </TableRow>
@@ -62,21 +62,21 @@ export function SlowestJobsTable({ jobs }: SlowestJobsTableProps) {
               {jobs.map((job) => (
                 <TableRow
                   key={job.id}
-                  className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50"
+                  className="cursor-pointer hover:bg-muted/60"
                   onClick={() => handleJobClick(job)}
                 >
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-medium text-zinc-100">
+                      <span className="font-medium text-foreground">
                         {job.name}
                       </span>
-                      <span className="text-xs text-zinc-500 font-mono">
+                      <span className="text-xs text-muted-foreground font-mono">
                         {job.id}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="font-mono text-sm text-zinc-400">
+                    <span className="font-mono text-sm text-muted-foreground">
                       {job.queueName}
                     </span>
                   </TableCell>

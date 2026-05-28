@@ -31,52 +31,49 @@ type FailingJobTypesTableProps = {
 
 export function FailingJobTypesTable({ jobTypes }: FailingJobTypesTableProps) {
   return (
-    <Card className="bg-zinc-900/50 border-zinc-800">
+    <Card className="bg-card">
       <CardHeader>
-        <CardTitle className="text-zinc-100">Most Failing Job Types</CardTitle>
-        <CardDescription className="text-zinc-500">
+        <CardTitle>Most Failing Job Types</CardTitle>
+        <CardDescription>
           Jobs grouped by name with highest failure counts
         </CardDescription>
       </CardHeader>
       <CardContent>
         {jobTypes.length === 0 ? (
-          <div className="text-center py-8 text-zinc-500">
+          <div className="text-center py-8 text-muted-foreground">
             No failed jobs in this time range
           </div>
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-zinc-800 hover:bg-transparent">
-                <TableHead className="text-zinc-400">Job Type</TableHead>
-                <TableHead className="text-zinc-400">Queue</TableHead>
-                <TableHead className="text-zinc-400 text-right">
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Job Type</TableHead>
+                <TableHead>Queue</TableHead>
+                <TableHead className="text-right">
                   Failures
                 </TableHead>
-                <TableHead className="text-zinc-400 text-right">
+                <TableHead className="text-right">
                   Last Failed
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {jobTypes.map((jobType) => (
-                <TableRow
-                  key={`${jobType.queueName}:${jobType.name}`}
-                  className="border-zinc-800"
-                >
+                <TableRow key={`${jobType.queueName}:${jobType.name}`}>
                   <TableCell>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="font-medium text-zinc-100 cursor-help">
+                          <span className="font-medium text-foreground cursor-help">
                             {jobType.name}
                           </span>
                         </TooltipTrigger>
                         {jobType.lastFailedReason && (
                           <TooltipContent
                             side="top"
-                            className="max-w-xs bg-zinc-800 border-zinc-700"
+                            className="max-w-xs"
                           >
-                            <p className="text-xs font-mono break-all text-zinc-300">
+                            <p className="text-xs font-mono break-all">
                               {jobType.lastFailedReason}
                             </p>
                           </TooltipContent>
@@ -85,7 +82,7 @@ export function FailingJobTypesTable({ jobTypes }: FailingJobTypesTableProps) {
                     </TooltipProvider>
                   </TableCell>
                   <TableCell>
-                    <span className="font-mono text-sm text-zinc-400">
+                    <span className="font-mono text-sm text-muted-foreground">
                       {jobType.queueName}
                     </span>
                   </TableCell>
@@ -95,7 +92,7 @@ export function FailingJobTypesTable({ jobTypes }: FailingJobTypesTableProps) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <span className="text-sm text-zinc-500">
+                    <span className="text-sm text-muted-foreground">
                       {dayjs(jobType.lastFailedAt).fromNow()}
                     </span>
                   </TableCell>

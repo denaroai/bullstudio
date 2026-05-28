@@ -97,7 +97,7 @@ function FlowDetailPage() {
         <div className="text-center py-12">
           <AlertTriangle className="size-12 text-zinc-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-zinc-300">Flow not found</h3>
-          <p className="text-sm text-zinc-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             The flow may have been removed or the ID is incorrect.
           </p>
           <Button variant="outline" className="mt-4" onClick={goBack}>
@@ -127,19 +127,19 @@ function FlowDetailPage() {
       </div>
 
       {/* Flow Metadata */}
-      <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg bg-zinc-900/50 border border-zinc-800">
+      <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg bg-card border">
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-zinc-500">Queue:</span>
+          <span className="text-muted-foreground">Queue:</span>
           <Badge variant="secondary" className="font-mono">
             {queueName}
           </Badge>
         </div>
 
-        <div className="h-4 w-px bg-zinc-800" />
+        <div className="h-4 w-px bg-border" />
 
         <div className="flex items-center gap-2 text-sm">
-          <GitBranch className="size-4 text-zinc-500" />
-          <span className="text-zinc-300">{flowTree.totalNodes} jobs</span>
+          <GitBranch className="size-4 text-muted-foreground" />
+          <span className="text-foreground">{flowTree.totalNodes} jobs</span>
         </div>
 
         <div className="flex items-center gap-2 text-sm">
@@ -161,7 +161,7 @@ function FlowDetailPage() {
           size="sm"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="border-zinc-800 hover:bg-zinc-800"
+          className="bg-card"
         >
           <RefreshCw
             className={`size-4 mr-2 ${isFetching ? "animate-spin" : ""}`}

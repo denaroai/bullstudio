@@ -77,7 +77,7 @@ function FlowsPage() {
           size="sm"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="border-zinc-800 hover:bg-zinc-800"
+          className="bg-card"
         >
           <RefreshCw
             className={`size-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
@@ -87,7 +87,7 @@ function FlowsPage() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
+        <div className="rounded-lg border bg-card overflow-hidden">
           <div className="p-8 space-y-4">
             {flowSkeletonRows.map((row) => (
               <Skeleton key={row} className="h-12 w-full" />
@@ -101,10 +101,10 @@ function FlowsPage() {
           description="Flows will appear here when parent jobs with children are created using BullMQ's FlowProducer"
         />
       ) : (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
+        <div className="rounded-lg border bg-card overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="border-zinc-800 hover:bg-transparent">
+              <TableRow className="hover:bg-transparent">
                 <TableHead>Flow</TableHead>
                 <TableHead>Queue</TableHead>
                 <TableHead>Status</TableHead>
@@ -116,7 +116,7 @@ function FlowsPage() {
               {flows.map((flow) => (
                 <TableRow
                   key={`${flow.prefix}-${flow.queueName}-${flow.id}`}
-                  className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
+                  className="cursor-pointer hover:bg-muted/60 transition-colors"
                   onClick={() => navigateToFlow(flow)}
                 >
                   <TableCell>
@@ -125,17 +125,17 @@ function FlowsPage() {
                         <Workflow className="size-4 text-cyan-400" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-medium text-zinc-100">
+                        <span className="font-medium text-foreground">
                           {flow.name}
                         </span>
-                        <span className="text-xs text-zinc-500 font-mono">
+                        <span className="text-xs text-muted-foreground font-mono">
                           {flow.id}
                         </span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="font-mono text-sm text-zinc-400">
+                    <span className="font-mono text-sm text-muted-foreground">
                       {flow.queueName}
                     </span>
                   </TableCell>
@@ -147,7 +147,7 @@ function FlowsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
-                      <span className="text-sm text-zinc-300">
+                      <span className="text-sm text-foreground">
                         {flow.totalJobs} total
                       </span>
                       <div className="flex items-center gap-3 text-xs">
@@ -168,10 +168,10 @@ function FlowsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="text-sm text-zinc-300">
+                      <span className="text-sm text-foreground">
                         {dayjs(flow.timestamp).fromNow()}
                       </span>
-                      <span className="text-xs text-zinc-500 font-mono">
+                      <span className="text-xs text-muted-foreground font-mono">
                         {dayjs(flow.timestamp).format("MMM D, HH:mm:ss")}
                       </span>
                     </div>
@@ -181,7 +181,7 @@ function FlowsPage() {
             </TableBody>
           </Table>
 
-          <div className="px-4 py-3 border-t border-zinc-800 text-sm text-zinc-500">
+          <div className="px-4 py-3 border-t text-sm text-muted-foreground">
             Showing {flows.length} flow{flows.length !== 1 ? "s" : ""}
           </div>
         </div>

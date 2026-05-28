@@ -91,10 +91,10 @@ export function AppSidebar() {
             className="size-8 shrink-0"
           />
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="font-semibold text-sm text-zinc-100">
+            <span className="font-semibold text-sm text-sidebar-foreground">
               {dashboardTitle}
             </span>
-            <span className="text-[10px] text-zinc-500 uppercase tracking-wider">
+            <span className="text-[10px] text-sidebar-foreground/55 uppercase tracking-wider">
               {dashboardIdentity ? "Embedded" : "CLI"}
             </span>
           </div>
@@ -133,24 +133,24 @@ export function AppSidebar() {
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <div className="px-3 py-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0">
-              <div className="flex items-center gap-2 text-xs text-zinc-500 group-data-[collapsible=icon]:justify-center">
+              <div className="flex items-center gap-2 text-xs text-sidebar-foreground/60 group-data-[collapsible=icon]:justify-center">
                 <Database className="size-3.5 shrink-0 text-emerald-500" />
                 <div className="flex flex-col group-data-[collapsible=icon]:hidden">
                   <div className="flex items-center gap-2">
-                    <span className="text-zinc-400 font-medium">
+                    <span className="text-sidebar-foreground/80 font-medium">
                       {queueSource?.title ?? "Queue source"}
                     </span>
                     {queueSource?.providerLabel && (
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 uppercase">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sidebar-accent text-sidebar-accent-foreground uppercase">
                         {queueSource.providerLabel}
                       </span>
                     )}
                   </div>
-                  <span className="text-zinc-500 font-mono text-[11px]">
+                  <span className="text-sidebar-foreground/60 font-mono text-[11px]">
                     {queueSource?.detail || "connecting..."}
                   </span>
                   {queueSource?.prefixes && queueSource.prefixes.length > 1 && (
-                    <span className="text-zinc-600 font-mono text-[10px] mt-0.5">
+                    <span className="text-sidebar-foreground/45 font-mono text-[10px] mt-0.5">
                       prefixes: {queueSource.prefixes.join(", ")}
                     </span>
                   )}
@@ -164,7 +164,7 @@ export function AppSidebar() {
       {/* Footer */}
       <SidebarFooter className="gap-3 border-t border-sidebar-border p-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:p-2">
         <ThemeSwitcher />
-        <div className="flex items-center justify-between text-xs text-zinc-500 group-data-[collapsible=icon]:justify-center">
+        <div className="flex items-center justify-between text-xs text-sidebar-foreground/55 group-data-[collapsible=icon]:justify-center">
           <span className="group-data-[collapsible=icon]:hidden">
             {VERSION}
           </span>
@@ -173,7 +173,7 @@ export function AppSidebar() {
               href="https://github.com/emirce/bullstudio"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-zinc-300 transition-colors"
+              className="hover:text-sidebar-foreground transition-colors"
             >
               <Github className="size-4" />
             </a>
@@ -181,7 +181,7 @@ export function AppSidebar() {
               href="https://x.com/emirthedev"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-zinc-300 transition-colors"
+              className="hover:text-sidebar-foreground transition-colors"
             >
               <Twitter className="size-4" />
             </a>
@@ -231,7 +231,7 @@ function ThemeSwitcher() {
 
   return (
     <div className="w-full group-data-[collapsible=icon]:w-auto">
-      <div className="grid grid-cols-3 gap-1 rounded-md border border-sidebar-border bg-zinc-950/40 p-1 group-data-[collapsible=icon]:hidden">
+      <div className="grid grid-cols-3 gap-1 rounded-md border border-sidebar-border bg-sidebar-accent/45 p-1 group-data-[collapsible=icon]:hidden">
         {themeOptions.map((option) => {
           const Icon = option.icon;
           const active = option.value === theme;
@@ -244,8 +244,8 @@ function ThemeSwitcher() {
               aria-pressed={active}
               onClick={() => setTheme(option.value)}
               className={cn(
-                "flex h-7 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-900 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/60",
-                active && "bg-zinc-800 text-zinc-100 shadow-sm",
+                "flex h-7 items-center justify-center rounded text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50",
+                active && "bg-sidebar text-sidebar-foreground shadow-sm",
               )}
             >
               <Icon className="size-3.5" />
@@ -258,7 +258,7 @@ function ThemeSwitcher() {
         aria-label={`Theme: ${activeTheme.label}. Click to change theme.`}
         title={`Theme: ${activeTheme.label}`}
         onClick={cycleTheme}
-        className="hidden size-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-900 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/60 group-data-[collapsible=icon]:flex"
+        className="hidden size-8 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 group-data-[collapsible=icon]:flex"
       >
         <ActiveIcon className="size-4" />
       </button>
