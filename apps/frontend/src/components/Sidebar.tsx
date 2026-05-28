@@ -19,13 +19,18 @@ import {
   Github,
   LayoutDashboard,
   ListTodo,
+  Monitor,
+  Moon,
+  Sun,
   Twitter,
   Workflow,
 } from "lucide-react";
 import { VERSION } from "@/const";
+import { type Theme, useTheme } from "@/components/ThemeProvider";
 import { useTRPC } from "@/integrations/trpc/react";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 import { getAssetUrl, getDashboardIdentity } from "@/lib/runtime-config";
+import { cn } from "@bullstudio/ui/lib/utils";
 
 export function AppSidebar() {
   const location = useLocation();
@@ -157,12 +162,13 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* Footer */}
-      <SidebarFooter className="border-t border-sidebar-border p-4">
+      <SidebarFooter className="gap-3 border-t border-sidebar-border p-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:p-2">
+        <ThemeSwitcher />
         <div className="flex items-center justify-between text-xs text-zinc-500 group-data-[collapsible=icon]:justify-center">
           <span className="group-data-[collapsible=icon]:hidden">
             {VERSION}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
             <a
               href="https://github.com/emirce/bullstudio"
               target="_blank"
@@ -186,5 +192,76 @@ export function AppSidebar() {
       {/* Rail for resizing */}
       <SidebarRail />
     </Sidebar>
+  );
+}
+
+const themeOptions: Array<{
+  icon: typeof Moon;
+  label: string;
+  value: Theme;
+}> = [
+  {
+    icon: Moon,
+    label: "Dark",
+    value: "dark",
+  },
+  {
+    icon: Sun,
+    label: "Light",
+    value: "light",
+  },
+  {
+    icon: Monitor,
+    label: "System",
+    value: "system",
+  },
+];
+
+function ThemeSwitcher() {
+  const { theme, setTheme } = useTheme();
+  const activeTheme =
+    themeOptions.find((option) => option.value === theme) ?? themeOptions[0];
+  const ActiveIcon = activeTheme.icon;
+
+  const cycleTheme = () => {
+    const index = themeOptions.findIndex((option) => option.value === theme);
+    const next = themeOptions[(index + 1) % themeOptions.length];
+    setTheme(next.value);
+  };
+
+  return (
+    <div className="w-full group-data-[collapsible=icon]:w-auto">
+      <div className="grid grid-cols-3 gap-1 rounded-md border border-sidebar-border bg-zinc-950/40 p-1 group-data-[collapsible=icon]:hidden">
+        {themeOptions.map((option) => {
+          const Icon = option.icon;
+          const active = option.value === theme;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-label={`Use ${option.label.toLowerCase()} theme`}
+              aria-pressed={active}
+              onClick={() => setTheme(option.value)}
+              className={cn(
+                "flex h-7 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-900 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/60",
+                active && "bg-zinc-800 text-zinc-100 shadow-sm",
+              )}
+            >
+              <Icon className="size-3.5" />
+            </button>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        aria-label={`Theme: ${activeTheme.label}. Click to change theme.`}
+        title={`Theme: ${activeTheme.label}`}
+        onClick={cycleTheme}
+        className="hidden size-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-900 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/60 group-data-[collapsible=icon]:flex"
+      >
+        <ActiveIcon className="size-4" />
+      </button>
+    </div>
   );
 }
