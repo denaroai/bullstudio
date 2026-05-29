@@ -2,7 +2,23 @@
   "name": "@bullstudio/logger",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "files": [
+    "index.ts"
+  ],
+  "homepage": "https://github.com/emirce/bullstudio#readme",
+  "bugs": {
+    "url": "https://github.com/emirce/bullstudio/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emirce/bullstudio.git",
+    "directory": "packages/logger"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "echo \"No tests configured for @bullstudio/logger\""
@@ -10,6 +26,10 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "dependencies": {
     "chalk": "^5.6.2"
   },

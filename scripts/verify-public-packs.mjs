@@ -13,7 +13,10 @@ const publicPackages = [
   "packages/bull-adapter",
   "packages/embedded-core",
   "packages/connect-types",
+  "packages/logger",
+  "packages/dayjs",
 ];
+const sourceOnlyPackages = new Set(["packages/logger", "packages/dayjs"]);
 
 const forbiddenPatterns = [
   "/src/",
@@ -64,8 +67,9 @@ for (const packageDir of publicPackages) {
     throw new Error(`${packageDir} packed a workspace: dependency`);
   }
 
-  const requiredFiles =
-    packageDir === "packages/cli"
+  const requiredFiles = sourceOnlyPackages.has(packageDir)
+    ? ["package.json", "index.ts"]
+    : packageDir === "packages/cli"
       ? [
           "package.json",
           "README.md",
@@ -86,7 +90,11 @@ for (const packageDir of publicPackages) {
     }
   }
 
-  if (packageDir !== "packages/cli" && !files.includes("dist/index.d.ts")) {
+  if (
+    packageDir !== "packages/cli" &&
+    !sourceOnlyPackages.has(packageDir) &&
+    !files.includes("dist/index.d.ts")
+  ) {
     throw new Error(`${packageDir} is missing dist/index.d.ts`);
   }
 
