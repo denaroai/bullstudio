@@ -1,0 +1,3 @@
+# Converge on shared private dashboard router shape
+
+Embedded mode will first add compatibility procedures in embedded core so the existing dashboard assets can inspect and manage supplied queues without adopting standalone Redis discovery behavior. The intended long-term shape is one shared private dashboard router contract used by both standalone mode and embedded mode, backed by mode-specific queue sources. This avoids splitting the React dashboard into runtime-specific API clients while preserving the distinction between discovered queues in standalone mode and supplied queues in embedded mode.

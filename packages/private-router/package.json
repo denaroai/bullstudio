@@ -1,0 +1,28 @@
+{
+  "name": "@bullstudio/private-router",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@bullstudio/connect-types": "workspace:*",
+    "@trpc/server": "^11.4.3",
+    "superjson": "^2.2.2",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@bullstudio/typescript-config": "workspace:*",
+    "@types/node": "^24.10.1",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  }
+}

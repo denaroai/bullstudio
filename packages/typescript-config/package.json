@@ -3,7 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "license": "PROPRIETARY",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1"
   }
 }
