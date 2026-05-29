@@ -1,23 +1,57 @@
 {
   "name": "@bullstudio/express",
-  "version": "0.0.1",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Express framework adapter for Bullstudio embedded mode.",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "exports": {
-    ".": "./src/index.ts"
+  "license": "MIT",
+  "keywords": [
+    "bullstudio",
+    "bullmq",
+    "bull",
+    "express",
+    "dashboard",
+    "queue"
+  ],
+  "homepage": "https://github.com/emirce/bullstudio#readme",
+  "bugs": {
+    "url": "https://github.com/emirce/bullstudio/issues"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emirce/bullstudio.git",
+    "directory": "packages/express-adapter"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "build": "tsup",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "peerDependencies": {
     "express": "^5.0.0"
   },
   "dependencies": {
-    "@bullstudio/embedded-core": "workspace:*"
+    "@bullstudio/embedded-core": "workspace:0.1.0"
   },
   "devDependencies": {
     "@bullstudio/typescript-config": "workspace:*",

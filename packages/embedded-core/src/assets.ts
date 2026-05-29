@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { extname, join, resolve } from "node:path";
+import { dirname, extname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type {
   DocumentIdentity,
   FrameworkRequest,
@@ -9,6 +10,7 @@ import type {
 } from "./types";
 import { getPathname } from "./url";
 
+const packageDistDir = dirname(fileURLToPath(import.meta.url));
 const clientDistPath = findClientDistPath();
 
 export async function handleDashboardAsset(
@@ -86,6 +88,8 @@ async function readAssetFile(
 
 function findClientDistPath(): string | null {
   const candidates = [
+    process.env.BULLSTUDIO_CLIENT_DIR,
+    join(packageDistDir, "client"),
     join(process.cwd(), "apps/frontend/dist/client"),
     join(process.cwd(), "../../apps/frontend/dist/client"),
     join(process.cwd(), "../apps/frontend/dist/client"),
@@ -95,7 +99,7 @@ function findClientDistPath(): string | null {
   ];
 
   for (const candidate of candidates) {
-    if (existsSync(candidate)) {
+    if (candidate && existsSync(candidate)) {
       return candidate;
     }
   }
@@ -166,7 +170,7 @@ function missingBuiltDashboardResponse(
     body:
       request.method === "HEAD"
         ? undefined
-        : "Bullstudio dashboard assets are missing. Run `pnpm --filter bullstudio build` before serving embedded dashboards.",
+        : "Bullstudio dashboard assets are missing. Reinstall @bullstudio/embedded-core or set BULLSTUDIO_CLIENT_DIR to a built Bullstudio dashboard asset directory.",
   };
 }
 

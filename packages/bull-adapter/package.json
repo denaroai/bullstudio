@@ -1,26 +1,60 @@
 {
   "name": "@bullstudio/bull-adapter",
-  "version": "0.0.1",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Bull queue adapter for Bullstudio embedded mode.",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "exports": {
-    ".": "./src/index.ts"
+  "license": "MIT",
+  "keywords": [
+    "bullstudio",
+    "bull",
+    "adapter",
+    "dashboard",
+    "queue",
+    "redis"
+  ],
+  "homepage": "https://github.com/emirce/bullstudio#readme",
+  "bugs": {
+    "url": "https://github.com/emirce/bullstudio/issues"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emirce/bullstudio.git",
+    "directory": "packages/bull-adapter"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "build": "tsup",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "peerDependencies": {
     "bull": "^4.0.0"
   },
   "dependencies": {
-    "@bullstudio/adapter-utils": "workspace:*",
-    "@bullstudio/connect-types": "workspace:*"
+    "@bullstudio/connect-types": "workspace:0.1.0"
   },
   "devDependencies": {
+    "@bullstudio/adapter-utils": "workspace:*",
     "@bullstudio/typescript-config": "workspace:*",
     "@types/node": "^24.10.1",
     "bull": "^4.16.4",

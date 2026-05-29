@@ -12,11 +12,14 @@
   "dependencies": {
     "@bullstudio/bullmq-adapter": "workspace:*",
     "@bullstudio/next": "workspace:*",
+    "@trpc/server": "^11.4.3",
     "bullmq": "^5.34.8",
     "ioredis": "^5.4.2",
     "next": "^16.0.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "superjson": "^2.2.2",
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "@bullstudio/typescript-config": "workspace:*",

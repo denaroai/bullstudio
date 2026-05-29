@@ -8,7 +8,7 @@ WORKDIR /app
 # BUILDER STAGE
 FROM base AS builder
 COPY . .
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile
 RUN pnpm --filter bullstudio build
 
 # RUNNER STAGE

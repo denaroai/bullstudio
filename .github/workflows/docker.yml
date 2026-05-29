@@ -1,15 +1,18 @@
-name: Build and Push Docker Image
+name: Manual Docker image publish
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - "v*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Docker version tag to publish, for example 1.4.1"
+        required: true
+      latest:
+        description: "Also publish the latest tag"
+        required: true
+        default: true
+        type: boolean
 
 env:
-  REGISTRY: docker.io
   IMAGE_NAME: emirce/bullstudio
 
 jobs:
@@ -17,7 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
 
     steps:
       - name: Checkout repository
@@ -35,18 +37,28 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Resolve tags
+        id: tags
+        env:
+          VERSION: ${{ inputs.version }}
+          INCLUDE_LATEST: ${{ inputs.latest }}
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const version = process.env.VERSION;
+          const [major, minor] = version.split(".");
+          const tags = [
+            `${process.env.IMAGE_NAME}:${version}`,
+            `${process.env.IMAGE_NAME}:${major}.${minor}`,
+            `${process.env.IMAGE_NAME}:${major}`,
+          ];
+
+          if (process.env.INCLUDE_LATEST === "true") {
+            tags.push(`${process.env.IMAGE_NAME}:latest`);
+          }
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `tags<<EOF\n${tags.join("\n")}\nEOF\n`);
+          NODE
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -54,7 +66,11 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.title=Bullstudio
+            org.opencontainers.image.description=Standalone Bullstudio dashboard
+            org.opencontainers.image.source=https://github.com/emirce/bullstudio
+            org.opencontainers.image.version=${{ inputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
