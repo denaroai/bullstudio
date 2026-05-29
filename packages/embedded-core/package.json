@@ -35,7 +35,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "pnpm --filter @bullstudio/frontend build && tsup && node ../../scripts/copy-embedded-client.mjs",
+    "build": "pnpm --filter @bullstudio/connect-types build && pnpm --filter @bullstudio/frontend build && tsup && node ../../scripts/copy-embedded-client.mjs",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

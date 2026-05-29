@@ -1,7 +1,7 @@
 import { FlowProducer, Worker } from "bullmq";
 
 const flow = new FlowProducer({
-  connection: { host: "localhost", port: 6378 },
+  connection: { host: "localhost", port: 6379 },
 });
 await flow.add({
   name: "root-job",
