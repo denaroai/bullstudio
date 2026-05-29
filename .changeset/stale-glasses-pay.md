@@ -1,4 +1,5 @@
 ---
+"bullstudio": minor
 ---
 
-Set up npm and Docker publishing automation.
+Streamline CLI npm publishing and Docker image publishing through the shared release workflow.
