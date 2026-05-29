@@ -8,6 +8,7 @@ import {
   type FlowListInput,
   type JobListInput,
   type JobTargetInput,
+  type PrivateDashboardContext,
   type PrivateDashboardQueueSource,
   type QueueSourceStatus as PrivateQueueSourceStatus,
   type QueueTargetInput,
@@ -15,6 +16,7 @@ import {
 import { TRPCError } from "@trpc/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import type {
+  DashboardProtection,
   DashboardQueue,
   EmbeddedDashboardInstance,
   FrameworkRequest,
@@ -22,6 +24,7 @@ import type {
   PrivateDashboardApiMount,
   QueueSourceStatus,
 } from "./types";
+import { getAuthenticatedSession } from "./session";
 import { getPathname, toAbsoluteUrl } from "./url";
 
 export function createPrivateDashboardApi(
@@ -31,7 +34,8 @@ export function createPrivateDashboardApi(
   const router = createPrivateDashboardRouter(source);
 
   return {
-    handle: (request) => handlePrivateDashboardApi(router, request),
+    handle: (request) =>
+      handlePrivateDashboardApi(router, dashboard.config.protection, request),
   };
 }
 
@@ -117,13 +121,15 @@ export function createEmbeddedQueueSource(
 
 async function handlePrivateDashboardApi(
   router: ReturnType<typeof createPrivateDashboardRouter>,
+  protection: DashboardProtection,
   request: FrameworkRequest,
 ): Promise<FrameworkResponse> {
   const response = await fetchRequestHandler({
     endpoint: getPrivateDashboardApiEndpoint(request.url),
     req: toFetchRequest(request),
     router,
-    createContext: () => ({}),
+    createContext: (): PrivateDashboardContext =>
+      getAuthenticatedSession(protection, request),
   });
 
   return {

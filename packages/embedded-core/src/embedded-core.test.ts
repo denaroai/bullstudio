@@ -77,6 +77,39 @@ describe("embedded core public contracts", () => {
     expect(dashboard.mountPrivateDashboardApi).toEqual(expect.any(Function));
   });
 
+  it("reports whether Bullstudio auth protection is enabled", async () => {
+    const protectedDashboard = createEmbeddedDashboard({
+      queues: [createQueueAdapter({ key: "email", label: "Email" })],
+      protection: {
+        type: "session",
+        username: "admin",
+        password: "secret",
+      },
+    });
+    const publicDashboard = createEmbeddedDashboard({
+      queues: [createQueueAdapter({ key: "email", label: "Email" })],
+      protection: { type: "disabled" },
+    });
+
+    const protectedSession = await protectedDashboard.handle({
+      method: "GET",
+      url: "/api/auth/session",
+    });
+    const publicSession = await publicDashboard.handle({
+      method: "GET",
+      url: "/api/auth/session",
+    });
+
+    expect(JSON.parse(String(protectedSession.body))).toMatchObject({
+      authEnabled: true,
+      authenticated: false,
+    });
+    expect(JSON.parse(String(publicSession.body))).toMatchObject({
+      authEnabled: false,
+      authenticated: true,
+    });
+  });
+
   it("aggregates only supplied queues and addresses queue APIs by queue key", async () => {
     const emailQueue = createQueueAdapter({
       key: "email-critical",
@@ -495,9 +528,13 @@ describe("embedded private dashboard API overview metrics", () => {
       queues: [emailQueue, reportQueue],
     });
 
-    const response = await callPrivateDashboardApi(dashboard, "overview.metrics", {
-      timeRangeHours: 2,
-    });
+    const response = await callPrivateDashboardApi(
+      dashboard,
+      "overview.metrics",
+      {
+        timeRangeHours: 2,
+      },
+    );
 
     expect(response.status).toBe(200);
     expect(response.json).toMatchObject({
@@ -1556,7 +1593,8 @@ describe("embedded private dashboard API queue pause and resume operations", () 
       status: 400,
       error: {
         code: -32600,
-        message: 'Queue pause is not supported for supplied queue "unsupported".',
+        message:
+          'Queue pause is not supported for supplied queue "unsupported".',
       },
     });
     await expect(
@@ -1717,7 +1755,10 @@ function createQueueAdapter(
       options.jobLogs?.[jobId] ?? { logs: [], count: 0 },
     retryJob: options.retryJob ?? (async () => {}),
     removeJob: options.removeJob ?? (async () => {}),
-    getWorkerCount: async () => ({ queueName, count: options.workerCount ?? 0 }),
+    getWorkerCount: async () => ({
+      queueName,
+      count: options.workerCount ?? 0,
+    }),
     listFlows: options.listFlows,
     getFlow: async (flowId) => options.flows?.[flowId] ?? null,
   };

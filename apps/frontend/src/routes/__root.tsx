@@ -7,6 +7,7 @@ import {
   createRootRouteWithContext,
   HeadContent,
   Outlet,
+  useLocation,
 } from "@tanstack/react-router";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { Toaster } from "sonner";
@@ -62,16 +63,23 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const isLogin = location.pathname === "/login";
+
   return (
     <>
       <HeadContent />
       <ThemeProvider defaultTheme="dark">
-        <SidebarProvider>
-          <AppSidebar />
-          <SidebarInset className="overflow-y-auto">
-            <main className="flex-1 p-6">{children}</main>
-          </SidebarInset>
-        </SidebarProvider>
+        {isLogin ? (
+          children
+        ) : (
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset className="overflow-y-auto">
+              <main className="flex-1 p-6">{children}</main>
+            </SidebarInset>
+          </SidebarProvider>
+        )}
         <Toaster theme="dark" position="bottom-right" richColors />
       </ThemeProvider>
     </>

@@ -29,13 +29,23 @@ export function getBasePath(): string {
 }
 
 export function getApiUrl(): string {
+  return getRuntimeUrl("/api/trpc");
+}
+
+export function getAuthUrl(
+  path: "/api/auth/login" | "/api/auth/logout" | "/api/auth/session",
+): string {
+  return getRuntimeUrl(path);
+}
+
+function getRuntimeUrl(path: string): string {
   const basePath = getBasePath();
 
   if (typeof window !== "undefined") {
-    return `${window.location.origin}${basePath}/api/trpc`;
+    return `${window.location.origin}${basePath}${path}`;
   }
 
-  return `${basePath}/api/trpc`;
+  return `${basePath}${path}`;
 }
 
 export function getAssetUrl(path: string): string {

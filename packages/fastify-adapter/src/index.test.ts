@@ -44,7 +44,7 @@ describe("bullstudio Fastify adapter", () => {
     ]);
   });
 
-  it("protects dashboard assets and private dashboard API with Basic Auth by default", async () => {
+  it("protects dashboard routes and private API with a session by default", async () => {
     const app = Fastify();
 
     await app.register(
@@ -54,33 +54,40 @@ describe("bullstudio Fastify adapter", () => {
       { prefix: "/ops/bullstudio" },
     );
 
-    for (const path of [
-      "/ops/bullstudio",
-      "/ops/bullstudio/assets/app.js",
-      "/ops/bullstudio/api/trpc/queues.list",
-    ]) {
-      const missingCredentials = await app.inject(path);
-      expect(missingCredentials.statusCode).toBe(401);
-      expect(missingCredentials.headers["www-authenticate"]).toBe(
-        'Basic realm="bullstudio"',
-      );
+    const missingSession = await app.inject("/ops/bullstudio/jobs");
+    expect(missingSession.statusCode).toBe(302);
+    expect(missingSession.headers.location).toBe(
+      "/ops/bullstudio/login?redirect=%2Fjobs",
+    );
 
-      const invalidCredentials = await app.inject({
-        url: path,
-        headers: {
-          Authorization: basicAuth("admin", "wrong"),
-        },
-      });
-      expect(invalidCredentials.statusCode).toBe(401);
-      expect(invalidCredentials.headers["www-authenticate"]).toBe(
-        'Basic realm="bullstudio"',
-      );
-    }
+    const loginScreen = await app.inject("/ops/bullstudio/login");
+    expect(loginScreen.statusCode).toBe(200);
+
+    const missingApiSession = await app.inject(
+      "/ops/bullstudio/api/trpc/queues.list",
+    );
+    expect(missingApiSession.statusCode).toBe(401);
+
+    const invalidLogin = await app.inject({
+      method: "POST",
+      url: "/ops/bullstudio/api/auth/login",
+      payload: { username: "admin", password: "wrong" },
+    });
+    expect(invalidLogin.statusCode).toBe(401);
+
+    const login = await app.inject({
+      method: "POST",
+      url: "/ops/bullstudio/api/auth/login",
+      payload: { username: "admin", password: "bullstudio" },
+    });
+    expect(login.statusCode).toBe(200);
+    const cookie = login.headers["set-cookie"];
+    expect(cookie).toContain("bullstudio_session=");
 
     const validAssetResponse = await app.inject({
       url: "/ops/bullstudio",
       headers: {
-        Authorization: basicAuth("admin", "bullstudio"),
+        Cookie: Array.isArray(cookie) ? cookie[0] : (cookie ?? ""),
       },
     });
     expect(validAssetResponse.statusCode).toBe(200);
@@ -88,7 +95,7 @@ describe("bullstudio Fastify adapter", () => {
     const validApiResponse = await app.inject({
       url: "/ops/bullstudio/api/trpc/queues.list",
       headers: {
-        Authorization: basicAuth("admin", "bullstudio"),
+        Cookie: Array.isArray(cookie) ? cookie[0] : (cookie ?? ""),
       },
     });
     expect(validApiResponse.statusCode).toBe(200);
@@ -275,10 +282,6 @@ function createQueueAdapter(options: {
     removeJob: async () => {},
     getWorkerCount: async () => ({ queueName, count: 0 }),
   };
-}
-
-function basicAuth(username: string, password: string): string {
-  return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
 }
 
 function readTrpcResultData(response: { json(): unknown }) {

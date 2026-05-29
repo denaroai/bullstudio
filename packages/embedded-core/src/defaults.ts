@@ -16,7 +16,7 @@ export const defaultCapabilities: AdapterCapabilities = {
 };
 
 export const defaultProtection: DashboardProtection = {
-  type: "basic",
+  type: "session",
   username: "admin",
   password: "bullstudio",
 };

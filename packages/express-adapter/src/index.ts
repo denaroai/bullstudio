@@ -38,16 +38,6 @@ function isPrivateDashboardApiRequest(request: Request): boolean {
 
 function toMountedUrl(url: string): string {
   const parsedUrl = new URL(url, "http://bullstudio.local");
-  const assetIndex = parsedUrl.pathname.search(/\/(?:assets\/|logo\.svg$)/);
-  const apiIndex = parsedUrl.pathname.indexOf("/api/trpc");
-
-  if (apiIndex >= 0) {
-    parsedUrl.pathname = parsedUrl.pathname.slice(apiIndex);
-  } else if (assetIndex >= 0) {
-    parsedUrl.pathname = parsedUrl.pathname.slice(assetIndex);
-  } else {
-    parsedUrl.pathname = "/";
-  }
 
   return `${parsedUrl.pathname}${parsedUrl.search}`;
 }

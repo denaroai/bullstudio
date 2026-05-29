@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as JobsIndexRouteImport } from './routes/jobs/index'
 import { Route as FlowsIndexRouteImport } from './routes/flows/index'
 import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
 import { Route as FlowsFlowIdRouteImport } from './routes/flows/$flowId'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -43,6 +49,7 @@ const FlowsFlowIdRoute = FlowsFlowIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/flows/$flowId': typeof FlowsFlowIdRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/flows/': typeof FlowsIndexRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/flows/$flowId': typeof FlowsFlowIdRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/flows': typeof FlowsIndexRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/flows/$flowId': typeof FlowsFlowIdRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/flows/': typeof FlowsIndexRoute
@@ -65,12 +74,19 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/flows/$flowId' | '/jobs/$jobId' | '/flows/' | '/jobs/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/flows/$flowId'
+    | '/jobs/$jobId'
+    | '/flows/'
+    | '/jobs/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/flows/$flowId' | '/jobs/$jobId' | '/flows' | '/jobs'
+  to: '/' | '/login' | '/flows/$flowId' | '/jobs/$jobId' | '/flows' | '/jobs'
   id:
     | '__root__'
     | '/'
+    | '/login'
     | '/flows/$flowId'
     | '/jobs/$jobId'
     | '/flows/'
@@ -79,6 +95,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
   FlowsFlowIdRoute: typeof FlowsFlowIdRoute
   JobsJobIdRoute: typeof JobsJobIdRoute
   FlowsIndexRoute: typeof FlowsIndexRoute
@@ -87,6 +104,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -127,6 +151,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
   FlowsFlowIdRoute: FlowsFlowIdRoute,
   JobsJobIdRoute: JobsJobIdRoute,
   FlowsIndexRoute: FlowsIndexRoute,

@@ -1,6 +1,8 @@
 import { defaultProtection } from "./defaults";
 import { withDashboardProtection } from "./protection";
+import { handleDashboardAuthRequest } from "./session";
 import type {
+  FrameworkRequest,
   ResolvedStandaloneDashboardConfig,
   StandaloneDashboardConfig,
   StandaloneDashboardInstance,
@@ -18,14 +20,28 @@ export function createStandaloneDashboard(
     mode: "standalone",
     config: resolvedConfig,
     handle: (request) =>
-      withDashboardProtection(resolvedConfig.protection, request, () =>
-        config.handleDashboardAsset(request),
-      ),
+      handleStandaloneDashboardRequest(request, resolvedConfig, config),
     mountPrivateDashboardApi: () => ({
-      handle: (request) =>
-        withDashboardProtection(resolvedConfig.protection, request, () =>
-          privateDashboardApi.handle(request),
-        ),
+      handle: (request) => privateDashboardApi.handle(request),
     }),
   };
+}
+
+async function handleStandaloneDashboardRequest(
+  request: FrameworkRequest,
+  resolvedConfig: ResolvedStandaloneDashboardConfig,
+  config: StandaloneDashboardConfig,
+) {
+  const authResponse = await handleDashboardAuthRequest(
+    resolvedConfig.protection,
+    request,
+  );
+
+  if (authResponse) {
+    return authResponse;
+  }
+
+  return withDashboardProtection(resolvedConfig.protection, request, () =>
+    config.handleDashboardAsset(request),
+  );
 }

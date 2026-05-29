@@ -10,7 +10,7 @@ afterEach(() => {
 });
 
 describe("standalone dashboard parity", () => {
-  it("serves root assets, health checks, private API, and production Basic Auth behavior", async () => {
+  it("serves root assets, health checks, private API, and production session auth behavior", async () => {
     const { createStandaloneApp } = await import("../server/standalone");
     const clientDir = join(
       tmpdir(),
@@ -44,14 +44,40 @@ describe("standalone dashboard parity", () => {
     });
 
     const unauthorizedAsset = await app.request("/");
-    expect(unauthorizedAsset.status).toBe(401);
-    expect(unauthorizedAsset.headers.get("www-authenticate")).toBe(
-      'Basic realm="bullstudio"',
-    );
+    expect(unauthorizedAsset.status).toBe(302);
+    expect(unauthorizedAsset.headers.get("location")).toBe("/login");
+
+    const loginScreen = await app.request("/login");
+    expect(loginScreen.status).toBe(200);
+
+    const invalidLogin = await app.request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username: "operator", password: "wrong" }),
+    });
+    expect(invalidLogin.status).toBe(401);
+
+    const login = await app.request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username: "operator", password: "secret" }),
+    });
+    expect(login.status).toBe(200);
+    const cookie = login.headers.get("set-cookie");
+    expect(cookie).toContain("bullstudio_session=");
+
+    const session = await app.request("/api/auth/session", {
+      headers: {
+        Cookie: cookie ?? "",
+      },
+    });
+    await expect(session.json()).resolves.toMatchObject({
+      authEnabled: true,
+      authenticated: true,
+      username: "operator",
+    });
 
     const authorizedAsset = await app.request("/", {
       headers: {
-        Authorization: basicAuth("operator", "secret"),
+        Cookie: cookie ?? "",
       },
     });
     expect(authorizedAsset.status).toBe(200);
@@ -60,7 +86,7 @@ describe("standalone dashboard parity", () => {
 
     const authorizedStaticAsset = await app.request("/assets/app.js", {
       headers: {
-        Authorization: basicAuth("operator", "secret"),
+        Cookie: cookie ?? "",
       },
     });
     expect(authorizedStaticAsset.status).toBe(200);
@@ -73,7 +99,7 @@ describe("standalone dashboard parity", () => {
 
     const authorizedApi = await app.request("/api/trpc/queues.list", {
       headers: {
-        Authorization: basicAuth("operator", "secret"),
+        Cookie: cookie ?? "",
       },
     });
     expect(authorizedApi.status).toBe(200);
@@ -156,10 +182,7 @@ describe("standalone dashboard parity", () => {
   it("reports standalone Redis connection information as a mode-aware queue source", async () => {
     vi.stubEnv("REDIS_URL", "redis://:secret@cache.internal:6380/2");
     vi.doMock("./connection", async (importOriginal) => {
-      const actual =
-        await importOriginal<
-          typeof import("./connection")
-        >();
+      const actual = await importOriginal<typeof import("./connection")>();
 
       return {
         ...actual,
@@ -231,7 +254,3 @@ describe("standalone dashboard parity", () => {
     });
   });
 });
-
-function basicAuth(username: string, password: string): string {
-  return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
-}

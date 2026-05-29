@@ -49,7 +49,7 @@ describe("bullstudio Express adapter", () => {
     ]);
   });
 
-  it("protects dashboard assets and private dashboard API with Basic Auth by default", async () => {
+  it("protects dashboard routes and private API with a session by default", async () => {
     const app = express();
 
     app.use(
@@ -59,31 +59,42 @@ describe("bullstudio Express adapter", () => {
       }),
     );
 
-    for (const path of [
-      "/ops/bullstudio",
-      "/ops/bullstudio/assets/app.js",
-      "/ops/bullstudio/api/trpc/queues.list",
-    ]) {
-      const missingCredentials = await requestExpress(app, path);
-      expect(missingCredentials.status).toBe(401);
-      expect(missingCredentials.headers.get("www-authenticate")).toBe(
-        'Basic realm="bullstudio"',
-      );
+    const missingSession = await requestExpress(app, "/ops/bullstudio/jobs");
+    expect(missingSession.status).toBe(302);
+    expect(missingSession.headers.get("location")).toBe(
+      "/ops/bullstudio/login?redirect=%2Fjobs",
+    );
 
-      const invalidCredentials = await requestExpress(app, path, {
-        headers: {
-          Authorization: basicAuth("admin", "wrong"),
-        },
-      });
-      expect(invalidCredentials.status).toBe(401);
-      expect(invalidCredentials.headers.get("www-authenticate")).toBe(
-        'Basic realm="bullstudio"',
-      );
-    }
+    const loginScreen = await requestExpress(app, "/ops/bullstudio/login");
+    expect(loginScreen.status).toBe(200);
+
+    const missingApiSession = await requestExpress(
+      app,
+      "/ops/bullstudio/api/trpc/queues.list",
+    );
+    expect(missingApiSession.status).toBe(401);
+
+    const invalidLogin = await requestExpress(
+      app,
+      "/ops/bullstudio/api/auth/login",
+      {
+        method: "POST",
+        body: JSON.stringify({ username: "admin", password: "wrong" }),
+      },
+    );
+    expect(invalidLogin.status).toBe(401);
+
+    const login = await requestExpress(app, "/ops/bullstudio/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username: "admin", password: "bullstudio" }),
+    });
+    expect(login.status).toBe(200);
+    const cookie = login.headers.get("set-cookie");
+    expect(cookie).toContain("bullstudio_session=");
 
     const validAssetResponse = await requestExpress(app, "/ops/bullstudio", {
       headers: {
-        Authorization: basicAuth("admin", "bullstudio"),
+        Cookie: cookie ?? "",
       },
     });
     expect(validAssetResponse.status).toBe(200);
@@ -93,7 +104,7 @@ describe("bullstudio Express adapter", () => {
       "/ops/bullstudio/api/trpc/queues.list",
       {
         headers: {
-          Authorization: basicAuth("admin", "bullstudio"),
+          Cookie: cookie ?? "",
         },
       },
     );
@@ -412,10 +423,6 @@ function createQueueAdapter(options: {
     removeJob: async () => {},
     getWorkerCount: async () => ({ queueName, count: 0 }),
   };
-}
-
-function basicAuth(username: string, password: string): string {
-  return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
 }
 
 async function readTrpcResultData(response: ExpressTestResponse) {

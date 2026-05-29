@@ -10,11 +10,23 @@ export function bullstudio(config: DashboardConfig): Hono {
   const privateDashboardApi = dashboard.mountPrivateDashboardApi();
   const app = new Hono();
 
+  app.all("/api/auth/*", async (c) =>
+    toHonoResponse(
+      await dashboard.handle({
+        method: c.req.method,
+        url: toMountedUrl(c.req.url, getBasePath(c.req.routePath)),
+        headers: c.req.raw.headers,
+        basePath: getBasePath(c.req.routePath),
+        body: await getRequestBody(c.req.raw),
+      }),
+    ),
+  );
+
   app.all("/api/trpc/*", async (c) =>
     toHonoResponse(
       await privateDashboardApi.handle({
         method: c.req.method,
-        url: toMountedUrl(c.req.url),
+        url: toMountedUrl(c.req.url, getBasePath(c.req.routePath)),
         headers: c.req.raw.headers,
         basePath: getBasePath(c.req.routePath),
         body: await getRequestBody(c.req.raw),
@@ -26,7 +38,7 @@ export function bullstudio(config: DashboardConfig): Hono {
     toHonoResponse(
       await dashboard.handle({
         method: c.req.method,
-        url: toMountedUrl(c.req.url),
+        url: toMountedUrl(c.req.url, getBasePath(c.req.routePath)),
         headers: c.req.raw.headers,
         basePath: getBasePath(c.req.routePath),
       }),
@@ -38,23 +50,26 @@ export function bullstudio(config: DashboardConfig): Hono {
 
 function getBasePath(routePath: string): string {
   const basePath = routePath
+    .replace(/\/api\/auth\/\*$/, "")
     .replace(/\/api\/trpc\/\*$/, "")
     .replace(/\/\*$/, "");
 
   return basePath || "/";
 }
 
-function toMountedUrl(url: string): string {
+function toMountedUrl(url: string, basePath: string): string {
   const parsedUrl = new URL(url);
-  const assetIndex = parsedUrl.pathname.search(/\/(?:assets\/|logo\.svg$)/);
-  const apiIndex = parsedUrl.pathname.indexOf("/api/trpc");
+  const normalizedBasePath = basePath === "/" ? "" : basePath;
 
-  if (apiIndex >= 0) {
-    parsedUrl.pathname = parsedUrl.pathname.slice(apiIndex);
-  } else if (assetIndex >= 0) {
-    parsedUrl.pathname = parsedUrl.pathname.slice(assetIndex);
-  } else {
+  if (normalizedBasePath && parsedUrl.pathname === normalizedBasePath) {
     parsedUrl.pathname = "/";
+  }
+
+  if (
+    normalizedBasePath &&
+    parsedUrl.pathname.startsWith(`${normalizedBasePath}/`)
+  ) {
+    parsedUrl.pathname = parsedUrl.pathname.slice(normalizedBasePath.length);
   }
 
   return `${parsedUrl.pathname}${parsedUrl.search}`;

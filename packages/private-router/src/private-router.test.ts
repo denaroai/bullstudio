@@ -35,11 +35,24 @@ const allCapabilities: AdapterCapabilities = {
   queueResume: true,
   workers: true,
 };
+const authenticatedContext = { authenticated: true };
 
 describe("createPrivateDashboardRouter", () => {
+  it("rejects private procedures without an authenticated context", async () => {
+    const source = createFakeSource();
+    const caller = createPrivateDashboardRouter(source).createCaller({
+      authenticated: false,
+    });
+
+    await expect(caller.connection.info()).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+  });
+
   it("exposes the shared private dashboard procedure surface", async () => {
     const source = createFakeSource();
-    const caller = createPrivateDashboardRouter(source).createCaller({});
+    const caller =
+      createPrivateDashboardRouter(source).createCaller(authenticatedContext);
 
     await expect(caller.connection.info()).resolves.toMatchObject({
       mode: "embedded",
@@ -153,7 +166,8 @@ describe("createPrivateDashboardRouter", () => {
 
   it("prefers queueKey over queue name and prefix compatibility lookup", async () => {
     const source = createFakeSource();
-    const caller = createPrivateDashboardRouter(source).createCaller({});
+    const caller =
+      createPrivateDashboardRouter(source).createCaller(authenticatedContext);
 
     const queue = await caller.queues.get({
       queueKey: "email-critical",
@@ -176,7 +190,8 @@ describe("createPrivateDashboardRouter", () => {
         createQueue({ key: "second", name: "email", prefix: "critical" }),
       ],
     });
-    const caller = createPrivateDashboardRouter(source).createCaller({});
+    const caller =
+      createPrivateDashboardRouter(source).createCaller(authenticatedContext);
 
     await expectTrpcError(
       caller.queues.get({ queueName: "email", prefix: "critical" }),
@@ -187,7 +202,8 @@ describe("createPrivateDashboardRouter", () => {
 
   it("rejects read-only dashboard mutations before calling the source operation", async () => {
     const source = createFakeSource({ readOnly: true });
-    const caller = createPrivateDashboardRouter(source).createCaller({});
+    const caller =
+      createPrivateDashboardRouter(source).createCaller(authenticatedContext);
 
     await expectTrpcError(
       caller.queues.pause({ queueKey: "email-critical" }),
@@ -241,7 +257,8 @@ describe("createPrivateDashboardRouter", () => {
         }),
       ],
     });
-    const caller = createPrivateDashboardRouter(source).createCaller({});
+    const caller =
+      createPrivateDashboardRouter(source).createCaller(authenticatedContext);
     const target = {
       queueKey: "email-critical",
       queueName: "email",
@@ -310,7 +327,8 @@ describe("createPrivateDashboardRouter", () => {
         }),
       ],
     });
-    const caller = createPrivateDashboardRouter(source).createCaller({});
+    const caller =
+      createPrivateDashboardRouter(source).createCaller(authenticatedContext);
 
     const response = await caller.overview.metrics({ timeRangeHours: 24 });
 
@@ -340,7 +358,8 @@ describe("createPrivateDashboardRouter", () => {
         createJob({ id: "middle", timestamp: 200 }),
       ],
     });
-    const caller = createPrivateDashboardRouter(source).createCaller({});
+    const caller =
+      createPrivateDashboardRouter(source).createCaller(authenticatedContext);
 
     await expect(
       caller.jobs.list({ limit: 1, offset: 1 }),
@@ -367,7 +386,8 @@ describe("createPrivateDashboardRouter", () => {
       },
       getFlow: () => null,
     });
-    const caller = createPrivateDashboardRouter(source).createCaller({});
+    const caller =
+      createPrivateDashboardRouter(source).createCaller(authenticatedContext);
 
     await expect(
       caller.jobs.get({

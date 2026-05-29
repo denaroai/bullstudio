@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getApiUrl, getAssetUrl, getBasePath } from "./runtime-config";
+import {
+  getApiUrl,
+  getAssetUrl,
+  getAuthUrl,
+  getBasePath,
+} from "./runtime-config";
 
 describe("runtime config", () => {
   afterEach(() => {
@@ -17,8 +22,9 @@ describe("runtime config", () => {
     });
 
     expect(getBasePath()).toBe("/ops/bullstudio");
-    expect(getApiUrl()).toBe(
-      "http://localhost:3000/ops/bullstudio/api/trpc",
+    expect(getApiUrl()).toBe("http://localhost:3000/ops/bullstudio/api/trpc");
+    expect(getAuthUrl("/api/auth/login")).toBe(
+      "http://localhost:3000/ops/bullstudio/api/auth/login",
     );
   });
 

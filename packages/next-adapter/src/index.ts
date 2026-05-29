@@ -88,7 +88,7 @@ async function toFrameworkRequest(
 
 function getMountedPathname(pathname: string, mountPath: string): string {
   if (mountPath === "/") {
-    return isDashboardAssetOrApiPath(pathname) ? pathname : "/";
+    return pathname;
   }
 
   const relativePathname = pathname.slice(mountPath.length);
@@ -97,15 +97,7 @@ function getMountedPathname(pathname: string, mountPath: string): string {
     return "/";
   }
 
-  return isDashboardAssetOrApiPath(relativePathname) ? relativePathname : "/";
-}
-
-function isDashboardAssetOrApiPath(pathname: string): boolean {
-  return (
-    pathname.startsWith("/api/trpc") ||
-    pathname.startsWith("/assets/") ||
-    pathname === "/logo.svg"
-  );
+  return relativePathname;
 }
 
 function isPrivateDashboardApiRequest(url: string): boolean {

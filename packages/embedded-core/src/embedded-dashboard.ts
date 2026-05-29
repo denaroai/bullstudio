@@ -9,6 +9,7 @@ import {
 import { withMutationAccess } from "./mutation";
 import { createPrivateDashboardApi } from "./private-api";
 import { withDashboardProtection } from "./protection";
+import { handleDashboardAuthRequest } from "./session";
 import type {
   AdapterCapabilities,
   DashboardConfig,
@@ -74,19 +75,32 @@ export function createEmbeddedDashboard(
       return getFlow ? getFlow(flowId) : null;
     },
     handle: (request) =>
-      withDashboardProtection(resolvedConfig.protection, request, () =>
-        handleDashboardAsset(request, resolvedConfig),
-      ),
+      handleEmbeddedDashboardRequest(request, resolvedConfig),
     mountPrivateDashboardApi: () => ({
-      handle: (request) =>
-        withDashboardProtection(resolvedConfig.protection, request, () =>
-          privateDashboardApi.handle(request),
-        ),
+      handle: (request) => privateDashboardApi.handle(request),
     }),
   };
   privateDashboardApi = createPrivateDashboardApi(dashboard);
 
   return dashboard;
+}
+
+async function handleEmbeddedDashboardRequest(
+  request: Parameters<EmbeddedDashboardInstance["handle"]>[0],
+  config: ResolvedDashboardConfig,
+) {
+  const authResponse = await handleDashboardAuthRequest(
+    config.protection,
+    request,
+  );
+
+  if (authResponse) {
+    return authResponse;
+  }
+
+  return withDashboardProtection(config.protection, request, () =>
+    handleDashboardAsset(request, config),
+  );
 }
 
 function indexQueueAdaptersByKey(

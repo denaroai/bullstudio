@@ -58,40 +58,52 @@ describe("bullstudio Next.js App Router adapter", () => {
     ]);
   });
 
-  it("protects dashboard assets and private dashboard API with Basic Auth by default", async () => {
+  it("protects dashboard routes and private API with a session by default", async () => {
     const handlers = bullstudio({
       mountPath: "/ops/bullstudio",
       queues: [createQueueAdapter({ key: "email", label: "Email" })],
     });
 
-    for (const url of [
-      "http://localhost/ops/bullstudio",
-      "http://localhost/ops/bullstudio/assets/app.js",
-      "http://localhost/ops/bullstudio/api/trpc/queues.list",
-    ]) {
-      const missingCredentials = await handlers.GET(request(url));
-      expect(missingCredentials.status).toBe(401);
-      expect(missingCredentials.headers.get("www-authenticate")).toBe(
-        'Basic realm="bullstudio"',
-      );
+    const missingSession = await handlers.GET(
+      request("http://localhost/ops/bullstudio/jobs"),
+    );
+    expect(missingSession.status).toBe(302);
+    expect(missingSession.headers.get("location")).toBe(
+      "/ops/bullstudio/login?redirect=%2Fjobs",
+    );
 
-      const invalidCredentials = await handlers.GET(
-        request(url, {
-          headers: {
-            Authorization: basicAuth("admin", "wrong"),
-          },
-        }),
-      );
-      expect(invalidCredentials.status).toBe(401);
-      expect(invalidCredentials.headers.get("www-authenticate")).toBe(
-        'Basic realm="bullstudio"',
-      );
-    }
+    const loginScreen = await handlers.GET(
+      request("http://localhost/ops/bullstudio/login"),
+    );
+    expect(loginScreen.status).toBe(200);
+
+    const missingApiSession = await handlers.GET(
+      request("http://localhost/ops/bullstudio/api/trpc/queues.list"),
+    );
+    expect(missingApiSession.status).toBe(401);
+
+    const invalidLogin = await handlers.POST(
+      request("http://localhost/ops/bullstudio/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username: "admin", password: "wrong" }),
+      }),
+    );
+    expect(invalidLogin.status).toBe(401);
+
+    const login = await handlers.POST(
+      request("http://localhost/ops/bullstudio/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username: "admin", password: "bullstudio" }),
+      }),
+    );
+    expect(login.status).toBe(200);
+    const cookie = login.headers.get("set-cookie");
+    expect(cookie).toContain("bullstudio_session=");
 
     const validAssetResponse = await handlers.GET(
       request("http://localhost/ops/bullstudio", {
         headers: {
-          Authorization: basicAuth("admin", "bullstudio"),
+          Cookie: cookie ?? "",
         },
       }),
     );
@@ -100,7 +112,7 @@ describe("bullstudio Next.js App Router adapter", () => {
     const validApiResponse = await handlers.GET(
       request("http://localhost/ops/bullstudio/api/trpc/queues.list", {
         headers: {
-          Authorization: basicAuth("admin", "bullstudio"),
+          Cookie: cookie ?? "",
         },
       }),
     );
@@ -180,7 +192,7 @@ describe("bullstudio Next.js App Router adapter", () => {
 
       expect(response.status).toBe(403);
       await expect(readTrpcError(response)).resolves.toMatchObject({
-          message: "Read-only dashboards cannot mutate queues or jobs.",
+        message: "Read-only dashboards cannot mutate queues or jobs.",
       });
     }
 
@@ -304,10 +316,6 @@ function createQueueAdapter(options: {
     removeJob: async () => {},
     getWorkerCount: async () => ({ queueName, count: 0 }),
   };
-}
-
-function basicAuth(username: string, password: string): string {
-  return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
 }
 
 async function readTrpcResultData(response: Response) {

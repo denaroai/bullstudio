@@ -6,7 +6,7 @@ import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import type { TRPCRouter } from "@/integrations/trpc/router";
 
 import { TRPCProvider } from "@/integrations/trpc/react";
-import { getApiUrl } from "@/lib/runtime-config";
+import { getApiUrl, getBasePath } from "@/lib/runtime-config";
 
 function getUrl() {
   if (typeof window !== "undefined") {
@@ -21,6 +21,29 @@ export const trpcClient = createTRPCClient<TRPCRouter>({
     httpBatchStreamLink({
       transformer: superjson,
       url: getUrl(),
+      fetch: async (url, options) => {
+        const response = await fetch(url, {
+          ...options,
+          credentials: "same-origin",
+        });
+
+        if (
+          response.status === 401 &&
+          typeof window !== "undefined" &&
+          window.location.pathname !== `${getBasePath()}/login`
+        ) {
+          const basePath = getBasePath();
+          const pathname = basePath
+            ? window.location.pathname.slice(basePath.length) || "/"
+            : window.location.pathname;
+          const redirect = `${pathname}${window.location.search}`;
+          window.location.assign(
+            `${basePath}/login?redirect=${encodeURIComponent(redirect)}`,
+          );
+        }
+
+        return response;
+      },
     }),
   ],
 });

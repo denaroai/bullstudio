@@ -19,6 +19,7 @@ import {
   Github,
   LayoutDashboard,
   ListTodo,
+  LogOut,
   Monitor,
   Moon,
   Sun,
@@ -29,8 +30,18 @@ import { VERSION } from "@/const";
 import { type Theme, useTheme } from "@/components/ThemeProvider";
 import { useTRPC } from "@/integrations/trpc/react";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
-import { getAssetUrl, getDashboardIdentity } from "@/lib/runtime-config";
+import {
+  getAssetUrl,
+  getAuthUrl,
+  getBasePath,
+  getDashboardIdentity,
+} from "@/lib/runtime-config";
 import { cn } from "@bullstudio/ui/lib/utils";
+import { useEffect, useState } from "react";
+
+interface AuthSessionResponse {
+  authEnabled?: boolean;
+}
 
 export function AppSidebar() {
   const location = useLocation();
@@ -164,6 +175,7 @@ export function AppSidebar() {
       {/* Footer */}
       <SidebarFooter className="gap-3 border-t border-sidebar-border p-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:p-2">
         <ThemeSwitcher />
+        <LogoutButton />
         <div className="flex items-center justify-between text-xs text-sidebar-foreground/55 group-data-[collapsible=icon]:justify-center">
           <span className="group-data-[collapsible=icon]:hidden">
             {VERSION}
@@ -192,6 +204,54 @@ export function AppSidebar() {
       {/* Rail for resizing */}
       <SidebarRail />
     </Sidebar>
+  );
+}
+
+function LogoutButton() {
+  const [authEnabled, setAuthEnabled] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(getAuthUrl("/api/auth/session"), {
+      credentials: "same-origin",
+    })
+      .then((response) => response.json())
+      .then((session: AuthSessionResponse) => {
+        if (!cancelled) {
+          setAuthEnabled(session.authEnabled === true);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const logout = async () => {
+    await fetch(getAuthUrl("/api/auth/logout"), {
+      method: "POST",
+      credentials: "same-origin",
+    }).catch(() => undefined);
+
+    window.location.assign(`${getBasePath()}/login`);
+  };
+
+  if (!authEnabled) {
+    return null;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={logout}
+      title="Log out"
+      className="flex h-8 w-full items-center justify-center gap-2 rounded-md text-sidebar-foreground/60 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 group-data-[collapsible=icon]:size-8"
+    >
+      <LogOut className="size-4" />
+      <span className="group-data-[collapsible=icon]:hidden">Log out</span>
+    </button>
   );
 }
 

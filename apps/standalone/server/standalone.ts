@@ -3,10 +3,14 @@ import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize, relative } from "node:path";
 import {
   createStandaloneDashboard,
+  getAuthenticatedSession,
   type DashboardProtection,
   type FrameworkResponse,
 } from "@bullstudio/embedded-core";
-import { createPrivateDashboardRouter } from "@bullstudio/private-router";
+import {
+  createPrivateDashboardRouter,
+  type PrivateDashboardContext,
+} from "@bullstudio/private-router";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import type { Context } from "hono";
 import { Hono } from "hono";
@@ -39,30 +43,61 @@ export interface StandaloneAppOptions {
 export function createStandaloneApp(options: StandaloneAppOptions): Hono {
   const env = options.env ?? process.env;
   const app = new Hono();
+  const protection = getStandaloneProtection(env);
   const trpcRouter = createPrivateDashboardRouter(
     createStandaloneQueueSource(),
   );
   const dashboard = createStandaloneDashboard({
-    protection: getStandaloneProtection(env),
+    protection,
     handleDashboardAsset: (request) =>
       handleDashboardAsset(request, options.clientDir),
     mountPrivateDashboardApi: () => ({
-      handle: async (request) =>
-        toFrameworkResponse(
+      handle: async (request) => {
+        if (!getAuthenticatedSession(protection, request).authenticated) {
+          return {
+            status: 401,
+            headers: {
+              "Content-Type": "application/json; charset=utf-8",
+            },
+            body: JSON.stringify({
+              error: {
+                message: "Authentication required.",
+                code: -32001,
+                data: { code: "UNAUTHORIZED", httpStatus: 401 },
+              },
+            }),
+          };
+        }
+
+        return toFrameworkResponse(
           await (options.trpcHandler?.(toFetchRequest(request)) ??
             fetchRequestHandler({
               endpoint: "/api/trpc",
               req: toFetchRequest(request),
               router: trpcRouter,
-              createContext: () => ({}),
+              createContext: (): PrivateDashboardContext =>
+                getAuthenticatedSession(protection, request),
             })),
-        ),
+        );
+      },
     }),
   });
   const privateDashboardApi = dashboard.mountPrivateDashboardApi();
 
   app.get("/health", (c) => healthResponse(c, env));
   app.get("/healthz", (c) => healthResponse(c, env));
+
+  app.all("/api/auth/*", async (c) =>
+    toHonoResponse(
+      await dashboard.handle({
+        method: c.req.method,
+        url: c.req.url,
+        headers: c.req.raw.headers,
+        body: await c.req.text(),
+        basePath: "/",
+      }),
+    ),
+  );
 
   app.all("/api/trpc/*", async (c) =>
     toHonoResponse(
@@ -71,6 +106,7 @@ export function createStandaloneApp(options: StandaloneAppOptions): Hono {
         url: c.req.url,
         headers: c.req.raw.headers,
         body: c.req.raw.body,
+        basePath: "/",
       }),
     ),
   );
@@ -81,6 +117,7 @@ export function createStandaloneApp(options: StandaloneAppOptions): Hono {
         method: c.req.method,
         url: c.req.url,
         headers: c.req.raw.headers,
+        basePath: "/",
       }),
     ),
   );
@@ -100,7 +137,7 @@ function getStandaloneProtection(
   }
 
   return {
-    type: "basic",
+    type: "session",
     username: env.BULLSTUDIO_USERNAME || "bullstudio",
     password: env.BULLSTUDIO_PASSWORD,
   };

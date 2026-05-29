@@ -22,6 +22,7 @@ export type {
 
 export type DashboardProtection =
   | BasicAuthProtection
+  | SessionDashboardProtection
   | DisabledDashboardProtection
   | CustomDashboardProtection;
 
@@ -29,6 +30,18 @@ export interface BasicAuthProtection {
   type: "basic";
   username: string;
   password: string;
+  sessionSecret?: string;
+  tokenTtlSeconds?: number;
+  cookieName?: string;
+}
+
+export interface SessionDashboardProtection {
+  type: "session" | "basic";
+  username: string;
+  password: string;
+  sessionSecret?: string;
+  tokenTtlSeconds?: number;
+  cookieName?: string;
 }
 
 export interface DisabledDashboardProtection {

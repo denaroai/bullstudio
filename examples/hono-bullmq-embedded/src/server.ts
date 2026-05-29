@@ -24,9 +24,12 @@ const dashboard = bullstudio({
   ],
   readOnly: true,
   protection: {
-    type: "basic",
+    type: "session",
     username: process.env.BULLSTUDIO_USERNAME ?? "operator",
     password: process.env.BULLSTUDIO_PASSWORD ?? "change-me",
+  },
+  dashboardIdentity: {
+    title: "Queue Ops",
   },
   documentIdentity: {
     title: "Queue Ops",

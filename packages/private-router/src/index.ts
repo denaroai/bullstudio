@@ -199,8 +199,26 @@ export interface PrivateDashboardQueueSource {
   getFlow(input: FlowTargetInput): Promise<FlowTree | null>;
 }
 
-const t = initTRPC.create({
+export interface PrivateDashboardContext {
+  authenticated: boolean;
+  username?: string;
+}
+
+const t = initTRPC.context<PrivateDashboardContext>().create({
   transformer: superjson,
+});
+
+const authenticatedProcedure = t.procedure.use(({ ctx, next }) => {
+  if (!ctx.authenticated) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Authentication required.",
+    });
+  }
+
+  return next({
+    ctx,
+  });
 });
 
 const jobStatusSchema = z.enum(supportedJobStatuses);
@@ -259,25 +277,25 @@ export function createPrivateDashboardRouter(
 ) {
   return t.router({
     connection: t.router({
-      info: t.procedure.query(() => createConnectionInfo(source)),
+      info: authenticatedProcedure.query(() => createConnectionInfo(source)),
     }),
     queueSource: t.router({
-      status: t.procedure.query(() => source.getStatus()),
+      status: authenticatedProcedure.query(() => source.getStatus()),
     }),
     overview: t.router({
-      metrics: t.procedure
+      metrics: authenticatedProcedure
         .input(overviewMetricsSchema)
         .query(({ input }) =>
           getOverviewMetrics(source, input ?? { timeRangeHours: 24 }),
         ),
     }),
     queues: t.router({
-      list: t.procedure.query(() => source.listQueues()),
-      prefixes: t.procedure.query(() => source.listPrefixes()),
-      get: t.procedure
+      list: authenticatedProcedure.query(() => source.listQueues()),
+      prefixes: authenticatedProcedure.query(() => source.listPrefixes()),
+      get: authenticatedProcedure
         .input(queueTargetSchema)
         .query(({ input }) => resolveQueueTarget(source, input)),
-      pause: t.procedure
+      pause: authenticatedProcedure
         .input(queueTargetSchema)
         .mutation(async ({ input }) => {
           await assertCanMutate(source);
@@ -285,7 +303,7 @@ export function createPrivateDashboardRouter(
           assertQueueCapability(source, queue, "queuePause", "Queue pause");
           return source.pauseQueue(input);
         }),
-      resume: t.procedure
+      resume: authenticatedProcedure
         .input(queueTargetSchema)
         .mutation(async ({ input }) => {
           await assertCanMutate(source);
@@ -295,58 +313,70 @@ export function createPrivateDashboardRouter(
         }),
     }),
     jobs: t.router({
-      list: t.procedure.input(jobListSchema).query(async ({ input }) => {
-        const normalized = normalizeJobListInput(input);
-        const jobs = await source.listJobs(getSourceJobListInput(normalized));
-        return mergeSortAndPageJobs(jobs, normalized);
-      }),
-      listSummary: t.procedure.input(jobListSchema).query(async ({ input }) => {
-        const normalized = normalizeJobListInput(input);
-        const jobs = await source.listJobSummaries(
-          getSourceJobListInput(normalized),
-        );
-        return mergeSortAndPageJobs(jobs, normalized);
-      }),
-      get: t.procedure
+      list: authenticatedProcedure
+        .input(jobListSchema)
+        .query(async ({ input }) => {
+          const normalized = normalizeJobListInput(input);
+          const jobs = await source.listJobs(getSourceJobListInput(normalized));
+          return mergeSortAndPageJobs(jobs, normalized);
+        }),
+      listSummary: authenticatedProcedure
+        .input(jobListSchema)
+        .query(async ({ input }) => {
+          const normalized = normalizeJobListInput(input);
+          const jobs = await source.listJobSummaries(
+            getSourceJobListInput(normalized),
+          );
+          return mergeSortAndPageJobs(jobs, normalized);
+        }),
+      get: authenticatedProcedure
         .input(jobTargetSchema)
         .query(({ input }) => source.getJob(input)),
-      logs: t.procedure.input(jobTargetSchema).query(async ({ input }) => {
-        const queue = await resolveQueueTarget(source, input);
-        assertQueueCapability(source, queue, "jobLogs", "Job logs");
-        return source.getJobLogs(input);
-      }),
-      retry: t.procedure.input(jobTargetSchema).mutation(async ({ input }) => {
-        await assertCanMutate(source);
-        const queue = await resolveQueueTarget(source, input);
-        assertQueueCapability(source, queue, "jobRetry", "Job retry");
-        return source.retryJob(input);
-      }),
-      remove: t.procedure.input(jobTargetSchema).mutation(async ({ input }) => {
-        await assertCanMutate(source);
-        const queue = await resolveQueueTarget(source, input);
-        assertQueueCapability(source, queue, "jobRemoval", "Job removal");
-        return source.removeJob(input);
-      }),
+      logs: authenticatedProcedure
+        .input(jobTargetSchema)
+        .query(async ({ input }) => {
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "jobLogs", "Job logs");
+          return source.getJobLogs(input);
+        }),
+      retry: authenticatedProcedure
+        .input(jobTargetSchema)
+        .mutation(async ({ input }) => {
+          await assertCanMutate(source);
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "jobRetry", "Job retry");
+          return source.retryJob(input);
+        }),
+      remove: authenticatedProcedure
+        .input(jobTargetSchema)
+        .mutation(async ({ input }) => {
+          await assertCanMutate(source);
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "jobRemoval", "Job removal");
+          return source.removeJob(input);
+        }),
     }),
     flows: t.router({
-      list: t.procedure
+      list: authenticatedProcedure
         .input(flowListSchema)
         .query(({ input }) => source.listFlows(input)),
-      get: t.procedure.input(flowTargetSchema).query(async ({ input }) => {
-        const queue = await resolveQueueTarget(source, input);
-        assertQueueCapability(source, queue, "flows", "Flows");
-        const flow = await source.getFlow(input);
+      get: authenticatedProcedure
+        .input(flowTargetSchema)
+        .query(async ({ input }) => {
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "flows", "Flows");
+          const flow = await source.getFlow(input);
 
-        if (!flow) {
-          const queueLabel = input.queueName ?? input.queueKey ?? "unknown";
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: `Flow ${input.flowId} not found in queue ${queueLabel}`,
-          });
-        }
+          if (!flow) {
+            const queueLabel = input.queueName ?? input.queueKey ?? "unknown";
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: `Flow ${input.flowId} not found in queue ${queueLabel}`,
+            });
+          }
 
-        return flow;
-      }),
+          return flow;
+        }),
     }),
   });
 }

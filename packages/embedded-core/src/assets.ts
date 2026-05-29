@@ -106,7 +106,12 @@ function findClientDistPath(): string | null {
 function getAssetPath(pathname: string): string {
   const normalizedPathname = pathname.replace(/^\/+/, "");
 
-  if (!normalizedPathname || normalizedPathname === ".") {
+  if (
+    !normalizedPathname ||
+    normalizedPathname === "." ||
+    (!normalizedPathname.startsWith("assets/") &&
+      normalizedPathname !== "logo.svg")
+  ) {
     return "index.html";
   }
 

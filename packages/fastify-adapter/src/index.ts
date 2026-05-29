@@ -9,15 +9,32 @@ import type {
   FastifyRequest,
 } from "fastify";
 
-export function bullstudio(config: DashboardConfig): FastifyPluginCallback {
+interface BullstudioFastifyOptions {
+  prefix?: string;
+}
+
+export function bullstudio(
+  config: DashboardConfig,
+): FastifyPluginCallback<BullstudioFastifyOptions> {
   const dashboard = createEmbeddedDashboard(config);
   const privateDashboardApi = dashboard.mountPrivateDashboardApi();
 
-  return (fastify, _options, done) => {
+  return (fastify, options, done) => {
+    const mountPath = normalizeMountPath(options.prefix);
+
+    fastify.all("/api/auth/*", async (request, reply) => {
+      await sendFastifyResponse(
+        reply,
+        await dashboard.handle(toFrameworkRequest(request, mountPath)),
+      );
+    });
+
     fastify.all("/api/trpc/*", async (request, reply) => {
       await sendFastifyResponse(
         reply,
-        await privateDashboardApi.handle(toFrameworkRequest(request)),
+        await privateDashboardApi.handle(
+          toFrameworkRequest(request, mountPath),
+        ),
       );
     });
 
@@ -28,7 +45,7 @@ export function bullstudio(config: DashboardConfig): FastifyPluginCallback {
         handler: async (request, reply) => {
           await sendFastifyResponse(
             reply,
-            await dashboard.handle(toFrameworkRequest(request)),
+            await dashboard.handle(toFrameworkRequest(request, mountPath)),
           );
         },
       });
@@ -38,38 +55,35 @@ export function bullstudio(config: DashboardConfig): FastifyPluginCallback {
   };
 }
 
-function toFrameworkRequest(request: FastifyRequest) {
+function toFrameworkRequest(request: FastifyRequest, mountPath: string) {
   return {
     method: request.method,
-    url: toMountedUrl(request.url),
+    url: toMountedUrl(request.url, mountPath),
     headers: request.headers,
-    basePath: getBasePath(request.routeOptions.url ?? "/"),
+    basePath: mountPath,
     body: toRequestBody(request.body),
   };
 }
 
-function getBasePath(routeUrl: string): string {
-  const basePath = routeUrl
-    .replace(/\/api\/trpc\/\*$/, "")
-    .replace(/\/\*$/, "");
-
-  return basePath || "/";
-}
-
-function toMountedUrl(url: string): string {
+function toMountedUrl(url: string, mountPath: string): string {
   const parsedUrl = new URL(url, "http://bullstudio.local");
-  const assetIndex = parsedUrl.pathname.search(/\/(?:assets\/|logo\.svg$)/);
-  const apiIndex = parsedUrl.pathname.indexOf("/api/trpc");
+  const prefix = mountPath === "/" ? "" : mountPath;
 
-  if (apiIndex >= 0) {
-    parsedUrl.pathname = parsedUrl.pathname.slice(apiIndex);
-  } else if (assetIndex >= 0) {
-    parsedUrl.pathname = parsedUrl.pathname.slice(assetIndex);
-  } else {
+  if (prefix && parsedUrl.pathname === prefix) {
     parsedUrl.pathname = "/";
+  } else if (prefix && parsedUrl.pathname.startsWith(`${prefix}/`)) {
+    parsedUrl.pathname = parsedUrl.pathname.slice(prefix.length);
   }
 
   return `${parsedUrl.pathname}${parsedUrl.search}`;
+}
+
+function normalizeMountPath(mountPath: string | undefined): string {
+  if (!mountPath || mountPath === "/") {
+    return "/";
+  }
+
+  return `/${mountPath.replace(/^\/+|\/+$/g, "")}`;
 }
 
 function toRequestBody(body: unknown): unknown {
