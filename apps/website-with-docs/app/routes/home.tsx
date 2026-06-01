@@ -1,30 +1,32 @@
 import type { Route } from './+types/home';
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
-import { Link } from 'react-router';
 import { baseOptions } from '@/lib/layout.shared';
+import { Hero } from '@/components/landing/hero';
+import { Features } from '@/components/landing/features';
+import { Modes } from '@/components/landing/modes';
+import { Frameworks } from '@/components/landing/frameworks';
+import { FinalCta, Footer } from '@/components/landing/footer';
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: 'New React Router App' },
-    { name: 'description', content: 'Welcome to React Router!' },
+    { title: 'Bullstudio — A modern dashboard for Bull & BullMQ' },
+    {
+      name: 'description',
+      content:
+        'An open-source queue management dashboard for Bull and BullMQ. Inspect jobs, trace flows and unstick backlogs — standalone or embedded in your app.',
+    },
   ];
 }
 
 export default function Home() {
   return (
     <HomeLayout {...baseOptions()}>
-      <div className="p-4 flex flex-col items-center justify-center text-center flex-1">
-        <h1 className="text-xl font-bold mb-2">Fumadocs on React Router.</h1>
-        <p className="text-fd-muted-foreground mb-4">
-          The truly flexible docs framework on React.js.
-        </p>
-        <Link
-          className="text-sm bg-fd-primary text-fd-primary-foreground rounded-full font-medium px-4 py-2.5"
-          to="/docs"
-        >
-          Open Docs
-        </Link>
-      </div>
+      <Hero />
+      <Features />
+      <Modes />
+      <Frameworks />
+      <FinalCta />
+      <Footer />
     </HomeLayout>
   );
 }
