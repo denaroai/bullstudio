@@ -2,7 +2,6 @@
   "title": "Bullstudio",
   "pages": [
     "index",
-    "introduction",
     "standalone",
     "embedded",
     "queue-adapters",
