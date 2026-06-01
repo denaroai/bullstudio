@@ -3,10 +3,10 @@ import { LayoutDashboard, ListTodo, Workflow } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Container, SectionHeading } from './section';
 import {
-  DashboardFrame,
   FlowsPanel,
   JobsPanel,
   OverviewPanel,
+  PreviewFrame,
 } from './dashboard-preview';
 
 const FEATURES = [
@@ -108,9 +108,9 @@ export function Features() {
 
           {/* live preview */}
           <div className="lg:sticky lg:top-24">
-            <DashboardFrame active={active}>
+            <PreviewFrame>
               <Panel />
-            </DashboardFrame>
+            </PreviewFrame>
           </div>
         </div>
       </Container>

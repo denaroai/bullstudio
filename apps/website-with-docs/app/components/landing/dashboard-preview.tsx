@@ -176,6 +176,20 @@ export function DashboardFrame({
   );
 }
 
+/**
+ * A bare, chrome-less frame for the feature previews — just the surface in
+ * question (the jobs list, the graph, …), no window bar or sidebar.
+ */
+export function PreviewFrame({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative h-[420px] overflow-hidden border border-border bg-card shadow-sm">
+      {children}
+      {/* soft fade so previews dissolve at the bottom rather than hard-cut */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-card" />
+    </div>
+  );
+}
+
 /* --------------------------------- overview -------------------------------- */
 
 function Spark({ data, color }: { data: number[]; color: string }) {
@@ -396,7 +410,6 @@ const JOBS: { id: string; name: string; status: Status; at: string; dur: string 
   { id: '#48210', name: 'deliver-receipt', status: 'failed', at: '5m ago', dur: '1.2s' },
   { id: '#48209', name: 'sync-contacts', status: 'completed', at: '6m ago', dur: '512ms' },
   { id: '#48205', name: 'digest-weekly', status: 'delayed', at: 'in 3h', dur: '—' },
-  { id: '#48201', name: 'warm-cache', status: 'waiting', at: '8m ago', dur: '—' },
 ];
 
 export function JobsPanel() {
@@ -487,14 +500,16 @@ type Node = {
   y: number;
 };
 
-const NODE_W = 150;
-const NODE_H = 52;
+const NODE_W = 200;
+const NODE_H = 84;
+const GRAPH_W = 580;
+const GRAPH_H = 364;
 const NODES: Node[] = [
-  { id: 'a', name: 'send-campaign', queue: 'email', status: 'active', x: 150, y: 12 },
-  { id: 'b', name: 'fetch-recipients', queue: 'email', status: 'completed', x: 24, y: 132 },
-  { id: 'c', name: 'render-template', queue: 'email', status: 'completed', x: 276, y: 132 },
-  { id: 'd', name: 'deliver-batch', queue: 'email', status: 'waiting', x: 24, y: 252 },
-  { id: 'e', name: 'track-opens', queue: 'metrics', status: 'delayed', x: 276, y: 252 },
+  { id: 'a', name: 'send-campaign', queue: 'email', status: 'active', x: 190, y: 0 },
+  { id: 'b', name: 'fetch-recipients', queue: 'email', status: 'completed', x: 0, y: 140 },
+  { id: 'c', name: 'render-template', queue: 'email', status: 'completed', x: 380, y: 140 },
+  { id: 'd', name: 'deliver-batch', queue: 'email', status: 'waiting', x: 0, y: 280 },
+  { id: 'e', name: 'track-opens', queue: 'metrics', status: 'delayed', x: 380, y: 280 },
 ];
 const LINKS: [string, string][] = [
   ['a', 'b'],
@@ -528,9 +543,16 @@ export function FlowsPanel() {
         </div>
       </div>
 
-      {/* graph canvas */}
-      <div className="bs-grid relative flex-1 overflow-hidden bg-muted/20">
-        <svg className="absolute inset-0 h-full w-full" aria-hidden>
+      {/* graph canvas — one scaling SVG (nodes embedded via foreignObject) so
+       * the graph fills the editor height on desktop and shrinks to fit on
+       * narrow screens, always centered and fully visible. */}
+      <div className="relative flex-1 overflow-hidden bg-muted/20">
+        <svg
+          className="absolute inset-0 h-full w-full p-4"
+          viewBox={`0 0 ${GRAPH_W} ${GRAPH_H}`}
+          preserveAspectRatio="xMidYMid meet"
+          aria-hidden
+        >
           {LINKS.map(([from, to]) => {
             const a = byId(from);
             const b = byId(to);
@@ -550,35 +572,37 @@ export function FlowsPanel() {
               />
             );
           })}
-        </svg>
 
-        {NODES.map((n) => (
-          <div
-            key={n.id}
-            className="absolute border bg-card shadow-md"
-            style={{
-              left: n.x,
-              top: n.y,
-              width: NODE_W,
-              borderColor: `${EDGE[n.status]}66`,
-            }}
-          >
-            <div
-              className="flex items-center justify-between border-b border-border px-2.5 py-1.5"
-              style={{ background: `${EDGE[n.status]}14` }}
+          {NODES.map((n) => (
+            <foreignObject
+              key={n.id}
+              x={n.x}
+              y={n.y}
+              width={NODE_W}
+              height={NODE_H}
             >
-              <JobBadge status={n.status} />
-            </div>
-            <div className="px-2.5 py-1.5">
-              <div className="truncate text-xs font-medium text-foreground">
-                {n.name}
+              <div
+                className="h-full border bg-card shadow-md"
+                style={{ borderColor: `${EDGE[n.status]}66` }}
+              >
+                <div
+                  className="flex items-center justify-between border-b border-border px-3 py-2"
+                  style={{ background: `${EDGE[n.status]}14` }}
+                >
+                  <JobBadge status={n.status} />
+                </div>
+                <div className="px-3 py-2">
+                  <div className="truncate text-sm font-medium text-foreground">
+                    {n.name}
+                  </div>
+                  <div className="truncate font-mono text-[10px] text-muted-foreground">
+                    {n.queue}
+                  </div>
+                </div>
               </div>
-              <div className="truncate font-mono text-[10px] text-muted-foreground">
-                {n.queue}
-              </div>
-            </div>
-          </div>
-        ))}
+            </foreignObject>
+          ))}
+        </svg>
       </div>
     </div>
   );

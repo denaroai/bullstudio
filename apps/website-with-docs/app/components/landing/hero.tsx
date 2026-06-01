@@ -27,6 +27,19 @@ export function Hero() {
         className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-background"
       />
 
+      {/* the charging bull — a faint terracotta watermark emerging from the
+       * right edge, masked so its body dissolves into the hero. */}
+      <img
+        src="/bull-silhouette.png"
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute right-[-5%] top-16 hidden w-[34rem] select-none opacity-[0.12] md:block lg:top-10 lg:w-[44rem]"
+        style={{
+          WebkitMaskImage: 'linear-gradient(to left, #000 30%, transparent 90%)',
+          maskImage: 'linear-gradient(to left, #000 30%, transparent 90%)',
+        }}
+      />
+
       <Container className="relative pb-20 pt-20 sm:pt-28">
         <div className="flex flex-col items-center text-center">
           <h1
