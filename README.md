@@ -117,6 +117,7 @@ Open `/ops/bullstudio`. Dashboard assets and the private dashboard API are serve
 | Express | `@bullstudio/express` | `app.use("/ops/bullstudio", bullstudio(config))` |
 | Fastify | `@bullstudio/fastify` | `app.register(bullstudio(config), { prefix: "/ops/bullstudio" })` |
 | Next.js App Router | `@bullstudio/next` | `export const { GET, HEAD, POST } = bullstudio({ mountPath: "/ops/bullstudio", ...config })` |
+| NestJS | `@bullstudio/nestjs` | `BullstudioModule.forRoot({ mountPath: "/ops/bullstudio", ...config })` |
 
 ```ts
 // Express
@@ -200,11 +201,12 @@ Set `protection: { type: "disabled" }` only when your host application protects 
 | Express | `pnpm --filter @bullstudio/example-express-bullmq-embedded dev` |
 | Fastify | `pnpm --filter @bullstudio/example-fastify-bullmq-embedded dev` |
 | Next.js App Router | `pnpm --filter @bullstudio/example-next-bullmq-embedded dev` |
+| NestJS | `pnpm --filter @bullstudio/example-nestjs-bullmq-embedded dev:express` |
 
 ## Packages
 
 - `bullstudio`: standalone CLI.
-- `@bullstudio/hono`, `@bullstudio/express`, `@bullstudio/fastify`, `@bullstudio/next`: framework adapters.
+- `@bullstudio/hono`, `@bullstudio/express`, `@bullstudio/fastify`, `@bullstudio/next`, `@bullstudio/nestjs`: framework adapters.
 - `@bullstudio/bullmq-adapter`, `@bullstudio/bull-adapter`: queue adapters.
 - `@bullstudio/connect-types`: contracts for custom queue adapters.
 
