@@ -1,4 +1,4 @@
 {
   "title": "Embedded",
-  "pages": ["index", "express", "fastify", "hono", "next"]
+  "pages": ["index", "express", "fastify", "hono", "next", "nestjs"]
 }

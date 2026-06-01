@@ -20,6 +20,10 @@ _Avoid_: Server handler, middleware instance
 The `bullstudio()` function exported by framework adapter packages to create the native mountable dashboard value for that framework.
 _Avoid_: createBullstudio, setupBullstudio
 
+**Dashboard module**:
+The `BullstudioModule` exported by the NestJS framework adapter package to mount a dashboard instance inside a NestJS application.
+_Avoid_: Nest controller, Nest middleware setup
+
 **Dashboard identity**:
 The configured title and logo that identify a dashboard instance to users.
 _Avoid_: Branding, theme
@@ -85,7 +89,7 @@ Dashboard protection based on an HTTP Basic Auth username and password.
 _Avoid_: Password mode, built-in auth
 
 **Framework adapter**:
-A package that mounts a dashboard instance into a specific host framework such as Hono, Express, Fastify, or Next.js.
+A package that mounts a dashboard instance into a specific host framework such as Hono, Express, Fastify, Next.js, or NestJS.
 _Avoid_: Server adapter, web adapter
 
 **Mount path**:
