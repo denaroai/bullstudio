@@ -95,11 +95,35 @@ export const { GET, HEAD, POST } = bullstudio({
   ],
 });`,
   },
+  {
+    key: 'nestjs',
+    label: 'NestJS',
+    install: 'pnpm add @bullstudio/nestjs @bullstudio/bullmq-adapter',
+    filename: 'app.module.ts',
+    code: `import { createBullMqQueueAdapter } from '@bullstudio/bullmq-adapter';
+import { BullstudioModule } from '@bullstudio/nestjs';
+import { Module } from '@nestjs/common';
+
+@Module({
+  imports: [
+    BullstudioModule.forRoot({
+      mountPath: '/ops/bullstudio',
+      queues: [
+        createBullMqQueueAdapter(emailQueue, { key: 'email', label: 'Email' }),
+      ],
+      readOnly: true,
+    }),
+  ],
+})
+export class AppModule {}`,
+  },
 ];
 
 export function Frameworks() {
-  const [active, setActive] = useState(FRAMEWORKS[0].key);
-  const fw = FRAMEWORKS.find((f) => f.key === active)!;
+  const [active, setActive] = useState('standalone');
+  const fw = FRAMEWORKS.find((f) => f.key === active) ?? FRAMEWORKS[0];
+
+  if (!fw) return null;
 
   return (
     <section className="border-b border-border py-24">
