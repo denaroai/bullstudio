@@ -8,6 +8,7 @@
       "@bullstudio/fastify",
       "@bullstudio/hono",
       "@bullstudio/next",
+      "@bullstudio/nestjs",
       "@bullstudio/bullmq-adapter",
       "@bullstudio/bull-adapter",
       "@bullstudio/embedded-core",
