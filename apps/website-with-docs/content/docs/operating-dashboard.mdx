@@ -1,0 +1,64 @@
+---
+title: Operating the Dashboard
+description: What operators can inspect and manage in Bullstudio.
+---
+
+Bullstudio shows navigation based on the supplied or discovered queues and the adapter capabilities available to the dashboard.
+
+## Overview
+
+Use Overview to check queue health at a glance.
+
+Common checks:
+
+- queue count and the selected queue filter
+- waiting, active, completed, failed, delayed, and paused counts
+- recent throughput and failures
+- Redis/provider status in standalone mode
+- queue source status in embedded mode
+
+If Redis is empty, standalone mode shows an empty state until a Bull or BullMQ queue writes data.
+
+## Jobs
+
+Use Jobs to inspect and manage individual jobs.
+
+Available filters:
+
+- queue
+- job name search
+- status tabs: all, waiting, active, completed, failed, delayed, waiting children
+
+Typical workflow:
+
+1. Filter to `Failed`.
+2. Open the job.
+3. Check `data`, `failedReason`, `stacktrace`, attempts, timestamps, and logs.
+4. Retry or remove the job if mutations are allowed.
+
+## Flows
+
+The Flows page appears when at least one supplied or discovered queue supports BullMQ flows.
+
+BullMQ flow support includes:
+
+- flow list
+- root job status
+- total, completed, and failed child counts
+- tree view from parent to children
+- job navigation from flow nodes
+
+Bull v4 adapters do not expose flows.
+
+## Mutating operations
+
+These operations require adapter support and `readOnly: false`:
+
+| Operation | BullMQ | Bull |
+| --- | --- | --- |
+| Retry job | yes | yes |
+| Remove job | yes | yes |
+| Pause queue | yes | yes |
+| Resume queue | yes | yes |
+
+If `readOnly: true`, Bullstudio rejects mutations server-side.

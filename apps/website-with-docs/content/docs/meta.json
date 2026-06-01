@@ -1,0 +1,13 @@
+{
+  "title": "Bullstudio",
+  "pages": [
+    "index",
+    "standalone",
+    "embedded",
+    "queue-adapters",
+    "configuration",
+    "operating-dashboard",
+    "development",
+    "troubleshooting"
+  ]
+}
