@@ -1,0 +1,153 @@
+---
+title: Development
+description: Set up a local Bullstudio development environment.
+---
+
+This guide is for contributors working on Bullstudio from a source checkout.
+
+## Prerequisites
+
+Use Node.js 20 or newer and pnpm 10.4.1. Docker is recommended for running local Redis.
+
+```bash
+node --version
+corepack enable
+corepack prepare pnpm@10.4.1 --activate
+pnpm --version
+```
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/emirce/bullstudio.git
+cd bullstudio
+pnpm install
+```
+
+## Start Redis
+
+Most dashboard and integration workflows need Redis. The repository includes a Docker Compose file for the test Redis service.
+
+```bash
+docker compose -f docker-compose.test.yml up -d redis
+```
+
+Check that Redis is reachable:
+
+```bash
+docker compose -f docker-compose.test.yml ps
+```
+
+The default local URL is `redis://localhost:6379`.
+
+## Run the dashboard
+
+For dashboard UI work, run only the frontend package:
+
+```bash
+pnpm --filter @bullstudio/frontend dev
+```
+
+Open the Vite URL printed in the terminal, usually `http://localhost:5173`.
+
+The frontend dev server mounts the standalone dashboard API, so local UI work can talk to Redis without starting another Bullstudio process. To use a different Redis instance:
+
+```bash
+REDIS_URL=redis://localhost:6379 pnpm --filter @bullstudio/frontend dev
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:REDIS_URL = "redis://localhost:6379"
+pnpm --filter @bullstudio/frontend dev
+```
+
+## Add sample jobs
+
+Seed local Redis with queues and jobs when you need realistic dashboard data:
+
+```bash
+REDIS_URL=redis://localhost:6379 pnpm --filter ./packages/cli generate:bull-jobs
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:REDIS_URL = "redis://localhost:6379"
+pnpm --filter ./packages/cli generate:bull-jobs
+```
+
+Refresh the dashboard after the script finishes.
+
+## Run embedded examples
+
+Use examples when changing framework adapters or embedded-mode behavior.
+
+```bash
+pnpm --filter @bullstudio/example-hono-bullmq-embedded dev
+pnpm --filter @bullstudio/example-express-bullmq-embedded dev
+pnpm --filter @bullstudio/example-fastify-bullmq-embedded dev
+pnpm --filter @bullstudio/example-next-bullmq-embedded dev
+```
+
+Start Redis first, then open the local URL printed by the example.
+
+## Run the docs locally
+
+The docs site lives in `apps/website-with-docs`.
+
+```bash
+pnpm --filter website-with-docs dev
+```
+
+Run the docs checks before changing documentation structure or MDX components:
+
+```bash
+pnpm --filter website-with-docs types:check
+pnpm --filter website-with-docs build
+```
+
+## Validate changes
+
+Before opening a pull request, run the checks that match your change:
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm lint
+pnpm build
+```
+
+For formatting-only cleanup:
+
+```bash
+pnpm format
+pnpm check
+```
+
+Integration tests use `TEST_REDIS_URL` when it is set, otherwise they use `redis://localhost:6379/15`.
+
+```bash
+TEST_REDIS_URL=redis://localhost:6379/15 pnpm test
+```
+
+## Common fixes
+
+If tests say Redis is unavailable, start the Compose service again:
+
+```bash
+docker compose -f docker-compose.test.yml up -d redis
+```
+
+If dependency versions look inconsistent, reinstall from the repository root:
+
+```bash
+pnpm install
+```
+
+If the dashboard shows no queues, confirm Redis has test data:
+
+```bash
+pnpm --filter ./packages/cli generate:bull-jobs
+```

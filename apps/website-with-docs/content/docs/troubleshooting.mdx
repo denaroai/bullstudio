@@ -1,0 +1,120 @@
+---
+title: Troubleshooting
+description: Fix common Bullstudio setup problems.
+---
+
+## Redis connection refused
+
+Check Redis first.
+
+```bash
+redis-cli -u redis://localhost:6379 ping
+```
+
+Start Redis with Docker:
+
+```bash
+docker run --rm -p 6379:6379 redis:7-alpine
+```
+
+Then run Bullstudio:
+
+```bash
+npx bullstudio -r redis://localhost:6379
+```
+
+## No queues found
+
+Standalone mode discovers queues from Redis. Make sure:
+
+- your app has created a Bull or BullMQ queue
+- Bullstudio uses the same Redis URL as your app
+- your queue prefix is included
+
+If you use a custom prefix:
+
+```bash
+bullstudio --redis redis://localhost:6379 --prefix bull,stage
+```
+
+In embedded mode, Bullstudio never scans Redis. Pass every queue you want to show.
+
+```ts
+bullstudio({
+  queues: [
+    createBullMqQueueAdapter(emailQueue, { key: "email", label: "Email" }),
+    createBullMqQueueAdapter(reportQueue, { key: "reports", label: "Reports" }),
+  ],
+});
+```
+
+## BullMQ jobs never become active
+
+BullMQ needs a worker. Adding jobs only puts them into Redis.
+
+```ts
+import { Worker } from "bullmq";
+
+const worker = new Worker(
+  "email",
+  async (job) => {
+    await sendEmail(job.data);
+  },
+  { connection },
+);
+```
+
+## `maxRetriesPerRequest` error in BullMQ
+
+Use an `ioredis` connection compatible with BullMQ workers and queues.
+
+```ts
+const connection = new IORedis(process.env.REDIS_URL!, {
+  maxRetriesPerRequest: null,
+});
+```
+
+## Dashboard redirects to login
+
+Dashboard protection is enabled. Use the configured username and password.
+
+Standalone:
+
+```bash
+bullstudio --username operator --password secret
+```
+
+Embedded:
+
+```ts
+protection: {
+  type: "session",
+  username: "operator",
+  password: "secret",
+}
+```
+
+## Next.js returns 404
+
+Make sure the route folder matches `mountPath`.
+
+```ts
+// app/ops/bullstudio/[[...bullstudio]]/route.ts
+export const { GET, HEAD, POST } = bullstudio({
+  mountPath: "/ops/bullstudio",
+  queues: [emailQueueAdapter],
+});
+```
+
+## Duplicate queue key
+
+Queue keys must be unique within one dashboard instance.
+
+```ts
+bullstudio({
+  queues: [
+    createBullMqQueueAdapter(emailQueue, { key: "email-primary" }),
+    createBullMqQueueAdapter(emailQueueCopy, { key: "email-copy" }),
+  ],
+});
+```

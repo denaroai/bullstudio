@@ -1,0 +1,64 @@
+---
+title: Hono
+description: Mount Bullstudio in a Hono app.
+---
+
+## Install
+
+```bash
+pnpm add @bullstudio/hono @bullstudio/bullmq-adapter bullmq ioredis hono @hono/node-server
+```
+
+## Mount the dashboard
+
+```ts
+import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
+import { bullstudio } from "@bullstudio/hono";
+import { serve } from "@hono/node-server";
+import { Queue } from "bullmq";
+import { Hono } from "hono";
+import IORedis from "ioredis";
+
+const connection = new IORedis(process.env.REDIS_URL!, {
+  maxRetriesPerRequest: null,
+});
+
+const emailQueue = new Queue("email", { connection });
+const app = new Hono();
+
+app.route(
+  "/ops/bullstudio",
+  bullstudio({
+    queues: [
+      createBullMqQueueAdapter(emailQueue, {
+        key: "email",
+        label: "Email",
+      }),
+    ],
+    protection: {
+      type: "session",
+      username: process.env.BULLSTUDIO_USERNAME ?? "operator",
+      password: process.env.BULLSTUDIO_PASSWORD!,
+      sessionSecret: process.env.BULLSTUDIO_SESSION_SECRET!,
+    },
+  }),
+);
+
+serve({
+  fetch: app.fetch,
+  port: 3000,
+});
+```
+
+Open `http://localhost:3000/ops/bullstudio`.
+
+## Shutdown
+
+Bullstudio does not close host-owned queues or Redis connections.
+
+```ts
+async function shutdown() {
+  await emailQueue.close();
+  await connection.quit();
+}
+```

@@ -1,32 +1,37 @@
 ---
-title: Hello World
-description: |
-  Your first `document`
-  You'll love it!
+title: Introduction
+description: What Bullstudio is, the problem it solves, and how it fits into your stack.
 ---
 
-Hey there! Fumadocs is the docs framework that also works on React Router!
+If you run [Bull](https://github.com/OptimalBits/bull) or [BullMQ](https://github.com/taskforcesh/bullmq) job queues on Redis, you already know the feeling: a job is stuck, a backlog is growing, or something failed in production — and you have no good way to see what your queues are actually doing. You end up reading Redis keys by hand, adding log lines, or guessing.
 
-## Heading
+Bullstudio is a dashboard that gives you that visibility back. Point it at your queues and you can watch jobs move through their states, inspect payloads and stack traces, retry or remove jobs, and pause or resume queues — all from one place.
 
-Hello World
+## Why it exists
+
+Background queues are easy to add and hard to observe. The work happens out of sight, so problems only surface when something downstream breaks. Most teams either build a one-off internal admin page or fly blind.
+
+Bullstudio exists to make queue visibility a default, not a project. It's purpose-built for Bull and BullMQ, so it understands their job states, retries, and queue semantics out of the box — no schema to define, no instrumentation to add.
+
+## What it solves
+
+- **See what's happening.** Live view of waiting, active, completed, failed, delayed, and paused jobs across every queue.
+- **Debug failures fast.** Open a failed job to read its data, return value, attempts, and full stack trace.
+- **Take action.** Retry, promote, or remove jobs and pause or resume queues directly from the dashboard.
+- **Run it your way.** Use it as a standalone process pointed at Redis, or embed it inside the app that already owns your queues.
+
+## How you run it
+
+Bullstudio fits two adoption paths, and you can pick whichever matches your setup:
+
+- **Standalone** — point it at a Redis URL and it discovers your Bull and BullMQ queues automatically. Great for a laptop, a container, or a quick look at production.
+- **Embedded** — mount it inside your existing Hono, Express, Fastify, or Next.js app, exposing only the queues you hand it, optionally read-only and behind Basic Auth.
+
+## Where to go next
 
 <Cards>
-  <Card title="Learn more about React Router" href="https://reactrouter.com" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
+  <Card title="Standalone Mode" href="/docs/standalone" />
+  <Card title="Embedded Overview" href="/docs/embedded" />
+  <Card title="Queue Adapters" href="/docs/queue-adapters" />
+  <Card title="Configuration" href="/docs/configuration" />
 </Cards>
-
-```ts
-console.log('I love React!');
-```
-
-### Heading
-
-#### Heading
-
-| Head                            | Description                         |
-| ------------------------------- | ----------------------------------- |
-| `hello`                         | Hello World                         |
-| very **important**              | Hey                                 |
-| _Surprisingly_                  | Fumadocs                            |
-| very long text that looks weird | hello world hello world hello world |

@@ -1,0 +1,150 @@
+---
+title: Standalone Mode
+description: Run Bullstudio as its own process and connect it to Redis.
+---
+
+Use standalone mode when you want the fastest setup: one command, one Redis URL, and no app changes.
+
+## Run with npx
+
+```bash
+npx bullstudio -r redis://localhost:6379
+```
+
+Defaults:
+
+| Setting | Default |
+| --- | --- |
+| Dashboard URL | `http://localhost:4000` |
+| Redis | `redis://localhost:6379` |
+| Prefix discovery | all prefixes |
+| Dashboard protection | disabled unless a password is set |
+
+## CLI options
+
+```bash
+bullstudio \
+  --redis redis://localhost:6379 \
+  --port 4000 \
+  --prefix bull,stage \
+  --username operator \
+  --password secret \
+  --no-open
+```
+
+| Option | Short | Description |
+| --- | --- | --- |
+| `--redis <url>` | `-r` | Redis connection URL. |
+| `--port <port>` | `-p` | HTTP port. |
+| `--prefix <prefixes>` | | Comma-separated Redis key prefixes. Omit to auto-discover. |
+| `--username <user>` | | Dashboard login username when auth is enabled. |
+| `--password <pass>` | | Enables dashboard login. |
+| `--no-open` | | Do not open the browser automatically. |
+
+## Environment variables
+
+```bash
+REDIS_URL=redis://localhost:6379 \
+PORT=4000 \
+REDIS_PREFIX=bull,stage \
+BULLSTUDIO_USERNAME=operator \
+BULLSTUDIO_PASSWORD=secret \
+bullstudio
+```
+
+| Variable | Description |
+| --- | --- |
+| `REDIS_URL` | Redis connection URL. |
+| `PORT` | HTTP port. |
+| `REDIS_PREFIX` | Comma-separated Redis key prefixes. |
+| `BULLSTUDIO_USERNAME` | Login username when `BULLSTUDIO_PASSWORD` is set. |
+| `BULLSTUDIO_PASSWORD` | Enables dashboard login. |
+
+Command-line flags take precedence over environment variables for the same setting.
+
+## Docker
+
+Use `host.docker.internal` when Redis is running on your machine and Bullstudio is running in Docker Desktop:
+
+```bash
+docker run --rm \
+  -p 4000:4000 \
+  -e REDIS_URL=redis://host.docker.internal:6379 \
+  emirce/bullstudio
+```
+
+Docker Compose:
+
+```yaml
+services:
+  bullstudio:
+    image: emirce/bullstudio
+    ports:
+      - "4000:4000"
+    environment:
+      REDIS_URL: redis://redis:6379
+      BULLSTUDIO_USERNAME: operator
+      BULLSTUDIO_PASSWORD: secret
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+```
+
+## Redis URLs
+
+```bash
+# local
+bullstudio -r redis://localhost:6379
+
+# password
+bullstudio -r redis://:password@redis.example.com:6379
+
+# username and password
+bullstudio -r redis://username:password@redis.example.com:6379
+
+# TLS
+bullstudio -r rediss://username:password@redis.example.com:6380
+```
+
+## Health check
+
+```bash
+curl http://localhost:4000/health
+```
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-06-01T10:00:00.000Z",
+  "redis": "configured"
+}
+```
+
+## Add a test BullMQ queue
+
+Use this against a local Redis to make the dashboard show data.
+
+```ts
+import { Queue } from "bullmq";
+import IORedis from "ioredis";
+
+const connection = new IORedis("redis://localhost:6379", {
+  maxRetriesPerRequest: null,
+});
+
+const emailQueue = new Queue("email", { connection });
+
+await emailQueue.add("send-welcome-email", {
+  to: "ada@example.com",
+  template: "welcome",
+});
+
+await emailQueue.close();
+await connection.quit();
+```
+
+Refresh `http://localhost:4000`. The queue appears in Overview and Jobs.
