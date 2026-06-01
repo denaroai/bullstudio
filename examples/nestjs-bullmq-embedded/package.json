@@ -1,0 +1,35 @@
+{
+  "name": "@bullstudio/example-nestjs-bullmq-embedded",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/express.ts src/fastify.ts --bundle --platform=node --target=node20 --outdir=dist --format=esm --external:@bullstudio/* --external:@nestjs/* --external:bullmq --external:express --external:fastify --external:ioredis --external:reflect-metadata --external:rxjs",
+    "dev:express": "tsx watch src/express.ts",
+    "dev:fastify": "tsx watch src/fastify.ts",
+    "start:express": "node dist/express.js",
+    "start:fastify": "node dist/fastify.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bullstudio/bullmq-adapter": "workspace:*",
+    "@bullstudio/nestjs": "workspace:*",
+    "@nestjs/common": "^11.1.24",
+    "@nestjs/core": "^11.1.24",
+    "@nestjs/platform-express": "^11.1.24",
+    "@nestjs/platform-fastify": "^11.1.24",
+    "bullmq": "^5.34.8",
+    "express": "^5.0.0",
+    "fastify": "^5.0.0",
+    "ioredis": "^5.4.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@bullstudio/typescript-config": "workspace:*",
+    "@types/node": "^24.10.1",
+    "esbuild": "^0.24.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.7.3"
+  }
+}

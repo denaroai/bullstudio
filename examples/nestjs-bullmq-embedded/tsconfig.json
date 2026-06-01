@@ -1,0 +1,8 @@
+{
+  "extends": "@bullstudio/typescript-config/base.json",
+  "include": ["src"],
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "noEmit": true
+  }
+}
