@@ -1,5 +1,5 @@
 {
-  "name": "website-with-docs",
+  "name": "@bullstudio/website-with-docs",
   "private": true,
   "type": "module",
   "scripts": {
