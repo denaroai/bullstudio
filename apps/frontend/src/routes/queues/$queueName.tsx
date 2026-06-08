@@ -25,8 +25,15 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Database, Pause, Play, RefreshCw, Trash2 } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  Database,
+  ListTodo,
+  Pause,
+  Play,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import Header from "@/components/Header";
@@ -38,6 +45,8 @@ import { SlowestJobsTable } from "@/components/overview/SlowestJobsTable";
 import { ThroughputChart } from "@/components/overview/ThroughputChart";
 import { useTRPC } from "@/integrations/trpc/react";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
+import { queueKey } from "src/lib/queue-key";
+import { FilterableStatus } from "../jobs";
 
 export const Route = createFileRoute("/queues/$queueName")({
   component: QueuePage,
@@ -72,6 +81,8 @@ function QueuePage() {
   const queryClient = useQueryClient();
   const [timeRange, setTimeRange] = useState<number>(24);
   const [drainDialogOpen, setDrainDialogOpen] = useState(false);
+
+  const navigate = useNavigate({ from: Route.fullPath });
 
   const { queueName } = Route.useParams();
 
@@ -159,6 +170,17 @@ function QueuePage() {
     }
   };
 
+  const handleGotoJobs = () => {
+    const key = queueKey(queue?.prefix ?? "", queueName);
+    navigate({
+      to: "/jobs",
+      search: () => ({
+        queueKey: key,
+        statusFilter: FilterableStatus.All,
+      }),
+    });
+  };
+
   const handleDrain = () => {
     drainMutation.mutate(queueTarget);
     setDrainDialogOpen(false);
@@ -168,6 +190,16 @@ function QueuePage() {
     <div className="space-y-6">
       <Header title={`${queueName}`}>
         <div className="flex items-center gap-3 h-5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleGotoJobs}
+            className="bg-card"
+          >
+            <ListTodo className="size-4 mr-2" />
+            View jobs
+          </Button>
+          <Separator orientation="vertical" />
           <Button
             variant="outline"
             size="sm"

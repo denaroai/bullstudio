@@ -44,28 +44,41 @@ import {
 } from "@/lib/job-detail-navigation";
 import { parseQueueKey, queueKey } from "@/lib/queue-key";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
+import { z } from "zod";
 
-export const Route = createFileRoute("/jobs/")({ component: JobsPage });
+export enum FilterableStatus {
+  All = "all",
+  Waiting = "waiting",
+  Active = "active",
+  Completed = "completed",
+  Failed = "failed",
+  Delayed = "delayed",
+  Paused = "paused",
+  WaitingChildren = "waiting-children",
+}
 
 type SortField = "name" | "queueName" | "status" | "timestamp" | "duration";
 type SortOrder = "asc" | "desc";
 
-type FilterableStatus =
-  | "waiting"
-  | "active"
-  | "completed"
-  | "failed"
-  | "delayed"
-  | "paused"
-  | "waiting-children";
+const jobSearchSchema = z.object({
+  queueKey: z.string().optional(),
+  statusFilter: z.enum(FilterableStatus).default(FilterableStatus.All),
+});
+type JobSearch = z.infer<typeof jobSearchSchema>;
+
+export const Route = createFileRoute("/jobs/")({
+  component: JobsPage,
+  validateSearch: (search: Record<string, unknown>): JobSearch =>
+    jobSearchSchema.parse(search),
+});
 
 const BASE_STATUS_TABS: { value: FilterableStatus | "all"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "waiting", label: "Waiting" },
-  { value: "active", label: "Active" },
-  { value: "completed", label: "Completed" },
-  { value: "failed", label: "Failed" },
-  { value: "delayed", label: "Delayed" },
+  { value: FilterableStatus.All, label: "All" },
+  { value: FilterableStatus.Waiting, label: "Waiting" },
+  { value: FilterableStatus.Active, label: "Active" },
+  { value: FilterableStatus.Completed, label: "Completed" },
+  { value: FilterableStatus.Failed, label: "Failed" },
+  { value: FilterableStatus.Delayed, label: "Delayed" },
 ];
 
 const ALL_QUEUES_VALUE = "__all__";
@@ -85,12 +98,10 @@ function useDebounce<T>(value: T, delay: number): T {
 
 function JobsPage() {
   const trpc = useTRPC();
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: Route.fullPath });
 
-  const [selectedQueue, setSelectedQueue] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<FilterableStatus | "all">(
-    "all",
-  );
+  const { queueKey: queueKeySearch, statusFilter } = Route.useSearch();
+
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [sortField, setSortField] = useState<SortField>("timestamp");
@@ -105,7 +116,7 @@ function JobsPage() {
 
   const hasMultiplePrefixes = (queueSource?.prefixes.length ?? 0) > 1;
 
-  const parsed = selectedQueue ? parseQueueKey(selectedQueue) : null;
+  const parsed = queueKeySearch ? parseQueueKey(queueKeySearch) : null;
 
   // Build status tabs based on provider capabilities
   const statusTabs = useMemo(() => {
@@ -258,9 +269,15 @@ function JobsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <Select
-            value={selectedQueue || ALL_QUEUES_VALUE}
+            value={queueKeySearch || ALL_QUEUES_VALUE}
             onValueChange={(value) =>
-              setSelectedQueue(value === ALL_QUEUES_VALUE ? "" : value)
+              //setSelectedQueue(value === ALL_QUEUES_VALUE ? "" : value)
+              navigate({
+                search: (prev) => ({
+                  ...prev,
+                  queueKey: value === ALL_QUEUES_VALUE ? undefined : value,
+                }),
+              })
             }
             disabled={loadingQueues}
           >
@@ -324,7 +341,14 @@ function JobsPage() {
       {/* Status Tabs */}
       <Tabs
         value={statusFilter}
-        onValueChange={(v) => setStatusFilter(v as FilterableStatus | "all")}
+        onValueChange={(v) =>
+          navigate({
+            search: (prev) => ({
+              ...prev,
+              statusFilter: v as FilterableStatus,
+            }),
+          })
+        }
       >
         <TabsList className="border border-border">
           {statusTabs.map((tab) => (

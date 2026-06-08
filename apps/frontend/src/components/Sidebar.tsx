@@ -15,7 +15,12 @@ import {
 } from "@bullstudio/ui/components/sidebar";
 import { cn } from "@bullstudio/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useLocation } from "@tanstack/react-router";
+import {
+  Link,
+  useLocation,
+  useParams,
+  useSearch,
+} from "@tanstack/react-router";
 import {
   Database,
   Github,
@@ -39,6 +44,7 @@ import {
   getBasePath,
   getDashboardIdentity,
 } from "@/lib/runtime-config";
+import { queueKey } from "src/lib/queue-key";
 
 interface AuthSessionResponse {
   authEnabled?: boolean;
@@ -52,6 +58,8 @@ export function AppSidebar() {
   const dashboardLogo = dashboardIdentity?.logo;
   const dashboardTitle = dashboardIdentity?.title ?? "bullstudio";
 
+  const search = useSearch({ strict: false });
+
   const { data: connectionInfo } = useQuery(
     trpc.connection.info.queryOptions(),
   );
@@ -64,6 +72,21 @@ export function AppSidebar() {
       return pathname === "/";
     }
     return pathname.startsWith(href);
+  };
+
+  const isQueueActive = (
+    queueName: string,
+    queuePrefix: string | undefined,
+  ) => {
+    const searchQueueKey = search.queueKey;
+    if (
+      // Check if the active queue in search params matches this queue
+      searchQueueKey &&
+      searchQueueKey === queueKey(queuePrefix ?? "", queueName)
+    ) {
+      return true;
+    }
+    return pathname.startsWith(`/queues/${queueName}`);
   };
 
   const queues = useQuery(trpc.queues.list.queryOptions());
@@ -149,7 +172,12 @@ export function AppSidebar() {
             <SidebarMenu>
               {queues.data?.map((queue) => (
                 <SidebarMenuItem key={queue.name}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isQueueActive(queue.name, queue.prefix)}
+                    tooltip={queue.name}
+                    className="h-9"
+                  >
                     <Link
                       to="/queues/$queueName"
                       params={{ queueName: queue.name }}
