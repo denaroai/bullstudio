@@ -1,6 +1,6 @@
 import type { ServerResponse } from "node:http";
 import { resolve } from "node:path";
-import type { Connect, Plugin, ViteDevServer } from "vite";
+import { normalizePath, type Connect, type Plugin, type ViteDevServer } from "vite";
 
 type StandaloneApp = {
   fetch(request: Request): Promise<Response> | Response;
@@ -49,13 +49,17 @@ async function loadStandaloneModule(
   server: ViteDevServer,
 ): Promise<StandaloneModule> {
   const standaloneServerPath = resolve(
-    process.cwd(),
+    server.config.root,
     "../standalone/server/standalone.ts",
   );
 
   return server.ssrLoadModule(
-    `/@fs${standaloneServerPath}`,
+    toViteFsModuleId(standaloneServerPath),
   ) as Promise<StandaloneModule>;
+}
+
+export function toViteFsModuleId(filePath: string): string {
+  return `/@fs/${normalizePath(filePath).replace(/^\/+/, "")}`;
 }
 
 function shouldHandleRequest(url: string): boolean {
