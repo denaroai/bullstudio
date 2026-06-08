@@ -33,6 +33,7 @@ const allCapabilities: AdapterCapabilities = {
   jobRetry: true,
   queuePause: true,
   queueResume: true,
+  queueDrain: true,
   workers: true,
 };
 const authenticatedContext = { authenticated: true };
@@ -253,6 +254,7 @@ describe("createPrivateDashboardRouter", () => {
             jobRetry: false,
             queuePause: false,
             queueResume: false,
+            queueDrain: false,
           },
         }),
       ],
@@ -456,6 +458,9 @@ type FakeSource = PrivateDashboardQueueSource & {
   resumeQueue: ReturnType<
     typeof vi.fn<[QueueTargetInput], Promise<QueueMutationResponse>>
   >;
+  drainQueue: ReturnType<
+    typeof vi.fn<[QueueTargetInput], Promise<QueueMutationResponse>>
+  >;
   listJobs: ReturnType<
     typeof vi.fn<[JobListInput], Promise<Array<Job & { queueKey?: string }>>>
   >;
@@ -606,6 +611,11 @@ function createFakeSource(options: FakeSourceOptions = {}): FakeSource {
       }),
     ),
     resumeQueue: vi.fn(
+      async (): Promise<QueueMutationResponse> => ({
+        success: true,
+      }),
+    ),
+    drainQueue: vi.fn(
       async (): Promise<QueueMutationResponse> => ({
         success: true,
       }),

@@ -111,6 +111,11 @@ export function createEmbeddedQueueSource(
       await dashboard.resumeQueue(queue.key);
       return { success: true };
     },
+    drainQueue: async (input) => {
+      const queue = await getSuppliedQueueByPrivateApiInput(dashboard, input);
+      await dashboard.drainQueue(queue.key);
+      return { success: true };
+    },
     listFlows: (input) => dashboard.listFlows(getFlowListInput(input)),
     getFlow: async (input) => {
       const queue = await getQueueForTarget(dashboard, input);

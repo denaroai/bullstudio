@@ -51,6 +51,10 @@ export function createEmbeddedDashboard(
       withMutationAccess(resolvedConfig, () =>
         getQueueAdapter(queueAdaptersByKey, queueKey).resumeQueue(),
       ),
+    drainQueue: (queueKey) =>
+      withMutationAccess(resolvedConfig, () =>
+        getQueueAdapter(queueAdaptersByKey, queueKey).drainQueue(),
+      ),
     getJobs: (queueKey, options) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getJobs(options),
     getJobsSummary: (queueKey, options) =>
@@ -225,6 +229,7 @@ function aggregateCapabilities(queues: QueueAdapter[]): AdapterCapabilities {
       jobRetry: result.jobRetry || queue.capabilities.jobRetry,
       queuePause: result.queuePause || queue.capabilities.queuePause,
       queueResume: result.queueResume || queue.capabilities.queueResume,
+      queueDrain: result.queueDrain || queue.capabilities.queueDrain,
       workers: result.workers || queue.capabilities.workers,
     }),
     defaultCapabilities,

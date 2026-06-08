@@ -70,6 +70,7 @@ describe("embedded core public contracts", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
         workers: true,
       },
     });
@@ -123,6 +124,7 @@ describe("embedded core public contracts", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
         workers: true,
       },
     });
@@ -137,6 +139,7 @@ describe("embedded core public contracts", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
         workers: false,
       },
     });
@@ -191,6 +194,7 @@ describe("embedded core public contracts", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
         workers: true,
       },
     });
@@ -300,6 +304,7 @@ describe("embedded private dashboard API queue source compatibility", () => {
             jobRetry: true,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: false,
           },
         }),
@@ -343,6 +348,7 @@ describe("embedded private dashboard API queue source compatibility", () => {
           jobRetry: true,
           queuePause: true,
           queueResume: true,
+          queueDrain: true,
           workers: true,
         },
       },
@@ -870,6 +876,7 @@ describe("embedded private dashboard API job detail operations", () => {
             jobRetry: true,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: true,
           },
           jobs: [
@@ -975,6 +982,7 @@ describe("embedded private dashboard API job detail operations", () => {
             jobRetry: false,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: true,
           },
           jobs: [
@@ -1013,6 +1021,7 @@ describe("embedded private dashboard API job detail operations", () => {
             jobRetry: true,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: false,
           },
           jobs: [
@@ -1137,6 +1146,7 @@ describe("embedded private dashboard API job detail operations", () => {
             jobRetry: true,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: true,
           },
           jobs: [
@@ -1323,6 +1333,7 @@ describe("embedded private dashboard API flow operations", () => {
             jobRetry: true,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: true,
           },
           listFlows: unsupportedListFlows,
@@ -1370,6 +1381,7 @@ describe("embedded private dashboard API flow operations", () => {
                 jobRetry: true,
                 queuePause: true,
                 queueResume: true,
+                queueDrain: true,
                 workers: true,
               },
               listFlows: unsupportedListFlows,
@@ -1428,6 +1440,7 @@ describe("embedded private dashboard API flow operations", () => {
             jobRetry: true,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: true,
           },
         }),
@@ -1579,6 +1592,7 @@ describe("embedded private dashboard API queue pause and resume operations", () 
             jobRetry: true,
             queuePause: false,
             queueResume: false,
+            queueDrain: false,
             workers: true,
           },
         }),
@@ -1727,6 +1741,7 @@ function createQueueAdapter(
     jobRetry: true,
     queuePause: true,
     queueResume: true,
+    queueDrain: true,
     workers: true,
   };
   const queueName = options.queueName ?? options.key;

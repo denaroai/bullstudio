@@ -38,6 +38,7 @@ describe("createBullMqQueueAdapter", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
         workers: true,
       },
     });

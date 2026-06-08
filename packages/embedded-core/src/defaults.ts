@@ -12,6 +12,7 @@ export const defaultCapabilities: AdapterCapabilities = {
   jobRetry: false,
   queuePause: false,
   queueResume: false,
+  queueDrain: false,
   workers: false,
 };
 

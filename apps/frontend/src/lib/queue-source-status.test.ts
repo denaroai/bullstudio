@@ -64,6 +64,7 @@ describe("getQueueSourceViewModel", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
         workers: true,
       },
     });
@@ -105,6 +106,7 @@ describe("getQueueSourceViewModel", () => {
         jobRetry: false,
         queuePause: false,
         queueResume: false,
+        queueDrain: false,
         workers: true,
       },
     });

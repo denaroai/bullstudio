@@ -49,6 +49,7 @@ export function createBullMqQueueAdapter(
       jobRetry: true,
       queuePause: true,
       queueResume: true,
+      queueDrain: true,
       workers: true,
     },
     getQueue: async () => {
@@ -70,6 +71,9 @@ export function createBullMqQueueAdapter(
     },
     resumeQueue: async () => {
       await queue.resume();
+    },
+    drainQueue: async () => {
+      await queue.drain(true);
     },
     getJobs: async (options) => {
       const { filter, sort, limit = 100, offset = 0 } = options ?? {};

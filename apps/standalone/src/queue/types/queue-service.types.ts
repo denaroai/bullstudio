@@ -60,6 +60,7 @@ export interface QueueService {
   getQueue(name: string, prefix?: string): Promise<Queue | null>;
   pauseQueue(queueName: string, prefix?: string): Promise<void>;
   resumeQueue(queueName: string, prefix?: string): Promise<void>;
+  drainQueue(queueName: string, prefix?: string): Promise<void>;
   getJobCounts(queueName: string, prefix?: string): Promise<JobCounts>;
 
   // Job operations

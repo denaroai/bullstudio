@@ -103,6 +103,12 @@ export function createStandaloneQueueSource(): PrivateDashboardQueueSource {
       await provider.resumeQueue(queue.name, queue.prefix);
       return { success: true };
     },
+    drainQueue: async (input) => {
+      const provider = await getQueueProvider();
+      const queue = await resolveQueue(input);
+      await provider.drainQueue(queue.name, queue.prefix);
+      return { success: true };
+    },
     listFlows,
     getFlow,
   };

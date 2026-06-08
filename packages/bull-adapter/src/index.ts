@@ -36,6 +36,7 @@ export function createBullQueueAdapter(
       jobRetry: true,
       queuePause: true,
       queueResume: true,
+      queueDrain: true,
       workers: true,
     },
     getQueue: async () => {
@@ -57,6 +58,9 @@ export function createBullQueueAdapter(
     },
     resumeQueue: async () => {
       await queue.resume();
+    },
+    drainQueue: async () => {
+      await queue.empty();
     },
     getJobs: async (options) => {
       const { filter, sort, limit = 100, offset = 0 } = options ?? {};

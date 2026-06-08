@@ -6,6 +6,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -64,6 +65,8 @@ export function AppSidebar() {
     }
     return pathname.startsWith(href);
   };
+
+  const queues = useQuery(trpc.queues.list.queryOptions());
 
   // Build navigation items based on provider capabilities
   const baseNavItems = [
@@ -136,6 +139,31 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Queues</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {queues.data?.map((queue) => (
+                <SidebarMenuItem key={queue.name}>
+                  <SidebarMenuButton asChild>
+                    <Link
+                      to="/queues/$queueName"
+                      params={{ queueName: queue.name }}
+                      className={cn(
+                        "h-9",
+                        isActive(`/queues/${queue.label}`) &&
+                          "bg-sidebar-accent/50",
+                      )}
+                    >
+                      <span className="font-mono text-sm">{queue.name}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

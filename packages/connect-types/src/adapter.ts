@@ -12,6 +12,7 @@ export interface AdapterCapabilities {
   jobRetry: boolean;
   queuePause: boolean;
   queueResume: boolean;
+  queueDrain: boolean;
   workers: boolean;
 }
 
@@ -24,6 +25,7 @@ export interface QueueAdapter {
   getJobCounts(): Promise<JobCounts>;
   pauseQueue(): Promise<void>;
   resumeQueue(): Promise<void>;
+  drainQueue(): Promise<void>;
   getJobs(options?: JobQueryOptions): Promise<Job[]>;
   getJobsSummary(options?: JobQueryOptions): Promise<JobSummary[]>;
   getJob(jobId: string): Promise<Job | null>;

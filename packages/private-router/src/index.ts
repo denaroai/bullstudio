@@ -193,6 +193,7 @@ export interface PrivateDashboardQueueSource {
   removeJob(input: JobTargetInput): Promise<JobRemoveResponse>;
   pauseQueue(input: QueueTargetInput): Promise<QueueMutationResponse>;
   resumeQueue(input: QueueTargetInput): Promise<QueueMutationResponse>;
+  drainQueue(input: QueueTargetInput): Promise<QueueMutationResponse>;
   listFlows(
     input?: FlowListInput,
   ): Promise<Array<FlowSummary & { queueKey?: string }>>;
@@ -310,6 +311,14 @@ export function createPrivateDashboardRouter(
           const queue = await resolveQueueTarget(source, input);
           assertQueueCapability(source, queue, "queueResume", "Queue resume");
           return source.resumeQueue(input);
+        }),
+      drain: authenticatedProcedure
+        .input(queueTargetSchema)
+        .mutation(async ({ input }) => {
+          await assertCanMutate(source);
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "queueDrain", "Queue drain");
+          return source.drainQueue(input);
         }),
     }),
     jobs: t.router({

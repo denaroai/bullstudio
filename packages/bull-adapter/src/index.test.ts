@@ -21,6 +21,7 @@ describe("createBullQueueAdapter", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
         workers: true,
       },
     });

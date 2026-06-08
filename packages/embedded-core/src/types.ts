@@ -141,6 +141,7 @@ export interface EmbeddedDashboardInstance {
   getJobCounts(queueKey: string): Promise<JobCounts>;
   pauseQueue(queueKey: string): Promise<void>;
   resumeQueue(queueKey: string): Promise<void>;
+  drainQueue(queueKey: string): Promise<void>;
   getJobs(queueKey: string, options?: JobQueryOptions): Promise<Job[]>;
   getJobsSummary(
     queueKey: string,

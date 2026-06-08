@@ -42,6 +42,7 @@ interface EmbeddedQueueSourceStatus {
     jobRetry: boolean;
     queuePause: boolean;
     queueResume: boolean;
+    queueDrain: boolean;
     workers: boolean;
     mutationsAllowed?: boolean;
   };
@@ -67,6 +68,7 @@ interface QueueSourceViewModel {
     jobRetry: QueueSourceFeature;
     queuePause: QueueSourceFeature;
     queueResume: QueueSourceFeature;
+    queueDrain: QueueSourceFeature;
     workers: QueueSourceFeature;
     mutations: QueueSourceFeature;
   };
@@ -92,6 +94,7 @@ export function getQueueSourceViewModel(
         jobRetry: enabledFeature(status.capabilities.mutationsAllowed),
         queuePause: enabledFeature(status.capabilities.mutationsAllowed),
         queueResume: enabledFeature(status.capabilities.mutationsAllowed),
+        queueDrain: enabledFeature(status.capabilities.mutationsAllowed),
         workers: enabledFeature(true),
         mutations: enabledFeature(status.capabilities.mutationsAllowed),
       },
@@ -123,6 +126,10 @@ export function getQueueSourceViewModel(
       ),
       queueResume: enabledFeature(
         status.capabilities.queueResume,
+        mutationsEnabled,
+      ),
+      queueDrain: enabledFeature(
+        status.capabilities.queueDrain,
         mutationsEnabled,
       ),
       workers: enabledFeature(status.capabilities.workers),

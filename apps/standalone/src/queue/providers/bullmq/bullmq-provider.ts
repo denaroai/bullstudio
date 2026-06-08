@@ -208,6 +208,10 @@ export class BullMqProvider implements QueueService {
     await this.getOrCreateQueueAdapter(queueName, prefix).resumeQueue();
   }
 
+  async drainQueue(queueName: string, prefix?: string): Promise<void> {
+    await this.getOrCreateQueueAdapter(queueName, prefix).drainQueue();
+  }
+
   async getJobs(
     queueName: string,
     options?: JobQueryOptions,
