@@ -2,9 +2,9 @@ import type { DashboardConfig } from "@bullstudio/embedded-core";
 import { bullstudio as expressBullstudio } from "@bullstudio/express";
 import { bullstudio as fastifyBullstudio } from "@bullstudio/fastify";
 import {
-  Module,
   type DynamicModule,
   type InjectionToken,
+  Module,
   type ModuleMetadata,
   type OnModuleInit,
   type Provider,
@@ -70,6 +70,7 @@ class BullstudioMountService implements OnModuleInit {
 }
 
 @Module({})
+// biome-ignore lint/complexity/noStaticOnlyClass: Nest dynamic modules are conventionally exposed through static factory methods on the module class.
 export class BullstudioModule {
   static forRoot(config: NestDashboardConfig): DynamicModule {
     return {

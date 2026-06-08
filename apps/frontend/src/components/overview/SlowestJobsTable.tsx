@@ -1,9 +1,10 @@
+import type { OverviewMetricsResponse } from "@bullstudio/private-router";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@bullstudio/ui/components/card";
 import {
   Table,
@@ -13,9 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@bullstudio/ui/components/table";
-import { useNavigate } from "@tanstack/react-router";
-import type { OverviewMetricsResponse } from "@bullstudio/private-router";
 import { formatDuration } from "@bullstudio/ui/shared";
+import { useNavigate } from "@tanstack/react-router";
 
 type SlowJob = OverviewMetricsResponse["slowestJobs"][number];
 
@@ -38,9 +38,7 @@ export function SlowestJobsTable({ jobs }: SlowestJobsTableProps) {
     <Card className="bg-card">
       <CardHeader>
         <CardTitle>Slowest Jobs</CardTitle>
-        <CardDescription>
-          Top 10 jobs by processing time
-        </CardDescription>
+        <CardDescription>Top 10 jobs by processing time</CardDescription>
       </CardHeader>
       <CardContent>
         {jobs.length === 0 ? (
@@ -53,9 +51,7 @@ export function SlowestJobsTable({ jobs }: SlowestJobsTableProps) {
               <TableRow className="hover:bg-transparent">
                 <TableHead>Job</TableHead>
                 <TableHead>Queue</TableHead>
-                <TableHead className="text-right">
-                  Duration
-                </TableHead>
+                <TableHead className="text-right">Duration</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

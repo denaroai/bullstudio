@@ -1,4 +1,3 @@
-
 /**
  * Configuration for establishing a Redis connection.
  * Contains decrypted credentials ready for use.

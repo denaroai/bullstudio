@@ -29,9 +29,13 @@ const forbiddenPatterns = [
 const packDir = mkdtempSync(join(tmpdir(), "bullstudio-pack-"));
 
 for (const packageDir of publicPackages) {
-  execFileSync("pnpm", ["--dir", packageDir, "pack", "--pack-destination", packDir], {
-    encoding: "utf8",
-  });
+  execFileSync(
+    "pnpm",
+    ["--dir", packageDir, "pack", "--pack-destination", packDir],
+    {
+      encoding: "utf8",
+    },
+  );
   const tarball = readdirSync(packDir).find((file) => file.endsWith(".tgz"));
 
   if (!tarball) {
@@ -55,13 +59,13 @@ for (const packageDir of publicPackages) {
     );
   }
 
-  const manifest = execFileSync("tar", [
-    "-xOf",
-    tarballPath,
-    "package/package.json",
-  ], {
-    encoding: "utf8",
-  });
+  const manifest = execFileSync(
+    "tar",
+    ["-xOf", tarballPath, "package/package.json"],
+    {
+      encoding: "utf8",
+    },
+  );
 
   if (manifest.includes("workspace:")) {
     throw new Error(`${packageDir} packed a workspace: dependency`);
@@ -77,12 +81,7 @@ for (const packageDir of publicPackages) {
           "dist/bin/cli.js",
           "dist/server/production.js",
         ]
-      : [
-          "package.json",
-          "README.md",
-          "LICENSE",
-          "dist/index.js",
-        ];
+      : ["package.json", "README.md", "LICENSE", "dist/index.js"];
 
   for (const requiredFile of requiredFiles) {
     if (!files.includes(requiredFile)) {
@@ -98,8 +97,13 @@ for (const packageDir of publicPackages) {
     throw new Error(`${packageDir} is missing dist/index.d.ts`);
   }
 
-  if (packageDir === "packages/embedded-core" || packageDir === "packages/cli") {
-    const hasClientAssets = files.some((file) => file.startsWith("dist/client/"));
+  if (
+    packageDir === "packages/embedded-core" ||
+    packageDir === "packages/cli"
+  ) {
+    const hasClientAssets = files.some((file) =>
+      file.startsWith("dist/client/"),
+    );
 
     if (!hasClientAssets) {
       throw new Error(`${packageDir} is missing dist/client assets`);

@@ -2,9 +2,9 @@ import "reflect-metadata";
 
 import type { QueueAdapter } from "@bullstudio/embedded-core";
 import {
-  Module,
   type DynamicModule,
   type INestApplication,
+  Module,
 } from "@nestjs/common";
 import { HttpAdapterHost } from "@nestjs/core";
 import { ExpressAdapter } from "@nestjs/platform-express";

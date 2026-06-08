@@ -1,21 +1,21 @@
 "use client";
 
-import { useMemo, useCallback, useEffect } from "react";
 import {
-  ReactFlow,
   Background,
   Controls,
-  type Node,
   type Edge,
   MarkerType,
-  useNodesState,
+  type Node,
+  ReactFlow,
   useEdgesState,
+  useNodesState,
 } from "@xyflow/react";
+import { useCallback, useEffect, useMemo } from "react";
 import "@xyflow/react/dist/style.css";
+import type { FlowNode as FlowNodeType } from "@bullstudio/connect-types";
+import { getStatusColor, type JobStatus } from "@bullstudio/ui/shared";
 import dagre from "dagre";
 import { FlowJobNode, type FlowJobNodeData } from "./FlowJobNode";
-import { getStatusColor, type JobStatus } from "@bullstudio/ui/shared";
-import type { FlowNode as FlowNodeType } from "@bullstudio/connect-types";
 
 const nodeTypes = {
   flowJob: FlowJobNode,

@@ -1,5 +1,5 @@
-import { resolve } from "node:path";
 import type { ServerResponse } from "node:http";
+import { resolve } from "node:path";
 import type { Connect, Plugin, ViteDevServer } from "vite";
 
 type StandaloneApp = {
@@ -93,10 +93,7 @@ function toRequest(req: Connect.IncomingMessage, server: ViteDevServer) {
   return new Request(url, init);
 }
 
-function getRequestOrigin(
-  req: Connect.IncomingMessage,
-  server: ViteDevServer,
-) {
+function getRequestOrigin(req: Connect.IncomingMessage, server: ViteDevServer) {
   const protocol =
     req.headers["x-forwarded-proto"]?.toString().split(",")[0]?.trim() ??
     "http";
@@ -126,10 +123,7 @@ function toHeaders(headers: Connect.IncomingMessage["headers"]): Headers {
   return result;
 }
 
-async function writeResponse(
-  res: ServerResponse,
-  response: Response,
-) {
+async function writeResponse(res: ServerResponse, response: Response) {
   res.statusCode = response.status;
 
   response.headers.forEach((value, name) => {

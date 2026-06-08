@@ -1,21 +1,15 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type Redis from "ioredis";
-import { createQueueProvider } from "./provider-factory";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   createTestRedis,
   ensureRedisAvailable,
   flushTestDb,
   TEST_REDIS_URL,
 } from "../test-utils/redis";
-import {
-  seedBullMqQueue,
-  type SeededQueue,
-} from "../test-utils/seed-bullmq";
-import {
-  seedBullQueue,
-  type SeededBullQueue,
-} from "../test-utils/seed-bull";
+import { type SeededBullQueue, seedBullQueue } from "../test-utils/seed-bull";
+import { type SeededQueue, seedBullMqQueue } from "../test-utils/seed-bullmq";
 import type { QueueService } from "../types";
+import { createQueueProvider } from "./provider-factory";
 
 describe("createQueueProvider", () => {
   let redis: Redis;
@@ -86,9 +80,7 @@ describe("createQueueProvider", () => {
   });
 
   it("does NOT invoke discovery when explicit prefixes are given (no '*')", async () => {
-    bullmqSeeds.push(
-      await seedBullMqQueue({ prefix: "foo", name: "q" }),
-    );
+    bullmqSeeds.push(await seedBullMqQueue({ prefix: "foo", name: "q" }));
 
     provider = await createQueueProvider({
       redisUrl: TEST_REDIS_URL,
@@ -102,9 +94,7 @@ describe("createQueueProvider", () => {
   });
 
   it("returns a BullProvider when Bull id-keys dominate", async () => {
-    bullSeeds.push(
-      await seedBullQueue({ prefix: "bull", name: "legacy-q" }),
-    );
+    bullSeeds.push(await seedBullQueue({ prefix: "bull", name: "legacy-q" }));
 
     provider = await createQueueProvider({
       redisUrl: TEST_REDIS_URL,

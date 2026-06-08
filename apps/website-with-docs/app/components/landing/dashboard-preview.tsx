@@ -1,9 +1,7 @@
-import type { ReactNode } from 'react';
 import {
   Activity,
   AlertTriangle,
   CircleCheck,
-  CircleX,
   Clock,
   Database,
   GitBranch,
@@ -16,9 +14,10 @@ import {
   TrendingDown,
   TrendingUp,
   Workflow,
-} from 'lucide-react';
-import { cn } from '@/lib/cn';
-import { LogoMark } from './logo';
+} from "lucide-react";
+import type { ReactNode } from "react";
+import { cn } from "@/lib/cn";
+import { LogoMark } from "./logo";
 
 /* ------------------------------------------------------------------ *
  * Static replicas of the real Bullstudio dashboard surfaces, built to
@@ -27,53 +26,53 @@ import { LogoMark } from './logo';
  * ------------------------------------------------------------------ */
 
 type Status =
-  | 'completed'
-  | 'failed'
-  | 'active'
-  | 'waiting'
-  | 'delayed'
-  | 'paused';
+  | "completed"
+  | "failed"
+  | "active"
+  | "waiting"
+  | "delayed"
+  | "paused";
 
 const BADGE: Record<Status, string> = {
-  completed: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400',
-  failed: 'border-red-500/20 bg-red-500/10 text-red-400',
-  active: 'border-blue-500/20 bg-blue-500/10 text-blue-400',
-  waiting: 'border-amber-500/20 bg-amber-500/10 text-amber-400',
-  delayed: 'border-violet-500/20 bg-violet-500/10 text-violet-400',
-  paused: 'border-zinc-500/20 bg-zinc-500/10 text-zinc-400',
+  completed: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+  failed: "border-red-500/20 bg-red-500/10 text-red-400",
+  active: "border-blue-500/20 bg-blue-500/10 text-blue-400",
+  waiting: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+  delayed: "border-violet-500/20 bg-violet-500/10 text-violet-400",
+  paused: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
 };
 
 const DOT: Record<Status, string> = {
-  completed: 'bg-emerald-400',
-  failed: 'bg-red-400',
-  active: 'bg-blue-400',
-  waiting: 'bg-amber-400',
-  delayed: 'bg-violet-400',
-  paused: 'bg-zinc-400',
+  completed: "bg-emerald-400",
+  failed: "bg-red-400",
+  active: "bg-blue-400",
+  waiting: "bg-amber-400",
+  delayed: "bg-violet-400",
+  paused: "bg-zinc-400",
 };
 
 const EDGE: Record<Status, string> = {
-  completed: '#34d399',
-  failed: '#f87171',
-  active: '#60a5fa',
-  waiting: '#fbbf24',
-  delayed: '#a78bfa',
-  paused: '#a1a1aa',
+  completed: "#34d399",
+  failed: "#f87171",
+  active: "#60a5fa",
+  waiting: "#fbbf24",
+  delayed: "#a78bfa",
+  paused: "#a1a1aa",
 };
 
 function JobBadge({ status }: { status: Status }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider',
+        "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider",
         BADGE[status],
       )}
     >
       <span
         className={cn(
-          'size-1.5 rounded-full',
+          "size-1.5 rounded-full",
           DOT[status],
-          status === 'active' && 'bs-pulse animate-pulse',
+          status === "active" && "bs-pulse animate-pulse",
         )}
       />
       {status}
@@ -83,7 +82,14 @@ function JobBadge({ status }: { status: Status }) {
 
 function GithubGlyph({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-label="GitHub"
+      role="img"
+    >
+      <title>GitHub</title>
       <path d="M12 .5C5.37.5 0 5.78 0 12.29c0 5.21 3.44 9.63 8.21 11.19.6.11.82-.25.82-.57 0-.28-.01-1.02-.02-2-3.34.71-4.04-1.58-4.04-1.58-.55-1.36-1.34-1.73-1.34-1.73-1.09-.73.08-.72.08-.72 1.2.08 1.84 1.21 1.84 1.21 1.07 1.8 2.81 1.28 3.5.98.11-.76.42-1.28.76-1.57-2.67-.3-5.47-1.31-5.47-5.81 0-1.28.47-2.33 1.23-3.15-.12-.3-.53-1.5.12-3.14 0 0 1-.32 3.3 1.2a11.6 11.6 0 0 1 6 0c2.28-1.52 3.29-1.2 3.29-1.2.65 1.64.24 2.84.12 3.14.77.82 1.23 1.87 1.23 3.15 0 4.51-2.81 5.5-5.49 5.79.43.37.81 1.1.81 2.22 0 1.6-.02 2.89-.02 3.29 0 .32.22.69.83.57A12.02 12.02 0 0 0 24 12.29C24 5.78 18.63.5 12 .5Z" />
     </svg>
   );
@@ -92,16 +98,16 @@ function GithubGlyph({ className }: { className?: string }) {
 /* ---------------------------------- chrome --------------------------------- */
 
 const NAV = [
-  { key: 'overview', label: 'Overview', Icon: LayoutDashboard },
-  { key: 'jobs', label: 'Jobs', Icon: ListTodo },
-  { key: 'flows', label: 'Flows', Icon: Workflow },
+  { key: "overview", label: "Overview", Icon: LayoutDashboard },
+  { key: "jobs", label: "Jobs", Icon: ListTodo },
+  { key: "flows", label: "Flows", Icon: Workflow },
 ] as const;
 
 export function DashboardFrame({
   active,
   children,
 }: {
-  active: 'overview' | 'jobs' | 'flows';
+  active: "overview" | "jobs" | "flows";
   children: ReactNode;
 }) {
   return (
@@ -139,10 +145,10 @@ export function DashboardFrame({
               <span
                 key={key}
                 className={cn(
-                  'flex items-center gap-2.5 px-2.5 py-2 text-[13px]',
+                  "flex items-center gap-2.5 px-2.5 py-2 text-[13px]",
                   key === active
-                    ? 'bg-primary/10 font-medium text-primary'
-                    : 'text-muted-foreground',
+                    ? "bg-primary/10 font-medium text-primary"
+                    : "text-muted-foreground",
                 )}
               >
                 <Icon className="size-4" />
@@ -207,8 +213,9 @@ function Spark({ data, color }: { data: number[]; color: string }) {
       className="h-8 w-full"
       aria-hidden
     >
+      <title>Metric trend</title>
       <polyline
-        points={pts.join(' ')}
+        points={pts.join(" ")}
         fill="none"
         stroke={color}
         strokeWidth="1.5"
@@ -250,8 +257,8 @@ function Metric({
         </span>
         <span
           className={cn(
-            'inline-flex items-center gap-0.5 font-mono text-[10px]',
-            good ? 'text-emerald-400' : 'text-red-400',
+            "inline-flex items-center gap-0.5 font-mono text-[10px]",
+            good ? "text-emerald-400" : "text-red-400",
           )}
         >
           <Trend className="size-3" />
@@ -264,9 +271,9 @@ function Metric({
 }
 
 const SLOW = [
-  { name: 'render-newsletter', queue: 'email', ms: '4.2s' },
-  { name: 'generate-invoice', queue: 'billing', ms: '3.1s' },
-  { name: 'export-report', queue: 'reports', ms: '2.8s' },
+  { name: "render-newsletter", queue: "email", ms: "4.2s" },
+  { name: "generate-invoice", queue: "billing", ms: "3.1s" },
+  { name: "export-report", queue: "reports", ms: "2.8s" },
 ];
 
 export function OverviewPanel() {
@@ -334,13 +341,16 @@ export function OverviewPanel() {
               </div>
             </div>
             <div className="flex h-28 items-end gap-1.5">
-              {[52, 64, 48, 72, 80, 60, 88, 76, 94, 70, 84, 96].map((h, i) => (
-                <div
-                  key={i}
-                  className="flex flex-1 flex-col justify-end gap-px"
-                >
-                  <div className="bg-red-400/80" style={{ height: `${h * 0.06}px` }} />
-                  <div className="bg-emerald-400/80" style={{ height: `${h}px` }} />
+              {[52, 64, 48, 72, 80, 60, 88, 76, 94, 70, 84, 96].map((h) => (
+                <div key={h} className="flex flex-1 flex-col justify-end gap-px">
+                  <div
+                    className="bg-red-400/80"
+                    style={{ height: `${h * 0.06}px` }}
+                  />
+                  <div
+                    className="bg-emerald-400/80"
+                    style={{ height: `${h}px` }}
+                  />
                 </div>
               ))}
             </div>
@@ -354,7 +364,10 @@ export function OverviewPanel() {
             <table className="w-full">
               <tbody>
                 {SLOW.map((r) => (
-                  <tr key={r.name} className="border-b border-border last:border-0">
+                  <tr
+                    key={r.name}
+                    className="border-b border-border last:border-0"
+                  >
                     <td className="px-3 py-2 font-mono text-[11px] text-foreground">
                       {r.name}
                     </td>
@@ -381,6 +394,7 @@ function PanelHeader({ title }: { title: string }) {
   return (
     <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
       <div className="flex items-center gap-2">
+        <span className="sr-only">{title}</span>
         <span className="flex items-center gap-1.5 border border-border bg-card px-2 py-1 text-[11px] text-foreground">
           <Layers className="size-3.5 text-muted-foreground" />
           email
@@ -402,14 +416,50 @@ function PanelHeader({ title }: { title: string }) {
   );
 }
 
-const TABS = ['All', 'Waiting', 'Active', 'Completed', 'Failed', 'Delayed'];
+const TABS = ["All", "Waiting", "Active", "Completed", "Failed", "Delayed"];
 
-const JOBS: { id: string; name: string; status: Status; at: string; dur: string }[] = [
-  { id: '#48213', name: 'send-welcome', status: 'completed', at: '2m ago', dur: '284ms' },
-  { id: '#48212', name: 'render-newsletter', status: 'active', at: '2m ago', dur: '—' },
-  { id: '#48210', name: 'deliver-receipt', status: 'failed', at: '5m ago', dur: '1.2s' },
-  { id: '#48209', name: 'sync-contacts', status: 'completed', at: '6m ago', dur: '512ms' },
-  { id: '#48205', name: 'digest-weekly', status: 'delayed', at: 'in 3h', dur: '—' },
+const JOBS: {
+  id: string;
+  name: string;
+  status: Status;
+  at: string;
+  dur: string;
+}[] = [
+  {
+    id: "#48213",
+    name: "send-welcome",
+    status: "completed",
+    at: "2m ago",
+    dur: "284ms",
+  },
+  {
+    id: "#48212",
+    name: "render-newsletter",
+    status: "active",
+    at: "2m ago",
+    dur: "—",
+  },
+  {
+    id: "#48210",
+    name: "deliver-receipt",
+    status: "failed",
+    at: "5m ago",
+    dur: "1.2s",
+  },
+  {
+    id: "#48209",
+    name: "sync-contacts",
+    status: "completed",
+    at: "6m ago",
+    dur: "512ms",
+  },
+  {
+    id: "#48205",
+    name: "digest-weekly",
+    status: "delayed",
+    at: "in 3h",
+    dur: "—",
+  },
 ];
 
 export function JobsPanel() {
@@ -421,10 +471,10 @@ export function JobsPanel() {
           <span
             key={t}
             className={cn(
-              'px-2.5 py-1 text-[11px]',
+              "px-2.5 py-1 text-[11px]",
               i === 0
-                ? 'bg-card font-medium text-foreground'
-                : 'text-muted-foreground',
+                ? "bg-card font-medium text-foreground"
+                : "text-muted-foreground",
             )}
           >
             {t}
@@ -435,7 +485,7 @@ export function JobsPanel() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-border text-left">
-              {['Job', 'Queue', 'Status', 'Queued', 'Duration'].map((h) => (
+              {["Job", "Queue", "Status", "Queued", "Duration"].map((h) => (
                 <th
                   key={h}
                   className="px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground last:text-right"
@@ -447,10 +497,7 @@ export function JobsPanel() {
           </thead>
           <tbody>
             {JOBS.map((j) => (
-              <tr
-                key={j.id}
-                className="border-b border-border last:border-0"
-              >
+              <tr key={j.id} className="border-b border-border last:border-0">
                 <td className="px-4 py-2.5">
                   <div className="text-[13px] font-medium text-foreground">
                     {j.name}
@@ -470,15 +517,15 @@ export function JobsPanel() {
                 </td>
                 <td
                   className={cn(
-                    'px-4 py-2.5 text-right font-mono text-xs',
-                    j.status === 'active'
-                      ? 'text-blue-400'
-                      : j.dur === '—'
-                        ? 'text-muted-foreground'
-                        : 'text-foreground',
+                    "px-4 py-2.5 text-right font-mono text-xs",
+                    j.status === "active"
+                      ? "text-blue-400"
+                      : j.dur === "—"
+                        ? "text-muted-foreground"
+                        : "text-foreground",
                   )}
                 >
-                  {j.status === 'active' ? 'in progress' : j.dur}
+                  {j.status === "active" ? "in progress" : j.dur}
                 </td>
               </tr>
             ))}
@@ -505,21 +552,60 @@ const NODE_H = 84;
 const GRAPH_W = 580;
 const GRAPH_H = 364;
 const NODES: Node[] = [
-  { id: 'a', name: 'send-campaign', queue: 'email', status: 'active', x: 190, y: 0 },
-  { id: 'b', name: 'fetch-recipients', queue: 'email', status: 'completed', x: 0, y: 140 },
-  { id: 'c', name: 'render-template', queue: 'email', status: 'completed', x: 380, y: 140 },
-  { id: 'd', name: 'deliver-batch', queue: 'email', status: 'waiting', x: 0, y: 280 },
-  { id: 'e', name: 'track-opens', queue: 'metrics', status: 'delayed', x: 380, y: 280 },
+  {
+    id: "a",
+    name: "send-campaign",
+    queue: "email",
+    status: "active",
+    x: 190,
+    y: 0,
+  },
+  {
+    id: "b",
+    name: "fetch-recipients",
+    queue: "email",
+    status: "completed",
+    x: 0,
+    y: 140,
+  },
+  {
+    id: "c",
+    name: "render-template",
+    queue: "email",
+    status: "completed",
+    x: 380,
+    y: 140,
+  },
+  {
+    id: "d",
+    name: "deliver-batch",
+    queue: "email",
+    status: "waiting",
+    x: 0,
+    y: 280,
+  },
+  {
+    id: "e",
+    name: "track-opens",
+    queue: "metrics",
+    status: "delayed",
+    x: 380,
+    y: 280,
+  },
 ];
 const LINKS: [string, string][] = [
-  ['a', 'b'],
-  ['a', 'c'],
-  ['b', 'd'],
-  ['c', 'e'],
+  ["a", "b"],
+  ["a", "c"],
+  ["b", "d"],
+  ["c", "e"],
 ];
 
 function byId(id: string) {
-  return NODES.find((n) => n.id === id)!;
+  const node = NODES.find((n) => n.id === id);
+  if (!node) {
+    throw new Error(`Missing flow preview node: ${id}`);
+  }
+  return node;
 }
 
 export function FlowsPanel() {
@@ -553,6 +639,7 @@ export function FlowsPanel() {
           preserveAspectRatio="xMidYMid meet"
           aria-hidden
         >
+          <title>Flow dependency graph</title>
           {LINKS.map(([from, to]) => {
             const a = byId(from);
             const b = byId(to);

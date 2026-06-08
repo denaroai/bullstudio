@@ -1,20 +1,19 @@
-
-import { EventEmitter } from "events";
+import { EventEmitter } from "node:events";
+import { ConnectionNotFoundError } from "../errors";
+import { BullMqProvider } from "../providers/bullmq";
 import type {
-  QueueService,
-  QueueServiceEventCallbacks,
   ConnectionConfig,
-  ConnectionStatus,
-  ConnectionTestResult,
   ConnectionEvent,
   ConnectionEventListener,
   ConnectionState,
+  ConnectionStatus,
+  ConnectionTestResult,
+  QueueService,
+  QueueServiceEventCallbacks,
 } from "../types";
+import { buildRedisUrl } from "../utils/redis-url-builder";
 import { ManagedConnection } from "./managed-connection";
 import { RetryStrategy } from "./retry-strategy";
-import { buildRedisUrl } from "../utils/redis-url-builder";
-import { BullMqProvider } from "../providers/bullmq";
-import { ConnectionNotFoundError } from "../errors";
 
 export interface ConnectionManagerConfig {
   maxReconnectAttempts?: number;
@@ -35,21 +34,17 @@ export class ConnectionManager {
     });
   }
 
-
-
   /**
    * Handle connection state changes - update DB accordingly.
    */
   private async handleStateChange(
     connectionId: string,
-    state: ConnectionState
+    state: ConnectionState,
   ): Promise<void> {
     console.log(
-      `[ConnectionManager] Connection ${connectionId} changed state to ${state}`
+      `[ConnectionManager] Connection ${connectionId} changed state to ${state}`,
     );
     const managed = this.connections.get(connectionId);
-
-
 
     this.emit({ type: "state_changed", connectionId, state });
 
@@ -65,7 +60,6 @@ export class ConnectionManager {
       });
     }
   }
-
 
   /**
    * Handle connection errors.
@@ -84,8 +78,6 @@ export class ConnectionManager {
     }
     return managed.queueService;
   }
-
-
 
   /**
    * Add a new connection (called after DB insert).
@@ -110,10 +102,9 @@ export class ConnectionManager {
 
     this.connections.set(config.id, managed);
 
-
     await managed.connect();
 
-    return this.getStatus(config.id)!;
+    return managed.toStatus();
   }
 
   /**
@@ -144,7 +135,7 @@ export class ConnectionManager {
    * Test a connection without persisting it.
    */
   async testConnection(
-    config: Omit<ConnectionConfig, "id" | "workspaceId">
+    config: Omit<ConnectionConfig, "id" | "workspaceId">,
   ): Promise<ConnectionTestResult> {
     const provider = new BullMqProvider({
       redisUrl: buildRedisUrl({ ...config, id: "test", workspaceId: "test" }),
@@ -176,7 +167,7 @@ export class ConnectionManager {
     }
 
     await managed.reconnect();
-    return this.getStatus(connectionId)!;
+    return managed.toStatus();
   }
 
   /**
@@ -208,7 +199,7 @@ export class ConnectionManager {
    */
   async shutdown(): Promise<void> {
     const disconnectPromises = Array.from(this.connections.values()).map(
-      (managed) => managed.disconnect()
+      (managed) => managed.disconnect(),
     );
 
     await Promise.all(disconnectPromises);

@@ -29,9 +29,7 @@ describe("standalone private dashboard queue source", () => {
       }),
     }));
 
-    const { createStandaloneQueueSource } = await import(
-      "./standalone-source"
-    );
+    const { createStandaloneQueueSource } = await import("./standalone-source");
 
     await expect(
       createStandaloneQueueSource().getStatus(),
@@ -80,9 +78,7 @@ describe("standalone private dashboard queue source", () => {
       }),
     }));
 
-    const { createStandaloneQueueSource } = await import(
-      "./standalone-source"
-    );
+    const { createStandaloneQueueSource } = await import("./standalone-source");
 
     await expect(
       createStandaloneQueueSource().listJobSummaries({
@@ -129,9 +125,7 @@ describe("standalone private dashboard queue source", () => {
       }),
     }));
 
-    const { createStandaloneQueueSource } = await import(
-      "./standalone-source"
-    );
+    const { createStandaloneQueueSource } = await import("./standalone-source");
     const source = createStandaloneQueueSource();
 
     await expect(
@@ -164,9 +158,7 @@ describe("standalone private dashboard queue source", () => {
       }),
     }));
 
-    const { createStandaloneQueueSource } = await import(
-      "./standalone-source"
-    );
+    const { createStandaloneQueueSource } = await import("./standalone-source");
 
     await expect(createStandaloneQueueSource().listFlows()).resolves.toEqual(
       [],

@@ -1,6 +1,7 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type Bull from "bull";
 import type Redis from "ioredis";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { withBullProvider } from "../../test-utils/provider-fixture";
 import {
   createTestRedis,
   ensureRedisAvailable,
@@ -8,10 +9,9 @@ import {
   TEST_REDIS_URL,
 } from "../../test-utils/redis";
 import {
-  seedBullQueue,
   type SeededBullQueue,
+  seedBullQueue,
 } from "../../test-utils/seed-bull";
-import { withBullProvider } from "../../test-utils/provider-fixture";
 
 describe("BullProvider (multi-prefix)", () => {
   let redis: Redis;
@@ -35,9 +35,7 @@ describe("BullProvider (multi-prefix)", () => {
   });
 
   it("defaults to the 'bull' prefix when no prefixes are configured", async () => {
-    seeded.push(
-      await seedBullQueue({ prefix: "bull", name: "default-q" }),
-    );
+    seeded.push(await seedBullQueue({ prefix: "bull", name: "default-q" }));
 
     await withBullProvider({ redisUrl: TEST_REDIS_URL }, async (provider) => {
       expect(await provider.getPrefixes()).toEqual(["bull"]);
@@ -53,15 +51,12 @@ describe("BullProvider (multi-prefix)", () => {
       await seedBullQueue({ prefix: "b", name: "q1" }),
     );
 
-    await withBullProvider(
-      { prefixes: ["a", "b"] },
-      async (provider) => {
-        const queues = await provider.getQueues();
-        expect(queues).toHaveLength(2);
-        const keys = queues.map((q) => `${q.prefix}/${q.name}`).sort();
-        expect(keys).toEqual(["a/q1", "b/q1"]);
-      },
-    );
+    await withBullProvider({ prefixes: ["a", "b"] }, async (provider) => {
+      const queues = await provider.getQueues();
+      expect(queues).toHaveLength(2);
+      const keys = queues.map((q) => `${q.prefix}/${q.name}`).sort();
+      expect(keys).toEqual(["a/q1", "b/q1"]);
+    });
   });
 
   it("auto-discovers prefixes from Bull :id marker keys", async () => {
@@ -81,22 +76,19 @@ describe("BullProvider (multi-prefix)", () => {
       await seedBullQueue({ prefix: "b", name: "email" }),
     );
 
-    await withBullProvider(
-      { prefixes: ["a", "b"] },
-      async (provider) => {
-        await provider.getJobCounts("email", "a");
-        await provider.getJobCounts("email", "b");
+    await withBullProvider({ prefixes: ["a", "b"] }, async (provider) => {
+      await provider.getJobCounts("email", "a");
+      await provider.getJobCounts("email", "b");
 
-        const internalQueues = (
-          provider as unknown as { queues: Map<string, Bull.Queue> }
-        ).queues;
-        expect(internalQueues.has("a\0email")).toBe(true);
-        expect(internalQueues.has("b\0email")).toBe(true);
-        expect(internalQueues.get("a\0email")).not.toBe(
-          internalQueues.get("b\0email"),
-        );
-      },
-    );
+      const internalQueues = (
+        provider as unknown as { queues: Map<string, Bull.Queue> }
+      ).queues;
+      expect(internalQueues.has("a\0email")).toBe(true);
+      expect(internalQueues.has("b\0email")).toBe(true);
+      expect(internalQueues.get("a\0email")).not.toBe(
+        internalQueues.get("b\0email"),
+      );
+    });
   });
 
   it("scopes getJobs to the given prefix", async () => {
@@ -113,15 +105,12 @@ describe("BullProvider (multi-prefix)", () => {
       }),
     );
 
-    await withBullProvider(
-      { prefixes: ["a", "b"] },
-      async (provider) => {
-        const jobsA = await provider.getJobs("q", undefined, "a");
-        const jobsB = await provider.getJobs("q", undefined, "b");
-        expect(jobsA).toHaveLength(3);
-        expect(jobsB).toHaveLength(1);
-        expect(jobsB[0]?.name).toBe("y");
-      },
-    );
+    await withBullProvider({ prefixes: ["a", "b"] }, async (provider) => {
+      const jobsA = await provider.getJobs("q", undefined, "a");
+      const jobsB = await provider.getJobs("q", undefined, "b");
+      expect(jobsA).toHaveLength(3);
+      expect(jobsB).toHaveLength(1);
+      expect(jobsB[0]?.name).toBe("y");
+    });
   });
 });

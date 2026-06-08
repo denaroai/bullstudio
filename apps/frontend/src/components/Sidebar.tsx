@@ -12,6 +12,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@bullstudio/ui/components/sidebar";
+import { cn } from "@bullstudio/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
@@ -26,8 +27,9 @@ import {
   Twitter,
   Workflow,
 } from "lucide-react";
-import { VERSION } from "@/const";
+import { useEffect, useState } from "react";
 import { type Theme, useTheme } from "@/components/ThemeProvider";
+import { VERSION } from "@/const";
 import { useTRPC } from "@/integrations/trpc/react";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 import {
@@ -36,8 +38,6 @@ import {
   getBasePath,
   getDashboardIdentity,
 } from "@/lib/runtime-config";
-import { cn } from "@bullstudio/ui/lib/utils";
-import { useEffect, useState } from "react";
 
 interface AuthSessionResponse {
   authEnabled?: boolean;

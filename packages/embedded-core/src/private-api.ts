@@ -15,6 +15,7 @@ import {
 } from "@bullstudio/private-router";
 import { TRPCError } from "@trpc/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { getAuthenticatedSession } from "./session";
 import type {
   DashboardProtection,
   DashboardQueue,
@@ -24,7 +25,6 @@ import type {
   PrivateDashboardApiMount,
   QueueSourceStatus,
 } from "./types";
-import { getAuthenticatedSession } from "./session";
 import { getPathname, toAbsoluteUrl } from "./url";
 
 export function createPrivateDashboardApi(

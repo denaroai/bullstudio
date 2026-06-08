@@ -3,9 +3,9 @@ import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize, relative } from "node:path";
 import {
   createStandaloneDashboard,
-  getAuthenticatedSession,
   type DashboardProtection,
   type FrameworkResponse,
+  getAuthenticatedSession,
 } from "@bullstudio/embedded-core";
 import {
   createPrivateDashboardRouter,

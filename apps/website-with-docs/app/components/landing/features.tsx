@@ -1,46 +1,46 @@
-import { useState } from 'react';
-import { LayoutDashboard, ListTodo, Workflow } from 'lucide-react';
-import { cn } from '@/lib/cn';
-import { Container, SectionHeading } from './section';
+import { LayoutDashboard, ListTodo, Workflow } from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/cn";
 import {
   FlowsPanel,
   JobsPanel,
   OverviewPanel,
   PreviewFrame,
-} from './dashboard-preview';
+} from "./dashboard-preview";
+import { Container, SectionHeading } from "./section";
 
 const FEATURES = [
   {
-    key: 'overview' as const,
+    key: "overview" as const,
     Icon: LayoutDashboard,
-    title: 'Queue overview',
+    title: "Queue overview",
     blurb:
-      'Throughput, failure rate, processing time and backlog across every queue — so you spot trouble before someone files a ticket.',
+      "Throughput, failure rate, processing time and backlog across every queue — so you spot trouble before someone files a ticket.",
     Panel: OverviewPanel,
   },
   {
-    key: 'jobs' as const,
+    key: "jobs" as const,
     Icon: ListTodo,
-    title: 'Jobs explorer',
+    title: "Jobs explorer",
     blurb:
-      'Filter by state, search by name or id, and open any job to read its data, logs, return value and stack trace. Retry or remove in one click.',
+      "Filter by state, search by name or id, and open any job to read its data, logs, return value and stack trace. Retry or remove in one click.",
     Panel: JobsPanel,
   },
   {
-    key: 'flows' as const,
+    key: "flows" as const,
     Icon: Workflow,
-    title: 'Flow graph',
+    title: "Flow graph",
     blurb:
-      'Visualise BullMQ parent/child flows as a live dependency graph, color-coded by state, so you can trace exactly where a flow stalled.',
+      "Visualise BullMQ parent/child flows as a live dependency graph, color-coded by state, so you can trace exactly where a flow stalled.",
     Panel: FlowsPanel,
   },
 ];
 
 export function Features() {
-  const [active, setActive] = useState<(typeof FEATURES)[number]['key']>(
-    'overview',
-  );
-  const current = FEATURES.find((f) => f.key === active)!;
+  const [active, setActive] =
+    useState<(typeof FEATURES)[number]["key"]>("overview");
+  const current =
+    FEATURES.find((f) => f.key === active) ?? FEATURES[0];
   const Panel = current.Panel;
 
   return (
@@ -63,18 +63,18 @@ export function Features() {
                   onClick={() => setActive(f.key)}
                   aria-pressed={selected}
                   className={cn(
-                    'group flex gap-4 border-l-2 px-5 py-5 text-left transition-colors',
+                    "group flex gap-4 border-l-2 px-5 py-5 text-left transition-colors",
                     selected
-                      ? 'border-l-primary bg-card'
-                      : 'border-l-border hover:bg-card/50',
+                      ? "border-l-primary bg-card"
+                      : "border-l-border hover:bg-card/50",
                   )}
                 >
                   <span
                     className={cn(
-                      'mt-0.5 flex size-9 shrink-0 items-center justify-center border transition-colors',
+                      "mt-0.5 flex size-9 shrink-0 items-center justify-center border transition-colors",
                       selected
-                        ? 'border-primary/30 bg-primary/10 text-primary'
-                        : 'border-border bg-card text-muted-foreground',
+                        ? "border-primary/30 bg-primary/10 text-primary"
+                        : "border-border bg-card text-muted-foreground",
                     )}
                   >
                     <f.Icon className="size-[18px]" />
@@ -82,20 +82,20 @@ export function Features() {
                   <span className="flex flex-col gap-1">
                     <span
                       className={cn(
-                        'text-base font-semibold',
-                        selected ? 'text-foreground' : 'text-muted-foreground',
+                        "text-base font-semibold",
+                        selected ? "text-foreground" : "text-muted-foreground",
                       )}
                     >
                       {f.title}
                     </span>
                     <span
                       className={cn(
-                        'text-sm leading-relaxed',
+                        "text-sm leading-relaxed",
                         selected
-                          ? 'text-muted-foreground'
-                          : 'text-muted-foreground/0 group-hover:text-muted-foreground/70',
+                          ? "text-muted-foreground"
+                          : "text-muted-foreground/0 group-hover:text-muted-foreground/70",
                         // keep blurb visible on small screens where there is no hover
-                        'max-lg:text-muted-foreground/80',
+                        "max-lg:text-muted-foreground/80",
                       )}
                     >
                       {f.blurb}

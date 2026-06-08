@@ -1,6 +1,6 @@
-@import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
-@import 'fumadocs-ui/css/preset.css';
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
 
 /*
  * Bullstudio identity, ported from packages/ui/src/styles/globals.css so the
@@ -33,17 +33,27 @@
   --sidebar: oklch(0.935 0.008 250);
   --sidebar-foreground: oklch(0.285 0.014 260);
   --sidebar-border: oklch(0.86 0.01 250);
-  --font-sans: 'Oxanium', sans-serif;
-  --font-mono: 'Source Code Pro', ui-monospace, monospace;
+  --font-sans: "Oxanium", sans-serif;
+  --font-mono: "Source Code Pro", ui-monospace, monospace;
   --radius: 0px;
   --shadow-color: hsl(222 35% 20%);
   --shadow-2xs: 0px 1px 2px 0px hsl(222 35% 20% / 0.04);
   --shadow-xs: 0px 1px 2px 0px hsl(222 35% 20% / 0.05);
-  --shadow-sm: 0px 1px 3px 0px hsl(222 35% 20% / 0.08), 0px 1px 2px -1px hsl(222 35% 20% / 0.08);
-  --shadow: 0px 1px 3px 0px hsl(222 35% 20% / 0.08), 0px 1px 2px -1px hsl(222 35% 20% / 0.08);
-  --shadow-md: 0px 2px 4px -1px hsl(222 35% 20% / 0.1), 0px 1px 2px -1px hsl(222 35% 20% / 0.08);
-  --shadow-lg: 0px 4px 6px -2px hsl(222 35% 20% / 0.12), 0px 2px 4px -2px hsl(222 35% 20% / 0.08);
-  --shadow-xl: 0px 8px 16px -6px hsl(222 35% 20% / 0.14), 0px 4px 8px -4px hsl(222 35% 20% / 0.1);
+  --shadow-sm:
+    0px 1px 3px 0px hsl(222 35% 20% / 0.08), 0px 1px 2px -1px
+    hsl(222 35% 20% / 0.08);
+  --shadow:
+    0px 1px 3px 0px hsl(222 35% 20% / 0.08), 0px 1px 2px -1px
+    hsl(222 35% 20% / 0.08);
+  --shadow-md:
+    0px 2px 4px -1px hsl(222 35% 20% / 0.1), 0px 1px 2px -1px
+    hsl(222 35% 20% / 0.08);
+  --shadow-lg:
+    0px 4px 6px -2px hsl(222 35% 20% / 0.12), 0px 2px 4px -2px
+    hsl(222 35% 20% / 0.08);
+  --shadow-xl:
+    0px 8px 16px -6px hsl(222 35% 20% / 0.14), 0px 4px 8px -4px
+    hsl(222 35% 20% / 0.1);
 }
 
 .dark {
@@ -72,11 +82,16 @@
   --shadow-color: hsl(0 0% 0%);
   --shadow-2xs: 0px 2px 5px 0px hsl(0 0% 0% / 0.3);
   --shadow-xs: 0px 2px 5px 0px hsl(0 0% 0% / 0.3);
-  --shadow-sm: 0px 2px 5px 0px hsl(0 0% 0% / 0.6), 0px 1px 2px -1px hsl(0 0% 0% / 0.6);
-  --shadow: 0px 2px 5px 0px hsl(0 0% 0% / 0.6), 0px 1px 2px -1px hsl(0 0% 0% / 0.6);
-  --shadow-md: 0px 2px 5px 0px hsl(0 0% 0% / 0.6), 0px 2px 4px -1px hsl(0 0% 0% / 0.6);
-  --shadow-lg: 0px 2px 5px 0px hsl(0 0% 0% / 0.6), 0px 4px 6px -1px hsl(0 0% 0% / 0.6);
-  --shadow-xl: 0px 2px 5px 0px hsl(0 0% 0% / 0.6), 0px 8px 10px -1px hsl(0 0% 0% / 0.6);
+  --shadow-sm:
+    0px 2px 5px 0px hsl(0 0% 0% / 0.6), 0px 1px 2px -1px hsl(0 0% 0% / 0.6);
+  --shadow:
+    0px 2px 5px 0px hsl(0 0% 0% / 0.6), 0px 1px 2px -1px hsl(0 0% 0% / 0.6);
+  --shadow-md:
+    0px 2px 5px 0px hsl(0 0% 0% / 0.6), 0px 2px 4px -1px hsl(0 0% 0% / 0.6);
+  --shadow-lg:
+    0px 2px 5px 0px hsl(0 0% 0% / 0.6), 0px 4px 6px -1px hsl(0 0% 0% / 0.6);
+  --shadow-xl:
+    0px 2px 5px 0px hsl(0 0% 0% / 0.6), 0px 8px 10px -1px hsl(0 0% 0% / 0.6);
 }
 
 /* Map brand tokens to Tailwind utilities (bg-card, text-muted-foreground, …)
@@ -146,15 +161,25 @@ html {
 }
 
 html > body[data-scroll-locked] {
+  /* biome-ignore lint/complexity/noImportantStyles: Override scroll-lock inline compensation from the docs shell. */
   margin-right: 0px !important;
+  /* biome-ignore lint/complexity/noImportantStyles: Keep Radix/Fumadocs scroll-lock compensation neutralized with the same priority. */
   --removed-body-scroll-bar-size: 0px !important;
 }
 
 /* A faint engineered grid — used as section atmosphere, not decoration. */
 .bs-grid {
   background-image:
-    linear-gradient(to right, color-mix(in oklch, var(--border) 60%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in oklch, var(--border) 60%, transparent) 1px, transparent 1px);
+    linear-gradient(
+      to right,
+      color-mix(in oklch, var(--border) 60%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--border) 60%, transparent) 1px,
+      transparent 1px
+    );
   background-size: 44px 44px;
 }
 

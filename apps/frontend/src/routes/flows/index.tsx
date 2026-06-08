@@ -1,11 +1,9 @@
-"use client"
+"use client";
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useTRPC } from "@/integrations/trpc/react"
-import { useQuery } from "@tanstack/react-query"
-import Header from "@/components/Header"
-import { getFlowDetailSearch } from "@/lib/flow-detail-navigation"
-import { Button } from "@bullstudio/ui/components/button"
+import type { FlowSummary } from "@bullstudio/connect-types";
+import dayjs from "@bullstudio/dayjs";
+import { Button } from "@bullstudio/ui/components/button";
+import { Skeleton } from "@bullstudio/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -13,18 +11,20 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@bullstudio/ui/components/table"
-import { Skeleton } from "@bullstudio/ui/components/skeleton"
+} from "@bullstudio/ui/components/table";
 import {
-  JobStatusBadge,
-  type JobStatus,
   EmptyState,
-} from "@bullstudio/ui/shared"
-import { Workflow, RefreshCw, Inbox, CheckCircle, XCircle } from "lucide-react"
-import dayjs from "@bullstudio/dayjs"
-import type { FlowSummary } from "@bullstudio/connect-types"
+  type JobStatus,
+  JobStatusBadge,
+} from "@bullstudio/ui/shared";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { CheckCircle, Inbox, RefreshCw, Workflow, XCircle } from "lucide-react";
+import Header from "@/components/Header";
+import { useTRPC } from "@/integrations/trpc/react";
+import { getFlowDetailSearch } from "@/lib/flow-detail-navigation";
 
-type PrivateFlowSummary = FlowSummary & { queueKey?: string }
+type PrivateFlowSummary = FlowSummary & { queueKey?: string };
 
 const flowSkeletonRows = [
   "flow-skeleton-1",
@@ -32,15 +32,15 @@ const flowSkeletonRows = [
   "flow-skeleton-3",
   "flow-skeleton-4",
   "flow-skeleton-5",
-]
+];
 
 export const Route = createFileRoute("/flows/")({
   component: FlowsPage,
-})
+});
 
 function FlowsPage() {
-  const trpc = useTRPC()
-  const navigate = useNavigate()
+  const trpc = useTRPC();
+  const navigate = useNavigate();
 
   const {
     data: flows,
@@ -50,23 +50,23 @@ function FlowsPage() {
   } = useQuery(
     trpc.flows.list.queryOptions(undefined, {
       refetchInterval(query) {
-        const flowsData = query.state.data
-        if (!flowsData || flowsData.length === 0) return false
+        const flowsData = query.state.data;
+        if (!flowsData || flowsData.length === 0) return false;
         const hasActiveFlows = flowsData.some(
           (f) => !["completed", "failed"].includes(f.status),
-        )
-        return hasActiveFlows ? 2000 : false
+        );
+        return hasActiveFlows ? 2000 : false;
       },
     }),
-  )
+  );
 
   const navigateToFlow = (flow: PrivateFlowSummary) => {
     navigate({
       to: "/flows/$flowId",
       params: { flowId: flow.id },
       search: getFlowDetailSearch(flow),
-    })
-  }
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -187,5 +187,5 @@ function FlowsPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -7,7 +7,12 @@ import Bull from "bull";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
-const QUEUE_NAMES = ["email-queue", "payment-processing", "notifications", "data-sync"];
+const QUEUE_NAMES = [
+  "email-queue",
+  "payment-processing",
+  "notifications",
+  "data-sync",
+];
 
 const JOB_TYPES = [
   "send-welcome-email",
@@ -160,7 +165,6 @@ async function main() {
 
     console.log("\nDone! You can now run bullstudio to view the jobs.");
     console.log(`Run: REDIS_URL=${REDIS_URL} pnpm start`);
-
   } catch (error) {
     console.error("Error:", error);
     // Cleanup

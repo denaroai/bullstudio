@@ -1,9 +1,9 @@
 import type {
+  ConnectionConfig,
+  ConnectionState,
+  ConnectionStatus,
   QueueService,
   QueueServiceEventCallbacks,
-  ConnectionConfig,
-  ConnectionStatus,
-  ConnectionState,
 } from "../types";
 import type { RetryStrategy } from "./retry-strategy";
 
@@ -27,7 +27,7 @@ export class ManagedConnection {
   private _isIntentionalDisconnect = false;
 
   private readonly providerFactory: (
-    eventCallbacks: QueueServiceEventCallbacks
+    eventCallbacks: QueueServiceEventCallbacks,
   ) => QueueService;
   private readonly onStateChange: (state: ConnectionState) => Promise<void>;
   private readonly onError: (error: Error) => void;
@@ -116,7 +116,7 @@ export class ManagedConnection {
     }
 
     console.log(
-      `[ManagedConnection] Provider disconnected: ${reason ?? "unknown reason"}`
+      `[ManagedConnection] Provider disconnected: ${reason ?? "unknown reason"}`,
     );
     this._lastError = reason ?? "Connection lost";
 
@@ -183,7 +183,7 @@ export class ManagedConnection {
 
     if (!this.retryStrategy.shouldRetry(this._reconnectAttempts)) {
       console.log(
-        `[ManagedConnection] Max reconnect attempts (${this._reconnectAttempts}) reached`
+        `[ManagedConnection] Max reconnect attempts (${this._reconnectAttempts}) reached`,
       );
       return;
     }
@@ -193,14 +193,14 @@ export class ManagedConnection {
     this._nextReconnectAt = new Date(Date.now() + delay);
 
     console.log(
-      `[ManagedConnection] Scheduling reconnect attempt ${this._reconnectAttempts} in ${delay}ms`
+      `[ManagedConnection] Scheduling reconnect attempt ${this._reconnectAttempts} in ${delay}ms`,
     );
 
     this.setState("reconnecting");
 
     this.reconnectTimer = setTimeout(async () => {
       console.log(
-        `[ManagedConnection] Attempting reconnect (attempt ${this._reconnectAttempts})`
+        `[ManagedConnection] Attempting reconnect (attempt ${this._reconnectAttempts})`,
       );
       await this.connect();
     }, delay);
@@ -226,6 +226,4 @@ export class ManagedConnection {
       nextReconnectAt: this._nextReconnectAt,
     };
   }
-
-
 }

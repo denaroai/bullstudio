@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Terminal } from 'lucide-react';
-import { cn } from '@/lib/cn';
-import { Container, SectionHeading } from './section';
-import { CommandBlock } from './copy';
-import { CodeBlock } from './code';
+import { Terminal } from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/cn";
+import { CodeBlock } from "./code";
+import { CommandBlock } from "./copy";
+import { Container, SectionHeading } from "./section";
 
 type Framework = {
   key: string;
@@ -17,18 +17,18 @@ type Framework = {
 
 const FRAMEWORKS: Framework[] = [
   {
-    key: 'standalone',
-    label: 'Standalone',
-    install: 'npx bullstudio -r redis://localhost:6379',
+    key: "standalone",
+    label: "Standalone",
+    install: "npx bullstudio -r redis://localhost:6379",
     docker:
-      'docker run -p 4000:4000 emirce/bullstudio -r redis://host.docker.internal:6379',
-    note: 'No code. Point it at Redis and Bullstudio discovers your queues — it auto-detects whether they are Bull or BullMQ. The dashboard opens at localhost:4000.',
+      "docker run -p 4000:4000 emirce/bullstudio -r redis://host.docker.internal:6379",
+    note: "No code. Point it at Redis and Bullstudio discovers your queues — it auto-detects whether they are Bull or BullMQ. The dashboard opens at localhost:4000.",
   },
   {
-    key: 'hono',
-    label: 'Hono',
-    install: 'pnpm add @bullstudio/hono @bullstudio/bullmq-adapter',
-    filename: 'server.ts',
+    key: "hono",
+    label: "Hono",
+    install: "pnpm add @bullstudio/hono @bullstudio/bullmq-adapter",
+    filename: "server.ts",
     code: `import { createBullMqQueueAdapter } from '@bullstudio/bullmq-adapter';
 import { bullstudio } from '@bullstudio/hono';
 import { Queue } from 'bullmq';
@@ -45,10 +45,10 @@ const dashboard = bullstudio({
 app.route('/ops/bullstudio', dashboard);`,
   },
   {
-    key: 'express',
-    label: 'Express',
-    install: 'pnpm add @bullstudio/express @bullstudio/bullmq-adapter',
-    filename: 'server.ts',
+    key: "express",
+    label: "Express",
+    install: "pnpm add @bullstudio/express @bullstudio/bullmq-adapter",
+    filename: "server.ts",
     code: `import { createBullMqQueueAdapter } from '@bullstudio/bullmq-adapter';
 import { bullstudio } from '@bullstudio/express';
 
@@ -63,10 +63,10 @@ app.use(
 );`,
   },
   {
-    key: 'fastify',
-    label: 'Fastify',
-    install: 'pnpm add @bullstudio/fastify @bullstudio/bullmq-adapter',
-    filename: 'server.ts',
+    key: "fastify",
+    label: "Fastify",
+    install: "pnpm add @bullstudio/fastify @bullstudio/bullmq-adapter",
+    filename: "server.ts",
     code: `import { createBullMqQueueAdapter } from '@bullstudio/bullmq-adapter';
 import { bullstudio } from '@bullstudio/fastify';
 
@@ -80,10 +80,10 @@ await app.register(
 );`,
   },
   {
-    key: 'next',
-    label: 'Next.js',
-    install: 'pnpm add @bullstudio/next @bullstudio/bullmq-adapter',
-    filename: 'app/ops/bullstudio/[[...bullstudio]]/route.ts',
+    key: "next",
+    label: "Next.js",
+    install: "pnpm add @bullstudio/next @bullstudio/bullmq-adapter",
+    filename: "app/ops/bullstudio/[[...bullstudio]]/route.ts",
     code: `import { createBullMqQueueAdapter } from '@bullstudio/bullmq-adapter';
 import { bullstudio } from '@bullstudio/next';
 import { emailQueue } from '@/lib/queue';
@@ -96,10 +96,10 @@ export const { GET, HEAD, POST } = bullstudio({
 });`,
   },
   {
-    key: 'nestjs',
-    label: 'NestJS',
-    install: 'pnpm add @bullstudio/nestjs @bullstudio/bullmq-adapter',
-    filename: 'app.module.ts',
+    key: "nestjs",
+    label: "NestJS",
+    install: "pnpm add @bullstudio/nestjs @bullstudio/bullmq-adapter",
+    filename: "app.module.ts",
     code: `import { createBullMqQueueAdapter } from '@bullstudio/bullmq-adapter';
 import { BullstudioModule } from '@bullstudio/nestjs';
 import { Module } from '@nestjs/common';
@@ -120,7 +120,7 @@ export class AppModule {}`,
 ];
 
 export function Frameworks() {
-  const [active, setActive] = useState('standalone');
+  const [active, setActive] = useState("standalone");
   const fw = FRAMEWORKS.find((f) => f.key === active) ?? FRAMEWORKS[0];
 
   if (!fw) return null;
@@ -148,10 +148,10 @@ export function Frameworks() {
                 type="button"
                 onClick={() => setActive(f.key)}
                 className={cn(
-                  'border-r border-border px-5 py-3 text-sm font-medium transition-colors',
+                  "border-r border-border px-5 py-3 text-sm font-medium transition-colors",
                   f.key === active
-                    ? 'bs-tab-active bg-card text-foreground'
-                    : 'text-muted-foreground hover:text-foreground',
+                    ? "bs-tab-active bg-card text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {f.label}

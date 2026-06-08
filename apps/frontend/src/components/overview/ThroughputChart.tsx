@@ -1,21 +1,21 @@
+import dayjs from "@bullstudio/dayjs";
+import type { OverviewMetricsResponse } from "@bullstudio/private-router";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@bullstudio/ui/components/card";
 import {
+  type ChartConfig,
   ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
-  type ChartConfig,
+  ChartTooltip,
+  ChartTooltipContent,
 } from "@bullstudio/ui/components/chart";
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from "recharts";
-import dayjs from "@bullstudio/dayjs";
-import type { OverviewMetricsResponse } from "@bullstudio/private-router";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 type TimeSeriesDataPoint = OverviewMetricsResponse["timeSeries"][number];
 

@@ -1,5 +1,5 @@
-import Redis from "ioredis";
 import { randomBytes } from "node:crypto";
+import Redis from "ioredis";
 
 export const TEST_REDIS_URL =
   process.env.TEST_REDIS_URL ?? "redis://localhost:6379/15";

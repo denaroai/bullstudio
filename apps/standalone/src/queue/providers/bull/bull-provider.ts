@@ -1,25 +1,25 @@
-import Bull from "bull";
 import { createBullQueueAdapter } from "@bullstudio/bull-adapter";
-import Redis from "ioredis";
 import type {
-  QueueService,
-  QueueProviderType,
-  QueueServiceConfig,
-  QueueServiceEventCallbacks,
-  QueueProviderCapabilities,
-} from "../../types";
-import type {
-  Job,
-  JobSummary,
   Queue as IQueue,
+  Job,
   JobCounts,
   JobQueryOptions,
-  WorkerCount,
+  JobSummary,
   QueueAdapter,
+  WorkerCount,
 } from "@bullstudio/connect-types";
-import { NotConnectedError } from "../../errors";
-import { getProviderCapabilities } from "../../types";
+import Bull from "bull";
+import Redis from "ioredis";
 import { discoverPrefixes } from "../../detection/prefix-discovery";
+import { NotConnectedError } from "../../errors";
+import type {
+  QueueProviderCapabilities,
+  QueueProviderType,
+  QueueService,
+  QueueServiceConfig,
+  QueueServiceEventCallbacks,
+} from "../../types";
+import { getProviderCapabilities } from "../../types";
 
 const DEFAULT_PREFIX = "bull";
 

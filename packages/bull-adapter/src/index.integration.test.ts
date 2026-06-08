@@ -1,7 +1,7 @@
+import { randomBytes } from "node:crypto";
 import { createBullQueueAdapter } from "@bullstudio/bull-adapter";
 import Bull from "bull";
 import Redis from "ioredis";
-import { randomBytes } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const TEST_REDIS_URL =

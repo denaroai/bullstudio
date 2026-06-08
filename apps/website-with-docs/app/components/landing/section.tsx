@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { cn } from '@/lib/cn';
+import type { ReactNode } from "react";
+import { cn } from "@/lib/cn";
 
 export function Container({
   className,
@@ -9,7 +9,7 @@ export function Container({
   children: ReactNode;
 }) {
   return (
-    <div className={cn('mx-auto w-full max-w-6xl px-6', className)}>
+    <div className={cn("mx-auto w-full max-w-6xl px-6", className)}>
       {children}
     </div>
   );
@@ -25,7 +25,7 @@ export function SectionHeading({
   className?: string;
 }) {
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
+    <div className={cn("flex flex-col gap-4", className)}>
       <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
         {title}
       </h2>

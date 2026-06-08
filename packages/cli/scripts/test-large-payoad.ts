@@ -65,13 +65,13 @@ async function main() {
       // Simulate some work then fail
       await new Promise((resolve) => setTimeout(resolve, 500));
       throw new Error(
-        "Intentional failure for testing large payload display in UI"
+        "Intentional failure for testing large payload display in UI",
       );
     },
     {
       connection,
       concurrency: 1,
-    }
+    },
   );
 
   worker.on("failed", async (job, err) => {

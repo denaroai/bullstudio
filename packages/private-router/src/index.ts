@@ -1,11 +1,11 @@
 import type {
-  AdapterCapabilities as QueueAdapterCapabilities,
   FlowSummary,
   FlowTree,
   Job,
   JobCounts,
   JobStatus,
   JobSummary,
+  AdapterCapabilities as QueueAdapterCapabilities,
 } from "@bullstudio/connect-types";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";

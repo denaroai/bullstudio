@@ -13,7 +13,7 @@
     "start": "node dist/server/production.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "lint": "biome lint"
   },
   "dependencies": {
     "@bullstudio/bull-adapter": "workspace:*",

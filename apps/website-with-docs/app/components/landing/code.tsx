@@ -1,28 +1,29 @@
-import type { ReactNode } from 'react';
-import { cn } from '@/lib/cn';
-import { CopyButton } from './copy';
+import type { ReactNode } from "react";
+import { cn } from "@/lib/cn";
+import { CopyButton } from "./copy";
 
 const KEYWORDS = new Set([
-  'import',
-  'from',
-  'export',
-  'const',
-  'let',
-  'var',
-  'await',
-  'async',
-  'new',
-  'return',
-  'type',
-  'void',
-  'function',
-  'default',
+  "import",
+  "from",
+  "export",
+  "const",
+  "let",
+  "var",
+  "await",
+  "async",
+  "new",
+  "return",
+  "type",
+  "void",
+  "function",
+  "default",
 ]);
 
 // One pass over the source, emitting colored spans for comments, strings,
 // keywords and numbers. Deliberately small — enough to make snippets feel
 // alive without pulling in a full highlighter.
-const TOKEN = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|(`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")|([A-Za-z_$][\w$]*)|(\d[\d_.]*)/g;
+const TOKEN =
+  /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|(`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")|([A-Za-z_$][\w$]*)|(\d[\d_.]*)/g;
 
 function highlight(code: string): ReactNode[] {
   const nodes: ReactNode[] = [];
@@ -30,7 +31,8 @@ function highlight(code: string): ReactNode[] {
   let key = 0;
   let match: RegExpExecArray | null;
   TOKEN.lastIndex = 0;
-  while ((match = TOKEN.exec(code)) !== null) {
+  match = TOKEN.exec(code);
+  while (match !== null) {
     if (match.index > last) nodes.push(code.slice(last, match.index));
     const [text, comment, str, word, num] = match;
     if (comment) {
@@ -61,6 +63,7 @@ function highlight(code: string): ReactNode[] {
       nodes.push(text);
     }
     last = match.index + text.length;
+    match = TOKEN.exec(code);
   }
   if (last < code.length) nodes.push(code.slice(last));
   return nodes;
@@ -76,7 +79,9 @@ export function CodeBlock({
   className?: string;
 }) {
   return (
-    <div className={cn('flex flex-col border border-border bg-card', className)}>
+    <div
+      className={cn("flex flex-col border border-border bg-card", className)}
+    >
       {filename ? (
         <div className="flex items-center justify-between border-b border-border bg-muted/40 pl-4 pr-2 py-2">
           <span className="font-mono text-xs text-muted-foreground">

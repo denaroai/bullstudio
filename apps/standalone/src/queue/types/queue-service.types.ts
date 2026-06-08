@@ -1,9 +1,9 @@
 import type {
   Job,
-  JobSummary,
-  Queue,
   JobCounts,
   JobQueryOptions,
+  JobSummary,
+  Queue,
   WorkerCount,
 } from "@bullstudio/connect-types";
 import type { QueueProviderCapabilities } from "./provider-capabilities.types";
@@ -57,18 +57,10 @@ export interface QueueService {
 
   // Queue operations
   getQueues(): Promise<Queue[]>;
-  getQueue(
-    name: string, prefix?: string,
-  ): Promise<Queue | null>;
-  pauseQueue(
-    queueName: string, prefix?: string,
-  ): Promise<void>;
-  resumeQueue(
-    queueName: string, prefix?: string,
-  ): Promise<void>;
-  getJobCounts(
-    queueName: string, prefix?: string,
-  ): Promise<JobCounts>;
+  getQueue(name: string, prefix?: string): Promise<Queue | null>;
+  pauseQueue(queueName: string, prefix?: string): Promise<void>;
+  resumeQueue(queueName: string, prefix?: string): Promise<void>;
+  getJobCounts(queueName: string, prefix?: string): Promise<JobCounts>;
 
   // Job operations
   getJobs(
@@ -91,21 +83,11 @@ export interface QueueService {
     jobId: string,
     prefix?: string,
   ): Promise<{ logs: string[]; count: number }>;
-  retryJob(
-    queueName: string,
-    jobId: string,
-    prefix?: string,
-  ): Promise<void>;
-  removeJob(
-    queueName: string,
-    jobId: string,
-    prefix?: string,
-  ): Promise<void>;
+  retryJob(queueName: string, jobId: string, prefix?: string): Promise<void>;
+  removeJob(queueName: string, jobId: string, prefix?: string): Promise<void>;
 
   // Worker operations
-  getWorkerCount(
-    queueName: string, prefix?: string,
-  ): Promise<WorkerCount>;
+  getWorkerCount(queueName: string, prefix?: string): Promise<WorkerCount>;
 
   // Provider capabilities
   getCapabilities(): QueueProviderCapabilities;

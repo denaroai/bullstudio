@@ -16,7 +16,7 @@ export interface QueueProviderCapabilities {
  * Get capabilities for a given provider type.
  */
 export function getProviderCapabilities(
-  providerType: QueueProviderType
+  providerType: QueueProviderType,
 ): QueueProviderCapabilities {
   switch (providerType) {
     case "bull":

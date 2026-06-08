@@ -1,13 +1,13 @@
-import { Link } from "react-router";
 import { ArrowRight } from "lucide-react";
-import { Container } from "./section";
+import { Link } from "react-router";
+import { gitConfig } from "@/lib/shared";
 import { CommandBlock } from "./copy";
 import {
   DashboardFrame,
-  OverviewPanel,
   GithubGlyph,
+  OverviewPanel,
 } from "./dashboard-preview";
-import { gitConfig } from "@/lib/shared";
+import { Container } from "./section";
 
 export function Hero() {
   return (
@@ -35,8 +35,9 @@ export function Hero() {
         aria-hidden
         className="pointer-events-none absolute right-[-5%] top-16 hidden w-[34rem] select-none opacity-[0.12] md:block lg:top-10 lg:w-[44rem]"
         style={{
-          WebkitMaskImage: 'linear-gradient(to left, #000 30%, transparent 90%)',
-          maskImage: 'linear-gradient(to left, #000 30%, transparent 90%)',
+          WebkitMaskImage:
+            "linear-gradient(to left, #000 30%, transparent 90%)",
+          maskImage: "linear-gradient(to left, #000 30%, transparent 90%)",
         }}
       />
 

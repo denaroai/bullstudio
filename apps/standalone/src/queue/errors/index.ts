@@ -1,8 +1,8 @@
 export {
-  QueueError,
-  ConnectionNotFoundError,
   ConnectionFailedError,
-  NotConnectedError,
+  ConnectionNotFoundError,
   JobNotFoundError,
+  NotConnectedError,
+  QueueError,
   QueueNotFoundError,
 } from "./queue-errors";

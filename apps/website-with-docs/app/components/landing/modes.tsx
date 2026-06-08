@@ -1,25 +1,29 @@
-import { Link } from 'react-router';
-import { ArrowRight, Server, Boxes } from 'lucide-react';
-import { Container, SectionHeading } from './section';
+import { ArrowRight, Boxes, Server } from "lucide-react";
+import { Link } from "react-router";
+import { Container, SectionHeading } from "./section";
 
 const MODES = [
   {
     Icon: Server,
-    name: 'Standalone',
-    tagline: 'Point it at Redis.',
-    body: 'Run Bullstudio as its own process — from your laptop or a container — and let it discover every queue on the connection. No code, no integration.',
-    points: ['Zero code integration', 'Auto-detects Bull or BullMQ', 'npx or Docker'],
-    snippet: 'npx bullstudio -r redis://localhost:6379',
+    name: "Standalone",
+    tagline: "Point it at Redis.",
+    body: "Run Bullstudio as its own process — from your laptop or a container — and let it discover every queue on the connection. No code, no integration.",
+    points: [
+      "Zero code integration",
+      "Auto-detects Bull or BullMQ",
+      "npx or Docker",
+    ],
+    snippet: "npx bullstudio -r redis://localhost:6379",
   },
   {
     Icon: Boxes,
-    name: 'Embedded',
-    tagline: 'Mount it where your app lives.',
-    body: 'Mount a dashboard instance inside your existing Hono, Express, Fastify or Next.js app. Expose only the queues you supply — optionally read-only and behind Basic Auth.',
+    name: "Embedded",
+    tagline: "Mount it where your app lives.",
+    body: "Mount a dashboard instance inside your existing Hono, Express, Fastify or Next.js app. Expose only the queues you supply — optionally read-only and behind Basic Auth.",
     points: [
-      'Supply only the queues you choose',
-      'Read-only & Basic Auth built in',
-      'No second service to operate',
+      "Supply only the queues you choose",
+      "Read-only & Basic Auth built in",
+      "No second service to operate",
     ],
     snippet: "app.route('/ops/bullstudio', dashboard)",
   },
@@ -36,10 +40,7 @@ export function Modes() {
 
         <div className="mt-12 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
           {MODES.map((m) => (
-            <article
-              key={m.name}
-              className="flex flex-col gap-5 bg-card p-8"
-            >
+            <article key={m.name} className="flex flex-col gap-5 bg-card p-8">
               <div className="flex items-center gap-3">
                 <span className="flex size-10 items-center justify-center border border-primary/30 bg-primary/10 text-primary">
                   <m.Icon className="size-5" />

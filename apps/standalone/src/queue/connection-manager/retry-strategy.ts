@@ -24,12 +24,11 @@ export class RetryStrategy {
 
   getDelay(attempts: number): number {
     // Exponential backoff: baseDelay * 2^attempts
-    const exponentialDelay = this.baseDelayMs * Math.pow(2, attempts);
+    const exponentialDelay = this.baseDelayMs * 2 ** attempts;
     const clampedDelay = Math.min(exponentialDelay, this.maxDelayMs);
 
     // Add jitter to prevent thundering herd
-    const jitter =
-      clampedDelay * this.jitterFactor * (Math.random() * 2 - 1);
+    const jitter = clampedDelay * this.jitterFactor * (Math.random() * 2 - 1);
 
     return Math.floor(clampedDelay + jitter);
   }

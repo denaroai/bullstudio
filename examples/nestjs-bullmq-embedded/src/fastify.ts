@@ -5,9 +5,9 @@ import {
   FastifyAdapter,
   type NestFastifyApplication,
 } from "@nestjs/platform-fastify";
-import { AppModule, EMAIL_QUEUE, REDIS_CONNECTION } from "./app.module";
 import type { Queue } from "bullmq";
 import type IORedis from "ioredis";
+import { AppModule, EMAIL_QUEUE, REDIS_CONNECTION } from "./app.module";
 
 const app = await NestFactory.create<NestFastifyApplication>(
   AppModule,

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { parseArgs } from "node:util";
 import { spawn } from "node:child_process";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -44,8 +44,7 @@ const { values, positionals } = parseArgs({
     },
     "no-open": {
       type: "boolean",
-      description:
-        "Do not open browser automatically",
+      description: "Do not open browser automatically",
     },
     dev: {
       type: "boolean",
@@ -85,10 +84,7 @@ Examples:
   process.exit(0);
 }
 
-const redisUrl =
-  values.redis ||
-  positionals[0] ||
-  "redis://localhost:6379";
+const redisUrl = values.redis || positionals[0] || "redis://localhost:6379";
 const port = values.port || "4000";
 const shouldOpen = !values["no-open"];
 const isDev = values.dev;
@@ -157,24 +153,18 @@ if (isDev) {
 
   // Development mode: use vite dev
   console.log("Starting development server...\n");
-  child = spawn(
-    "npx",
-    ["vite", "dev", "--port", port],
-    {
-      cwd: frontendDir,
-      env: {
-        ...process.env,
-        REDIS_URL: redisUrl,
-        PORT: port,
-        BULLSTUDIO_CLIENT_DIR: clientDir,
-        ...(prefixArg
-          ? { REDIS_PREFIX: prefixArg }
-          : {}),
-      },
-      stdio: "pipe",
-      shell: true,
+  child = spawn("npx", ["vite", "dev", "--port", port], {
+    cwd: frontendDir,
+    env: {
+      ...process.env,
+      REDIS_URL: redisUrl,
+      PORT: port,
+      BULLSTUDIO_CLIENT_DIR: clientDir,
+      ...(prefixArg ? { REDIS_PREFIX: prefixArg } : {}),
     },
-  );
+    stdio: "pipe",
+    shell: true,
+  });
 } else {
   // Production mode: run the built production server
   console.log("Starting production server...\n");
@@ -188,9 +178,7 @@ if (isDev) {
       BULLSTUDIO_CLIENT_DIR: clientDir,
       BULLSTUDIO_USERNAME: username,
       BULLSTUDIO_PASSWORD: password,
-      ...(prefixArg
-        ? { REDIS_PREFIX: prefixArg }
-        : {}),
+      ...(prefixArg ? { REDIS_PREFIX: prefixArg } : {}),
     },
     stdio: "pipe",
   });
@@ -246,10 +234,7 @@ process.on("SIGTERM", () => {
 });
 
 function findPackageDir(startDir: string): string {
-  const candidates = [
-    resolve(startDir, ".."),
-    resolve(startDir, "../.."),
-  ];
+  const candidates = [resolve(startDir, ".."), resolve(startDir, "../..")];
 
   return (
     candidates.find((candidate) =>

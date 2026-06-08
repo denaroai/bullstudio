@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  getFlowDetailSearch,
   type FlowDetailNavigationSource,
+  getFlowDetailSearch,
 } from "./flow-detail-navigation";
 
 describe("getFlowDetailSearch", () => {

@@ -1,7 +1,7 @@
-import { PassThrough } from "node:stream";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PassThrough } from "node:stream";
 import type { ViteDevServer } from "vite";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { installStandaloneApiMiddleware } from "./standalone-api-plugin";
 
 const mocks = vi.hoisted(() => ({

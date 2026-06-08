@@ -1,7 +1,7 @@
-import { MetricCard } from "./MetricCard";
-import { Activity, AlertTriangle, Clock, TimerIcon } from "lucide-react";
 import type { OverviewMetricsResponse } from "@bullstudio/private-router";
 import { formatDuration, formatThroughput } from "@bullstudio/ui/shared";
+import { Activity, AlertTriangle, Clock, TimerIcon } from "lucide-react";
+import { MetricCard } from "./MetricCard";
 
 type MetricCardsGridProps = {
   summary: OverviewMetricsResponse["summary"];
@@ -9,9 +9,10 @@ type MetricCardsGridProps = {
   timeRange: number;
 };
 
-function calculateTrend(
-  data: number[]
-): { value: number; direction: "up" | "down" | "neutral" } {
+function calculateTrend(data: number[]): {
+  value: number;
+  direction: "up" | "down" | "neutral";
+} {
   if (data.length < 4) return { value: 0, direction: "neutral" };
 
   const midpoint = Math.floor(data.length / 2);
@@ -56,11 +57,11 @@ export function MetricCardsGrid({
   }));
 
   const throughputTrend = calculateTrend(
-    throughputSparkline.map((d) => d.value)
+    throughputSparkline.map((d) => d.value),
   );
   const failureTrend = calculateTrend(failureSparkline.map((d) => d.value));
   const processingTimeTrend = calculateTrend(
-    processingTimeSparkline.map((d) => d.value)
+    processingTimeSparkline.map((d) => d.value),
   );
   const delayTrend = calculateTrend(delaySparkline.map((d) => d.value));
 

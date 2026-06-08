@@ -1,4 +1,4 @@
-import { cn } from '@/lib/cn';
+import { cn } from "@/lib/cn";
 
 /**
  * The Bullstudio mark. The frame + list bars use `currentColor` so the logo
@@ -12,11 +12,18 @@ export function LogoMark({ className }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label="Bullstudio"
-      className={cn('h-7 w-auto', className)}
+      className={cn("h-7 w-auto", className)}
     >
       <rect x="55" y="151" width="252" height="47" rx="6" fill="currentColor" />
       <circle cx="23.5" cy="174.5" r="23.5" fill="currentColor" />
-      <rect x="101" y="263" width="252" height="47" rx="6" fill="currentColor" />
+      <rect
+        x="101"
+        y="263"
+        width="252"
+        height="47"
+        rx="6"
+        fill="currentColor"
+      />
       <circle cx="69.5" cy="286.5" r="23.5" fill="currentColor" />
       <rect x="78" y="207" width="252" height="47" rx="6" fill="currentColor" />
       <circle cx="46.5" cy="230.5" r="23.5" fill="currentColor" />
@@ -35,7 +42,7 @@ export function LogoMark({ className }: { className?: string }) {
 /** Mark + wordmark, for the navbar and footer. */
 export function Logo({ className }: { className?: string }) {
   return (
-    <span className={cn('inline-flex items-center gap-2.5', className)}>
+    <span className={cn("inline-flex items-center gap-2.5", className)}>
       <LogoMark className="h-6" />
       <span className="text-[15px] font-semibold tracking-tight">
         Bull<span className="text-primary">studio</span>

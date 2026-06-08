@@ -94,9 +94,7 @@ function OverviewPage() {
               <SelectValue placeholder="Select queue" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_QUEUES_VALUE}>
-                All queues
-              </SelectItem>
+              <SelectItem value={ALL_QUEUES_VALUE}>All queues</SelectItem>
               {queues?.map((queue) => (
                 <SelectItem
                   key={queueKey(queue.prefix ?? "", queue.name)}

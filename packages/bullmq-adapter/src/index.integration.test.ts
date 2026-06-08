@@ -1,7 +1,7 @@
-import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
-import { FlowProducer, Queue, Worker, type ConnectionOptions } from "bullmq";
-import Redis from "ioredis";
 import { randomBytes } from "node:crypto";
+import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
+import { type ConnectionOptions, FlowProducer, Queue, Worker } from "bullmq";
+import Redis from "ioredis";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const TEST_REDIS_URL =

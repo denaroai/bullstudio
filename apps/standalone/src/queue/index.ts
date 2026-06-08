@@ -1,34 +1,36 @@
 // Types
-export type {
-  ConnectionConfig,
-  ConnectionStatus,
-  ConnectionTestResult,
-  ConnectionState,
-  ConnectionEvent,
-  ConnectionEventListener,
-} from "./types";
-
-export type {
-  QueueService,
-  QueueServiceConfig,
-  QueueProviderType,
-} from "./types";
 
 // Classes
 export {
   ConnectionManager,
   type ConnectionManagerConfig,
 } from "./connection-manager";
+// Detection
+export {
+  detectProvider,
+  discoverPrefixes,
+  type ProviderDetectionResult,
+} from "./detection";
+// Errors
+export * from "./errors";
 export { BullMqProvider, BullProvider } from "./providers";
 
 // Factory
-export { createQueueProvider, createProviderByType } from "./providers/provider-factory";
-
-// Detection
-export { detectProvider, discoverPrefixes, type ProviderDetectionResult } from "./detection";
-
-// Errors
-export * from "./errors";
+export {
+  createProviderByType,
+  createQueueProvider,
+} from "./providers/provider-factory";
+export type {
+  ConnectionConfig,
+  ConnectionEvent,
+  ConnectionEventListener,
+  ConnectionState,
+  ConnectionStatus,
+  ConnectionTestResult,
+  QueueProviderType,
+  QueueService,
+  QueueServiceConfig,
+} from "./types";
 
 // Singleton instance factory
 import { ConnectionManager } from "./connection-manager";

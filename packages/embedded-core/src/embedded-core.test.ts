@@ -1,10 +1,3 @@
-import {
-  createEmbeddedDashboard,
-  type DashboardConfig,
-  type EmbeddedDashboardInstance,
-  type QueueAdapter,
-  ReadOnlyDashboardError,
-} from "@bullstudio/embedded-core";
 import type {
   FlowSummary,
   FlowTree,
@@ -12,6 +5,13 @@ import type {
   JobQueryOptions,
   JobSummary,
 } from "@bullstudio/connect-types";
+import {
+  createEmbeddedDashboard,
+  type DashboardConfig,
+  type EmbeddedDashboardInstance,
+  type QueueAdapter,
+  ReadOnlyDashboardError,
+} from "@bullstudio/embedded-core";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 
 afterEach(() => {

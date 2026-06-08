@@ -36,7 +36,7 @@
   ],
   "scripts": {
     "build": "pnpm --filter @bullstudio/connect-types build && tsup",
-    "lint": "tsc --noEmit",
+    "lint": "biome lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
