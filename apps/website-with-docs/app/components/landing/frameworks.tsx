@@ -138,7 +138,7 @@ export function Frameworks() {
           <div
             role="tablist"
             aria-label="Framework"
-            className="flex flex-wrap border-b border-border bg-muted/30"
+            className="bs-noscrollbar flex overflow-x-auto border-b border-border bg-muted/30"
           >
             {FRAMEWORKS.map((f) => (
               <button
@@ -148,7 +148,7 @@ export function Frameworks() {
                 type="button"
                 onClick={() => setActive(f.key)}
                 className={cn(
-                  "border-r border-border px-5 py-3 text-sm font-medium transition-colors",
+                  "shrink-0 whitespace-nowrap border-r border-border px-4 py-3 text-sm font-medium transition-colors sm:px-5",
                   f.key === active
                     ? "bs-tab-active bg-card text-foreground"
                     : "text-muted-foreground hover:text-foreground",
@@ -159,8 +159,8 @@ export function Frameworks() {
             ))}
           </div>
 
-          <div className="grid gap-6 p-6 lg:grid-cols-2">
-            <div className="flex flex-col gap-4">
+          <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-2">
+            <div className="flex min-w-0 flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                   1 · Install
@@ -185,7 +185,7 @@ export function Frameworks() {
               ) : null}
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex min-w-0 flex-col gap-2">
               {fw.code ? (
                 <>
                   <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">

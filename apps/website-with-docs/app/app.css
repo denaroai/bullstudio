@@ -206,6 +206,16 @@ html > body[data-scroll-locked] {
   box-shadow: inset 0 2px 0 0 var(--primary);
 }
 
+/* Scroll without a visible scrollbar — used for terminal commands and the
+ * framework tab strip so long content stays readable on narrow screens. */
+.bs-noscrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.bs-noscrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bs-rise {
     animation: none;

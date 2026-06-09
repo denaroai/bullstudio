@@ -60,7 +60,9 @@ export function CommandBlock({
       <span aria-hidden className="select-none text-primary">
         $
       </span>
-      <code className="flex-1 truncate text-foreground">{command}</code>
+      <code className="bs-noscrollbar block min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-foreground">
+        {command}
+      </code>
       <CopyButton value={command} label="Copy command" />
     </div>
   );

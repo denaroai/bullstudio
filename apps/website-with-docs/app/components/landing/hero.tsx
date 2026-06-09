@@ -2,12 +2,13 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 import { gitConfig } from "@/lib/shared";
 import { CommandBlock } from "./copy";
-import {
-  DashboardFrame,
-  GithubGlyph,
-  OverviewPanel,
-} from "./dashboard-preview";
+import { GithubGlyph } from "./dashboard-preview";
+import { ImagePlaceholder } from "./image-text";
 import { Container } from "./section";
+
+// Drop a real dashboard screenshot at /public/screenshots/hero.png and set this
+// to "/screenshots/hero.png" to replace the placeholder.
+const HERO_SCREENSHOT: string | undefined = undefined;
 
 export function Hero() {
   return (
@@ -91,9 +92,15 @@ export function Hero() {
           className="bs-rise mt-16 [perspective:2000px]"
           style={{ animationDelay: "320ms" }}
         >
-          <DashboardFrame active="overview">
-            <OverviewPanel />
-          </DashboardFrame>
+          {HERO_SCREENSHOT ? (
+            <img
+              src={HERO_SCREENSHOT}
+              alt="The Bullstudio dashboard"
+              className="w-full border border-border bg-card shadow-xl"
+            />
+          ) : (
+            <ImagePlaceholder className="aspect-[16/9] shadow-xl" />
+          )}
         </div>
       </Container>
     </section>
