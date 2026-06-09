@@ -15,13 +15,9 @@ import {
 } from "@bullstudio/ui/components/sidebar";
 import { cn } from "@bullstudio/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import { Link, useLocation, useSearch } from "@tanstack/react-router";
 import {
-  Link,
-  useLocation,
-  useParams,
-  useSearch,
-} from "@tanstack/react-router";
-import {
+  CalendarClock,
   Database,
   Github,
   LayoutDashboard,
@@ -105,17 +101,25 @@ export function AppSidebar() {
     },
   ];
 
+  // Extend navigation based on provider capabilities.
+  const navItems = [...baseNavItems];
+
   // Only show Flows for providers that support it (BullMQ)
-  const navItems = queueSource?.features.flows.visible
-    ? [
-        ...baseNavItems,
-        {
-          title: "Flows",
-          href: "/flows",
-          icon: Workflow,
-        },
-      ]
-    : baseNavItems;
+  if (queueSource?.features.flows.visible) {
+    navItems.push({
+      title: "Flows",
+      href: "/flows",
+      icon: Workflow,
+    });
+  }
+
+  if (queueSource?.features.schedulers.visible) {
+    navItems.push({
+      title: "Schedulers",
+      href: "/schedulers",
+      icon: CalendarClock,
+    });
+  }
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">

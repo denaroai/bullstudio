@@ -4,8 +4,11 @@ import type {
   Job,
   JobCounts,
   JobQueryOptions,
+  JobScheduler,
+  JobSchedulerTarget,
   JobSummary,
   QueueAdapter,
+  UpsertJobSchedulerInput,
   WorkerCount,
 } from "@bullstudio/connect-types";
 import { Queue } from "bullmq";
@@ -267,6 +270,52 @@ export class BullMqProvider implements QueueService {
     prefix?: string,
   ): Promise<WorkerCount> {
     return this.getOrCreateQueueAdapter(queueName, prefix).getWorkerCount();
+  }
+
+  async listJobSchedulers(
+    queueName: string,
+    options?: { limit?: number },
+    prefix?: string,
+  ): Promise<JobScheduler[]> {
+    return (
+      this.getOrCreateQueueAdapter(queueName, prefix).listJobSchedulers?.(
+        options,
+      ) ?? []
+    );
+  }
+
+  async getJobScheduler(
+    queueName: string,
+    target: JobSchedulerTarget,
+    prefix?: string,
+  ): Promise<JobScheduler | null> {
+    return (
+      this.getOrCreateQueueAdapter(queueName, prefix).getJobScheduler?.(
+        target,
+      ) ?? null
+    );
+  }
+
+  async upsertJobScheduler(
+    queueName: string,
+    input: UpsertJobSchedulerInput,
+    prefix?: string,
+  ): Promise<void> {
+    await this.getOrCreateQueueAdapter(queueName, prefix).upsertJobScheduler?.(
+      input,
+    );
+  }
+
+  async removeJobScheduler(
+    queueName: string,
+    target: JobSchedulerTarget,
+    prefix?: string,
+  ): Promise<boolean> {
+    return (
+      this.getOrCreateQueueAdapter(queueName, prefix).removeJobScheduler?.(
+        target,
+      ) ?? false
+    );
   }
 
   private getOrCreateQueueAdapter(name: string, prefix?: string): QueueAdapter {

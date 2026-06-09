@@ -9,6 +9,7 @@ export interface QueueProviderCapabilities {
   providerType: QueueProviderType;
   displayName: string;
   supportsFlows: boolean;
+  supportsSchedulers: boolean;
   supportedJobStates: JobStatus[];
 }
 
@@ -24,6 +25,7 @@ export function getProviderCapabilities(
         providerType: "bull",
         displayName: "Bull",
         supportsFlows: false,
+        supportsSchedulers: true,
         // Bull doesn't expose individual job paused state - it's queue-level only
         supportedJobStates: [
           "waiting",
@@ -38,6 +40,7 @@ export function getProviderCapabilities(
         providerType: "bullmq",
         displayName: "BullMQ",
         supportsFlows: true,
+        supportsSchedulers: true,
         supportedJobStates: [
           "waiting",
           "active",

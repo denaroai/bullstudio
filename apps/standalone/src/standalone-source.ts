@@ -3,6 +3,7 @@ import type {
   FlowSummary,
   FlowTree,
   Job,
+  JobScheduler,
   JobStatus,
   JobSummary,
 } from "@bullstudio/connect-types";
@@ -15,6 +16,8 @@ import {
   type PrivateDashboardQueueSource,
   type QueueSourceStatus,
   type QueueTargetInput,
+  type SchedulerTargetInput,
+  type SchedulerUpsertInput,
   supportedJobStatuses,
 } from "@bullstudio/private-router";
 import { TRPCError } from "@trpc/server";
@@ -111,6 +114,40 @@ export function createStandaloneQueueSource(): PrivateDashboardQueueSource {
     },
     listFlows,
     getFlow,
+    listJobSchedulers: async (input) => {
+      const provider = await getQueueProvider();
+      const queues = await getQueuesForListInput(input);
+      const schedulers: JobScheduler[] = [];
+
+      for (const queue of queues) {
+        const queueSchedulers = await provider.listJobSchedulers(
+          queue.name,
+          { limit: input.limit },
+          queue.prefix,
+        );
+        schedulers.push(
+          ...queueSchedulers.map((scheduler) => ({
+            ...scheduler,
+            prefix: scheduler.prefix ?? queue.prefix,
+          })),
+        );
+      }
+
+      return schedulers
+        .sort((a, b) => (a.next ?? Infinity) - (b.next ?? Infinity))
+        .slice(0, input.limit ?? 100);
+    },
+    getJobScheduler: async (input) => {
+      const provider = await getQueueProvider();
+      const queue = await resolveQueue(input);
+      return provider.getJobScheduler(
+        queue.name,
+        { key: input.schedulerKey, id: input.schedulerId },
+        queue.prefix,
+      );
+    },
+    upsertJobScheduler,
+    removeJobScheduler,
   };
 }
 
@@ -129,6 +166,7 @@ async function getStandaloneQueueSourceStatus(): Promise<QueueSourceStatus> {
     prefixes,
     capabilities: {
       flows: capabilities.supportsFlows,
+      schedulers: capabilities.supportsSchedulers,
       supportedStatuses: capabilities.supportedJobStates,
       mutationsAllowed: true,
     },
@@ -262,6 +300,47 @@ async function removeJob(
   return {
     success: true,
     message: `Job "${job.name}" has been removed`,
+  };
+}
+
+async function upsertJobScheduler(
+  input: SchedulerUpsertInput,
+): Promise<{ success: true; message: string }> {
+  const provider = await getQueueProvider();
+  const queue = await resolveQueue(input);
+
+  await provider.upsertJobScheduler(
+    queue.name,
+    {
+      schedulerId: input.schedulerId,
+      previousKey: input.previousKey,
+      repeat: input.repeat,
+      template: input.template,
+    },
+    queue.prefix,
+  );
+
+  return {
+    success: true,
+    message: `Scheduler "${input.schedulerId}" has been saved`,
+  };
+}
+
+async function removeJobScheduler(
+  input: SchedulerTargetInput,
+): Promise<{ success: true; message: string }> {
+  const provider = await getQueueProvider();
+  const queue = await resolveQueue(input);
+
+  await provider.removeJobScheduler(
+    queue.name,
+    { key: input.schedulerKey, id: input.schedulerId },
+    queue.prefix,
+  );
+
+  return {
+    success: true,
+    message: `Scheduler "${input.schedulerId ?? input.schedulerKey}" has been removed`,
   };
 }
 

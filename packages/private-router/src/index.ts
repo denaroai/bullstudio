@@ -3,6 +3,7 @@ import type {
   FlowTree,
   Job,
   JobCounts,
+  JobScheduler,
   JobStatus,
   JobSummary,
   AdapterCapabilities as QueueAdapterCapabilities,
@@ -37,6 +38,7 @@ export type QueueSourceStatus =
       prefixes: string[];
       capabilities: {
         flows: boolean;
+        schedulers: boolean;
         supportedStatuses: string[];
         mutationsAllowed: boolean;
       };
@@ -176,6 +178,49 @@ export type FlowTargetInput = {
   flowId: string;
 };
 
+export type SchedulerListInput = {
+  queueKey?: string;
+  queueName?: string;
+  prefix?: string;
+  limit?: number;
+};
+
+export type SchedulerTargetInput = {
+  queueKey?: string;
+  queueName?: string;
+  name?: string;
+  prefix?: string;
+  schedulerKey: string;
+  schedulerId?: string;
+};
+
+export type SchedulerUpsertInput = {
+  queueKey?: string;
+  queueName?: string;
+  name?: string;
+  prefix?: string;
+  schedulerId: string;
+  previousKey?: string;
+  repeat: {
+    strategy: "cron" | "every";
+    pattern?: string;
+    every?: number;
+    tz?: string;
+    endDate?: number;
+    limit?: number;
+  };
+  template?: {
+    name?: string;
+    data?: unknown;
+    opts?: Record<string, unknown>;
+  };
+};
+
+export type SchedulerMutationResponse = {
+  success: true;
+  message: string;
+};
+
 export interface PrivateDashboardQueueSource {
   mode: "standalone" | "embedded";
   readOnly: boolean;
@@ -198,6 +243,16 @@ export interface PrivateDashboardQueueSource {
     input?: FlowListInput,
   ): Promise<Array<FlowSummary & { queueKey?: string }>>;
   getFlow(input: FlowTargetInput): Promise<FlowTree | null>;
+  listJobSchedulers(
+    input: SchedulerListInput,
+  ): Promise<Array<JobScheduler & { queueKey?: string }>>;
+  getJobScheduler(input: SchedulerTargetInput): Promise<JobScheduler | null>;
+  upsertJobScheduler(
+    input: SchedulerUpsertInput,
+  ): Promise<SchedulerMutationResponse>;
+  removeJobScheduler(
+    input: SchedulerTargetInput,
+  ): Promise<SchedulerMutationResponse>;
 }
 
 export interface PrivateDashboardContext {
@@ -271,6 +326,61 @@ const flowTargetSchema = z.object({
   name: z.string().optional(),
   prefix: z.string().optional(),
   flowId: z.string(),
+});
+
+const schedulerListSchema = z
+  .object({
+    queueKey: z.string().optional(),
+    queueName: z.string().optional(),
+    prefix: z.string().optional(),
+    limit: z.number().min(1).max(500).default(100),
+  })
+  .optional();
+
+const schedulerTargetSchema = z.object({
+  queueKey: z.string().optional(),
+  queueName: z.string().optional(),
+  name: z.string().optional(),
+  prefix: z.string().optional(),
+  schedulerKey: z.string(),
+  schedulerId: z.string().optional(),
+});
+
+const schedulerRepeatSchema = z
+  .object({
+    strategy: z.enum(["cron", "every"]),
+    pattern: z.string().optional(),
+    every: z.number().int().positive().optional(),
+    tz: z.string().optional(),
+    endDate: z.number().optional(),
+    limit: z.number().int().positive().optional(),
+  })
+  .refine(
+    (repeat) =>
+      repeat.strategy === "cron"
+        ? Boolean(repeat.pattern)
+        : Boolean(repeat.every),
+    {
+      message:
+        'A "cron" schedule requires a pattern and an "every" schedule requires an interval.',
+    },
+  );
+
+const schedulerUpsertSchema = z.object({
+  queueKey: z.string().optional(),
+  queueName: z.string().optional(),
+  name: z.string().optional(),
+  prefix: z.string().optional(),
+  schedulerId: z.string().min(1),
+  previousKey: z.string().optional(),
+  repeat: schedulerRepeatSchema,
+  template: z
+    .object({
+      name: z.string().optional(),
+      data: z.unknown().optional(),
+      opts: z.record(z.string(), z.unknown()).optional(),
+    })
+    .optional(),
 });
 
 export function createPrivateDashboardRouter(
@@ -385,6 +495,32 @@ export function createPrivateDashboardRouter(
           }
 
           return flow;
+        }),
+    }),
+    schedulers: t.router({
+      list: authenticatedProcedure
+        .input(schedulerListSchema)
+        .query(({ input }) =>
+          source.listJobSchedulers(input ?? { limit: 100 }),
+        ),
+      get: authenticatedProcedure
+        .input(schedulerTargetSchema)
+        .query(({ input }) => source.getJobScheduler(input)),
+      upsert: authenticatedProcedure
+        .input(schedulerUpsertSchema)
+        .mutation(async ({ input }) => {
+          await assertCanMutate(source);
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "schedulers", "Job schedulers");
+          return source.upsertJobScheduler(input);
+        }),
+      remove: authenticatedProcedure
+        .input(schedulerTargetSchema)
+        .mutation(async ({ input }) => {
+          await assertCanMutate(source);
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "schedulers", "Job schedulers");
+          return source.removeJobScheduler(input);
         }),
     }),
   });

@@ -27,6 +27,7 @@ import { memo, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useTRPC } from "@/integrations/trpc/react";
+import { FilterableStatus } from "./index";
 
 const searchSchema = z.object({
   queueName: z.string(),
@@ -99,7 +100,7 @@ function JobDetailPage() {
       onSuccess: (data) => {
         toast.success(data.message);
         queryClient.invalidateQueries({ queryKey: [["jobs"]] });
-        navigate({ to: "/jobs" });
+        navigate({ to: "/jobs", search: { statusFilter: FilterableStatus.All } });
       },
       onError: (error) => {
         toast.error("Failed to remove job", {
@@ -110,7 +111,7 @@ function JobDetailPage() {
   );
 
   const goBack = () => {
-    navigate({ to: "/jobs" });
+    navigate({ to: "/jobs", search: { statusFilter: FilterableStatus.All } });
   };
 
   if (isLoading) {

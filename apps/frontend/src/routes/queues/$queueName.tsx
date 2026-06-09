@@ -27,6 +27,7 @@ import {
 } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
+  Clock,
   Database,
   ListTodo,
   Pause,
@@ -181,6 +182,16 @@ function QueuePage() {
     });
   };
 
+  const handleGotoSchedulers = () => {
+    const key = queueKey(queue?.prefix ?? "", queueName);
+    navigate({
+      to: "/schedulers",
+      search: () => ({
+        queueKey: key,
+      }),
+    });
+  };
+
   const handleDrain = () => {
     drainMutation.mutate(queueTarget);
     setDrainDialogOpen(false);
@@ -198,6 +209,15 @@ function QueuePage() {
           >
             <ListTodo className="size-4 mr-2" />
             View jobs
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleGotoSchedulers}
+            className="bg-card"
+          >
+            <Clock className="size-4 mr-2" />
+            View schedulers
           </Button>
           <Separator orientation="vertical" />
           <Button

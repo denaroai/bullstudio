@@ -5,10 +5,13 @@ import type {
   Job,
   JobCounts,
   JobQueryOptions,
+  JobScheduler,
+  JobSchedulerTarget,
   JobSummary,
   Queue,
   QueueAdapter,
   QueueAdapterProvider,
+  UpsertJobSchedulerInput,
   WorkerCount,
 } from "@bullstudio/connect-types";
 
@@ -160,6 +163,22 @@ export interface EmbeddedDashboardInstance {
   getWorkerCount(queueKey: string): Promise<WorkerCount>;
   listFlows(options?: { limit?: number }): Promise<FlowSummary[]>;
   getFlow(queueKey: string, flowId: string): Promise<FlowTree | null>;
+  listQueueSchedulers(
+    queueKey: string,
+    options?: { limit?: number },
+  ): Promise<JobScheduler[]>;
+  getJobScheduler(
+    queueKey: string,
+    target: JobSchedulerTarget,
+  ): Promise<JobScheduler | null>;
+  upsertJobScheduler(
+    queueKey: string,
+    input: UpsertJobSchedulerInput,
+  ): Promise<void>;
+  removeJobScheduler(
+    queueKey: string,
+    target: JobSchedulerTarget,
+  ): Promise<boolean>;
   handle(request: FrameworkRequest): Promise<FrameworkResponse>;
   mountPrivateDashboardApi(): PrivateDashboardApiMount;
 }

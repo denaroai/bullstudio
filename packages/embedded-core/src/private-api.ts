@@ -1,6 +1,7 @@
 import type {
   Job,
   JobQueryOptions,
+  JobScheduler,
   JobSummary,
 } from "@bullstudio/connect-types";
 import {
@@ -12,6 +13,9 @@ import {
   type PrivateDashboardQueueSource,
   type QueueSourceStatus as PrivateQueueSourceStatus,
   type QueueTargetInput,
+  type SchedulerListInput,
+  type SchedulerTargetInput,
+  type SchedulerUpsertInput,
 } from "@bullstudio/private-router";
 import { TRPCError } from "@trpc/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
@@ -121,6 +125,39 @@ export function createEmbeddedQueueSource(
       const queue = await getQueueForTarget(dashboard, input);
       return dashboard.getFlow(queue.key, input.flowId);
     },
+    listJobSchedulers: async (input) => {
+      const queues = await getQueuesForSchedulerList(dashboard, input);
+      const schedulers: Array<JobScheduler & { queueKey?: string }> = [];
+
+      for (const queue of queues) {
+        if (!queue.capabilities.schedulers) {
+          continue;
+        }
+        const queueSchedulers = await dashboard.listQueueSchedulers(queue.key, {
+          limit: input.limit,
+        });
+        schedulers.push(
+          ...queueSchedulers.map((scheduler) => ({
+            ...scheduler,
+            prefix: scheduler.prefix ?? queue.prefix,
+            queueKey: queue.key,
+          })),
+        );
+      }
+
+      return schedulers
+        .sort((a, b) => (a.next ?? Infinity) - (b.next ?? Infinity))
+        .slice(0, input.limit ?? 100);
+    },
+    getJobScheduler: async (input) => {
+      const queue = await getQueueForTarget(dashboard, input);
+      return dashboard.getJobScheduler(queue.key, {
+        key: input.schedulerKey,
+        id: input.schedulerId,
+      });
+    },
+    upsertJobScheduler: (input) => upsertJobScheduler(dashboard, input),
+    removeJobScheduler: (input) => removeJobScheduler(dashboard, input),
   };
 }
 
@@ -253,6 +290,64 @@ async function removeJob(
     success: true,
     message: `Job "${job.name}" has been removed`,
   };
+}
+
+async function getQueuesForSchedulerList(
+  dashboard: EmbeddedDashboardInstance,
+  input: SchedulerListInput,
+): Promise<DashboardQueue[]> {
+  if (input.queueKey || input.queueName) {
+    return [await getSuppliedQueueByPrivateApiInput(dashboard, input)];
+  }
+
+  return dashboard.listQueues();
+}
+
+async function upsertJobScheduler(
+  dashboard: EmbeddedDashboardInstance,
+  input: SchedulerUpsertInput,
+): Promise<{ success: true; message: string }> {
+  const queue = await getQueueForTarget(dashboard, input);
+  assertSchedulerCapability(queue);
+
+  await dashboard.upsertJobScheduler(queue.key, {
+    schedulerId: input.schedulerId,
+    previousKey: input.previousKey,
+    repeat: input.repeat,
+    template: input.template,
+  });
+
+  return {
+    success: true,
+    message: `Scheduler "${input.schedulerId}" has been saved`,
+  };
+}
+
+async function removeJobScheduler(
+  dashboard: EmbeddedDashboardInstance,
+  input: SchedulerTargetInput,
+): Promise<{ success: true; message: string }> {
+  const queue = await getQueueForTarget(dashboard, input);
+  assertSchedulerCapability(queue);
+
+  await dashboard.removeJobScheduler(queue.key, {
+    key: input.schedulerKey,
+    id: input.schedulerId,
+  });
+
+  return {
+    success: true,
+    message: `Scheduler "${input.schedulerId ?? input.schedulerKey}" has been removed`,
+  };
+}
+
+function assertSchedulerCapability(queue: DashboardQueue): void {
+  if (!queue.capabilities.schedulers) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Job schedulers are not supported for supplied queue "${queue.key}".`,
+    });
+  }
 }
 
 async function getSuppliedQueueByPrivateApiInput(

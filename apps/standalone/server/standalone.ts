@@ -237,14 +237,20 @@ function toFetchRequest(request: {
   method: string;
   url: string;
 }): Request {
+  const body =
+    request.method === "GET" || request.method === "HEAD"
+      ? undefined
+      : (request.body as BodyInit | null | undefined);
+
   return new Request(request.url, {
     method: request.method,
     headers: toFetchHeaders(request.headers),
-    body:
-      request.method === "GET" || request.method === "HEAD"
-        ? undefined
-        : (request.body as BodyInit | null | undefined),
-  });
+    body,
+    // `duplex: "half"` is required by undici whenever a (possibly streaming)
+    // body is sent; without it `new Request` throws "duplex option is required
+    // when sending a body" for the tRPC handler's ReadableStream body.
+    ...(body != null ? { duplex: "half" } : {}),
+  } as RequestInit);
 }
 
 function toFetchHeaders(

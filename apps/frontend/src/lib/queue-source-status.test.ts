@@ -18,6 +18,7 @@ describe("getQueueSourceViewModel", () => {
       prefixes: ["bull", "mail"],
       capabilities: {
         flows: true,
+        schedulers: true,
         supportedStatuses: ["waiting", "waiting-children"],
         mutationsAllowed: true,
       },
@@ -65,6 +66,7 @@ describe("getQueueSourceViewModel", () => {
         queuePause: true,
         queueResume: true,
         queueDrain: true,
+        schedulers: true,
         workers: true,
       },
     });
@@ -107,6 +109,7 @@ describe("getQueueSourceViewModel", () => {
         queuePause: false,
         queueResume: false,
         queueDrain: false,
+        schedulers: false,
         workers: true,
       },
     });

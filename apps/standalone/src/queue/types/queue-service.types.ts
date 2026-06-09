@@ -2,8 +2,11 @@ import type {
   Job,
   JobCounts,
   JobQueryOptions,
+  JobScheduler,
+  JobSchedulerTarget,
   JobSummary,
   Queue,
+  UpsertJobSchedulerInput,
   WorkerCount,
 } from "@bullstudio/connect-types";
 import type { QueueProviderCapabilities } from "./provider-capabilities.types";
@@ -89,6 +92,28 @@ export interface QueueService {
 
   // Worker operations
   getWorkerCount(queueName: string, prefix?: string): Promise<WorkerCount>;
+
+  // Job scheduler operations
+  listJobSchedulers(
+    queueName: string,
+    options?: { limit?: number },
+    prefix?: string,
+  ): Promise<JobScheduler[]>;
+  getJobScheduler(
+    queueName: string,
+    target: JobSchedulerTarget,
+    prefix?: string,
+  ): Promise<JobScheduler | null>;
+  upsertJobScheduler(
+    queueName: string,
+    input: UpsertJobSchedulerInput,
+    prefix?: string,
+  ): Promise<void>;
+  removeJobScheduler(
+    queueName: string,
+    target: JobSchedulerTarget,
+    prefix?: string,
+  ): Promise<boolean>;
 
   // Provider capabilities
   getCapabilities(): QueueProviderCapabilities;

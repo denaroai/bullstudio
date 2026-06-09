@@ -199,6 +199,74 @@ describe("createBullMqQueueAdapter with Redis", () => {
     });
   });
 
+  it("creates, lists, updates, and removes job schedulers", async () => {
+    const prefix = uniquePrefix("bullmq-adapter");
+    const queue = track(new Queue("reports", { prefix, connection }));
+    const adapter = createBullMqQueueAdapter(queue);
+
+    await adapter.upsertJobScheduler?.({
+      schedulerId: "daily-report",
+      repeat: { strategy: "cron", pattern: "0 15 3 * * *", tz: "UTC" },
+      template: { name: "build-report", data: { kind: "daily" } },
+    });
+    await adapter.upsertJobScheduler?.({
+      schedulerId: "heartbeat",
+      repeat: { strategy: "every", every: 5_000 },
+      template: { name: "ping" },
+    });
+
+    await expect(adapter.listJobSchedulers?.()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "daily-report",
+          name: "build-report",
+          queueName: "reports",
+          prefix,
+          strategy: "cron",
+          pattern: "0 15 3 * * *",
+          tz: "UTC",
+        }),
+        expect.objectContaining({
+          id: "heartbeat",
+          name: "ping",
+          strategy: "every",
+          every: 5_000,
+        }),
+      ]),
+    );
+
+    const single = await adapter.getJobScheduler?.({
+      key: "",
+      id: "daily-report",
+    });
+    expect(single).toMatchObject({
+      id: "daily-report",
+      strategy: "cron",
+      pattern: "0 15 3 * * *",
+    });
+
+    // Upsert updates the existing scheduler in place.
+    await adapter.upsertJobScheduler?.({
+      schedulerId: "heartbeat",
+      repeat: { strategy: "every", every: 10_000 },
+      template: { name: "ping" },
+    });
+    await expect(
+      adapter.getJobScheduler?.({ key: "", id: "heartbeat" }),
+    ).resolves.toMatchObject({ every: 10_000 });
+
+    await expect(
+      adapter.removeJobScheduler?.({
+        key: single?.key ?? "",
+        id: "daily-report",
+      }),
+    ).resolves.toBe(true);
+
+    const remaining = await adapter.listJobSchedulers?.();
+    expect(remaining).toHaveLength(1);
+    expect(remaining?.[0]).toMatchObject({ id: "heartbeat" });
+  });
+
   async function processBullMqJob(options: {
     prefix: string;
     name: string;

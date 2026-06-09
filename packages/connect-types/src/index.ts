@@ -3,4 +3,5 @@ export * from "./api";
 export * from "./flow";
 export * from "./job";
 export * from "./queue";
+export * from "./scheduler";
 export * from "./worker";

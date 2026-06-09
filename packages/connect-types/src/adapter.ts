@@ -1,6 +1,11 @@
 import type { FlowSummary, FlowTree } from "./flow";
 import type { Job, JobQueryOptions, JobSummary } from "./job";
 import type { JobCounts, Queue } from "./queue";
+import type {
+  JobScheduler,
+  JobSchedulerTarget,
+  UpsertJobSchedulerInput,
+} from "./scheduler";
 import type { WorkerCount } from "./worker";
 
 export type QueueAdapterProvider = "bullmq" | "bull";
@@ -13,6 +18,7 @@ export interface AdapterCapabilities {
   queuePause: boolean;
   queueResume: boolean;
   queueDrain: boolean;
+  schedulers: boolean;
   workers: boolean;
 }
 
@@ -35,4 +41,8 @@ export interface QueueAdapter {
   getWorkerCount(): Promise<WorkerCount>;
   listFlows?(options?: { limit?: number }): Promise<FlowSummary[]>;
   getFlow?(flowId: string): Promise<FlowTree | null>;
+  listJobSchedulers?(options?: { limit?: number }): Promise<JobScheduler[]>;
+  getJobScheduler?(target: JobSchedulerTarget): Promise<JobScheduler | null>;
+  upsertJobScheduler?(input: UpsertJobSchedulerInput): Promise<void>;
+  removeJobScheduler?(target: JobSchedulerTarget): Promise<boolean>;
 }

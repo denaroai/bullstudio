@@ -78,6 +78,34 @@ export function createEmbeddedDashboard(
       const getFlow = getQueueAdapter(queueAdaptersByKey, queueKey).getFlow;
       return getFlow ? getFlow(flowId) : null;
     },
+    listQueueSchedulers: async (queueKey, options) => {
+      const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+      return adapter.listJobSchedulers ? adapter.listJobSchedulers(options) : [];
+    },
+    getJobScheduler: async (queueKey, target) => {
+      const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+      return adapter.getJobScheduler ? adapter.getJobScheduler(target) : null;
+    },
+    upsertJobScheduler: (queueKey, input) =>
+      withMutationAccess(resolvedConfig, () => {
+        const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+        if (!adapter.upsertJobScheduler) {
+          throw new Error(
+            `Supplied queue "${queueKey}" does not support job schedulers.`,
+          );
+        }
+        return adapter.upsertJobScheduler(input);
+      }),
+    removeJobScheduler: (queueKey, target) =>
+      withMutationAccess(resolvedConfig, () => {
+        const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+        if (!adapter.removeJobScheduler) {
+          throw new Error(
+            `Supplied queue "${queueKey}" does not support job schedulers.`,
+          );
+        }
+        return adapter.removeJobScheduler(target);
+      }),
     handle: (request) =>
       handleEmbeddedDashboardRequest(request, resolvedConfig),
     mountPrivateDashboardApi: () => ({
@@ -230,6 +258,7 @@ function aggregateCapabilities(queues: QueueAdapter[]): AdapterCapabilities {
       queuePause: result.queuePause || queue.capabilities.queuePause,
       queueResume: result.queueResume || queue.capabilities.queueResume,
       queueDrain: result.queueDrain || queue.capabilities.queueDrain,
+      schedulers: result.schedulers || queue.capabilities.schedulers,
       workers: result.workers || queue.capabilities.workers,
     }),
     defaultCapabilities,

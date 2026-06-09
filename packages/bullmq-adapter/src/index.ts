@@ -12,6 +12,8 @@ import type {
   FlowTree,
   Job,
   JobQueryOptions,
+  JobScheduler,
+  JobSchedulerRepeat,
   JobStatus,
   JobSummary,
   QueueAdapter,
@@ -20,8 +22,10 @@ import {
   type Job as BullMqJob,
   FlowProducer,
   type JobNode,
+  type JobSchedulerJson,
   type JobType,
   type Queue,
+  type RepeatOptions,
 } from "bullmq";
 
 export interface BullMqQueueAdapterOptions {
@@ -50,6 +54,7 @@ export function createBullMqQueueAdapter(
       queuePause: true,
       queueResume: true,
       queueDrain: true,
+      schedulers: true,
       workers: true,
     },
     getQueue: async () => {
@@ -143,7 +148,86 @@ export function createBullMqQueueAdapter(
     },
     listFlows: async (options) => listFlows(queue, flowProducer, options),
     getFlow: async (flowId) => getFlow(queue, flowProducer, flowId),
+    listJobSchedulers: async (options) => {
+      const limit = options?.limit ?? 50;
+      const schedulers = await queue.getJobSchedulers(0, limit - 1, true);
+      return schedulers.map((scheduler) =>
+        mapScheduler(scheduler, queue.name, getQueuePrefix(queue)),
+      );
+    },
+    getJobScheduler: async (target) => {
+      const scheduler = await queue.getJobScheduler(target.id ?? target.key);
+      return scheduler
+        ? mapScheduler(scheduler, queue.name, getQueuePrefix(queue))
+        : null;
+    },
+    upsertJobScheduler: async (input) => {
+      await queue.upsertJobScheduler(
+        input.schedulerId,
+        toRepeatOptions(input.repeat),
+        input.template
+          ? {
+              name: input.template.name,
+              data: input.template.data,
+              opts: input.template.opts,
+            }
+          : undefined,
+      );
+    },
+    removeJobScheduler: async (target) => {
+      if (target.id) {
+        return queue.removeJobScheduler(target.id);
+      }
+      return queue.removeRepeatableByKey(target.key);
+    },
   };
+}
+
+function mapScheduler(
+  scheduler: JobSchedulerJson,
+  queueName: string,
+  prefix: string,
+): JobScheduler {
+  return {
+    // For BullMQ job schedulers the `key` is the scheduler id passed to
+    // `upsertJobScheduler`; `id` is only the optional job discriminator.
+    key: scheduler.key,
+    id: scheduler.id ?? scheduler.key,
+    name: scheduler.name,
+    queueName,
+    prefix,
+    strategy: scheduler.pattern ? "cron" : "every",
+    pattern: scheduler.pattern,
+    every: typeof scheduler.every === "number" ? scheduler.every : undefined,
+    tz: scheduler.tz,
+    next: scheduler.next,
+    endDate: scheduler.endDate,
+    limit: scheduler.limit,
+    template: scheduler.template
+      ? {
+          data: scheduler.template.data,
+          opts: scheduler.template.opts as
+            | Record<string, unknown>
+            | undefined,
+        }
+      : undefined,
+  };
+}
+
+function toRepeatOptions(
+  repeat: JobSchedulerRepeat,
+): Omit<RepeatOptions, "key"> {
+  const base = {
+    tz: repeat.tz,
+    endDate: repeat.endDate,
+    limit: repeat.limit,
+  };
+
+  if (repeat.strategy === "every") {
+    return { ...base, every: repeat.every };
+  }
+
+  return { ...base, pattern: repeat.pattern };
 }
 
 async function listFlows(
