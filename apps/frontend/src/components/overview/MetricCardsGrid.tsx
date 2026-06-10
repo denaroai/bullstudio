@@ -1,6 +1,7 @@
 import type { OverviewMetricsResponse } from "@bullstudio/private-router";
 import { formatDuration, formatThroughput } from "@bullstudio/ui/shared";
 import { Activity, AlertTriangle, Clock, TimerIcon } from "lucide-react";
+import { formatRangeLabel } from "@/lib/time-ranges";
 import { MetricCard } from "./MetricCard";
 import { MetricsFallbackNotice } from "./MetricsFallbackNotice";
 
@@ -76,7 +77,7 @@ export function MetricCardsGrid({
         <MetricCard
           title="Throughput"
           value={formatThroughput(summary.avgThroughputPerHour)}
-          subtitle={`${totalJobs.toLocaleString()} jobs in ${timeRange}h`}
+          subtitle={`${totalJobs.toLocaleString()} jobs in ${formatRangeLabel(timeRange)}`}
           icon={<Activity className="size-4" />}
           sparklineData={throughputSparkline}
           sparklineColor="hsl(142, 76%, 36%)"

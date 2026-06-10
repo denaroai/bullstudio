@@ -17,6 +17,7 @@ import {
 } from "@bullstudio/ui/components/chart";
 import { formatMs } from "@bullstudio/ui/shared";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { formatRangeLabel } from "@/lib/time-ranges";
 
 type TimeSeriesDataPoint = OverviewMetricsResponse["timeSeries"][number];
 
@@ -51,7 +52,8 @@ export function ProcessingTimeChart({
       <CardHeader>
         <CardTitle>Processing Performance</CardTitle>
         <CardDescription>
-          Average processing time and queue delay over the last {timeRange}h
+          Average processing time and queue delay over the last{" "}
+          {formatRangeLabel(timeRange)}
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -16,6 +16,7 @@ import {
   ChartTooltipContent,
 } from "@bullstudio/ui/components/chart";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { formatRangeLabel } from "@/lib/time-ranges";
 import { MetricsFallbackNotice } from "./MetricsFallbackNotice";
 
 type TimeSeriesDataPoint = OverviewMetricsResponse["timeSeries"][number];
@@ -52,7 +53,7 @@ export function ThroughputChart({
       <CardHeader>
         <CardTitle>Job Throughput</CardTitle>
         <CardDescription>
-          Completed vs failed jobs over the last {timeRange}h
+          Completed vs failed jobs over the last {formatRangeLabel(timeRange)}
         </CardDescription>
       </CardHeader>
       <CardContent>

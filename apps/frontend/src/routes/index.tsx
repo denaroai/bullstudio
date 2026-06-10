@@ -24,15 +24,8 @@ import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 
 export const Route = createFileRoute("/")({ component: OverviewPage });
 
-const TIME_RANGES = [
-  { value: "1", label: "Last 1h" },
-  { value: "6", label: "Last 6h" },
-  { value: "24", label: "Last 24h" },
-  { value: "72", label: "Last 3d" },
-  { value: "168", label: "Last 7d" },
-];
-
 import { parseQueueKey, queueKey } from "@/lib/queue-key";
+import { TIME_RANGES } from "@/lib/time-ranges";
 
 const ALL_QUEUES_VALUE = "__all__";
 const OVERVIEW_SKELETON_KEYS = [
@@ -45,7 +38,7 @@ const OVERVIEW_SKELETON_KEYS = [
 function OverviewPage() {
   const trpc = useTRPC();
   const [selectedQueue, setSelectedQueue] = useState<string>("");
-  const [timeRange, setTimeRange] = useState<number>(24);
+  const [timeRange, setTimeRange] = useState<number>(5 / 60);
 
   const { data: queues, isLoading: loadingQueues } = useQuery(
     trpc.queues.list.queryOptions(),

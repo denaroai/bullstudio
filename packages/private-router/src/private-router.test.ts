@@ -738,6 +738,60 @@ describe("createPrivateDashboardRouter", () => {
       avgProcessingTimeMs: 150,
     });
   });
+
+  it("buckets the 1h range into 5-minute time-series points", () => {
+    const now = Date.UTC(2026, 4, 27, 12, 0, 0);
+    const at = (minutesAgo: number) => now - minutesAgo * 60 * 1000;
+
+    const response = aggregateOverviewMetrics(
+      [
+        createJobSummary({
+          id: "j1",
+          status: "completed",
+          finishedOn: at(2), // bucket [t-5m, t)
+        }),
+        createJobSummary({
+          id: "j2",
+          status: "completed",
+          finishedOn: at(4), // same bucket as j1
+        }),
+        createJobSummary({
+          id: "j3",
+          status: "failed",
+          finishedOn: at(12), // bucket [t-15m, t-10m)
+        }),
+      ],
+      1,
+      1,
+      [],
+      now,
+    );
+
+    // 1 hour / 5-minute buckets = 12 points.
+    expect(response.timeSeries).toHaveLength(12);
+
+    // j1 and j2 (2m and 4m ago) share one 5-minute bucket; j3 (12m ago) sits
+    // in an earlier one — finer than the old single-hour point.
+    const fiveMin = 5 * 60 * 1000;
+    const bucketWithCompletions = response.timeSeries.find(
+      (point) => point.timestamp === Math.floor(at(4) / fiveMin) * fiveMin,
+    );
+    expect(bucketWithCompletions).toMatchObject({ completed: 2, failed: 0 });
+
+    const totalFailed = response.timeSeries.reduce((s, p) => s + p.failed, 0);
+    expect(totalFailed).toBe(1);
+
+    expect(response.summary.totalCompleted).toBe(2);
+    expect(response.summary.totalFailed).toBe(1);
+  });
+
+  it("buckets a sub-hour range into 1-minute time-series points", () => {
+    const now = Date.UTC(2026, 4, 27, 12, 0, 0);
+    const response = aggregateOverviewMetrics([], 5 / 60, 1, [], now);
+
+    // 5 minutes / 1-minute buckets = 5 points.
+    expect(response.timeSeries).toHaveLength(5);
+  });
 });
 
 type FakeSource = PrivateDashboardQueueSource & {

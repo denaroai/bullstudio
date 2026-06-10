@@ -20,18 +20,11 @@ import { SlowestJobsTable } from "@/components/overview/SlowestJobsTable";
 import { ThroughputChart } from "@/components/overview/ThroughputChart";
 import { useTRPC } from "@/integrations/trpc/react";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
+import { TIME_RANGES } from "@/lib/time-ranges";
 
 export const Route = createFileRoute("/queues/$queueName/")({
   component: QueueOverview,
 });
-
-const TIME_RANGES = [
-  { value: "1", label: "Last 1h" },
-  { value: "6", label: "Last 6h" },
-  { value: "24", label: "Last 24h" },
-  { value: "72", label: "Last 3d" },
-  { value: "168", label: "Last 7d" },
-];
 
 const OVERVIEW_SKELETON_KEYS = [
   "summary-1",
@@ -52,7 +45,7 @@ const JOB_STATE_SKELETON_KEYS = [
 function QueueOverview() {
   const trpc = useTRPC();
   const { queueName } = Route.useParams();
-  const [timeRange, setTimeRange] = useState<number>(24);
+  const [timeRange, setTimeRange] = useState<number>(5 / 60);
 
   const { data: queues, isLoading: loadingQueues } = useQuery(
     trpc.queues.list.queryOptions(),

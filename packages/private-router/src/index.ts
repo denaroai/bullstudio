@@ -378,7 +378,7 @@ const queueTargetSchema = z.object({
 
 const overviewMetricsSchema = z
   .object({
-    timeRangeHours: z.number().min(1).max(168).default(24),
+    timeRangeHours: z.number().positive().max(168).default(24),
     queueKey: z.string().optional(),
     queueName: z.string().optional(),
     prefix: z.string().optional(),
@@ -744,6 +744,17 @@ export async function createConnectionInfo(
 
 const HOUR_MS = 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
+
+// Choose a time-series bucket size that keeps the chart readable (~5–24 points)
+// for the selected range. Metric snapshots are per-minute, so 1 min is the floor.
+function getBucketMs(timeRangeHours: number): number {
+  const rangeMs = timeRangeHours * HOUR_MS;
+  if (rangeMs <= 15 * MINUTE_MS) return MINUTE_MS; // ≤15m → 1-min
+  if (rangeMs <= 30 * MINUTE_MS) return 2 * MINUTE_MS; // ≤30m → 2-min
+  if (rangeMs <= HOUR_MS) return 5 * MINUTE_MS; // ≤1h  → 5-min
+  if (rangeMs <= 6 * HOUR_MS) return 30 * MINUTE_MS; // ≤6h  → 30-min
+  return HOUR_MS; // >6h  → 1-hour
+}
 
 type OverviewJobSummary = JobSummary & { queueKey?: string };
 
@@ -1189,7 +1200,7 @@ function averageDelay(jobs: JobSummary[]): number {
 }
 
 type TimeSeriesBucket = {
-  // All raw jobs in the hour, used for timing regardless of metric backing.
+  // All raw jobs in the bucket, used for timing regardless of metric backing.
   timingJobs: OverviewJobSummary[];
   completed: number;
   failed: number;
@@ -1201,12 +1212,16 @@ function buildOverviewTimeSeries(
   metricBackedQueues: QueueMetricsSummary[],
   now: number,
 ): OverviewMetricsResponse["timeSeries"] {
-  const cutoff = now - timeRangeHours * HOUR_MS;
-  const hourlyBuckets = new Map<number, TimeSeriesBucket>();
+  const bucketMs = getBucketMs(timeRangeHours);
+  const rangeMs = timeRangeHours * HOUR_MS;
+  const cutoff = now - rangeMs;
+  const buckets = new Map<number, TimeSeriesBucket>();
 
-  for (let index = 0; index < timeRangeHours; index++) {
-    const hourStart = Math.floor((now - index * HOUR_MS) / HOUR_MS) * HOUR_MS;
-    hourlyBuckets.set(hourStart, { timingJobs: [], completed: 0, failed: 0 });
+  const bucketCount = Math.ceil(rangeMs / bucketMs);
+  for (let index = 0; index < bucketCount; index++) {
+    const bucketStart =
+      Math.floor((now - index * bucketMs) / bucketMs) * bucketMs;
+    buckets.set(bucketStart, { timingJobs: [], completed: 0, failed: 0 });
   }
 
   for (const job of jobs) {
@@ -1214,8 +1229,8 @@ function buildOverviewTimeSeries(
       continue;
     }
 
-    const hourStart = Math.floor(job.finishedOn / HOUR_MS) * HOUR_MS;
-    const bucket = hourlyBuckets.get(hourStart);
+    const bucketStart = Math.floor(job.finishedOn / bucketMs) * bucketMs;
+    const bucket = buckets.get(bucketStart);
     if (!bucket) {
       continue;
     }
@@ -1234,16 +1249,17 @@ function buildOverviewTimeSeries(
 
   for (const metric of metricBackedQueues) {
     addMetricToBuckets(
-      hourlyBuckets,
+      buckets,
       metric.completed,
       "completed",
       cutoff,
       now,
+      bucketMs,
     );
-    addMetricToBuckets(hourlyBuckets, metric.failed, "failed", cutoff, now);
+    addMetricToBuckets(buckets, metric.failed, "failed", cutoff, now, bucketMs);
   }
 
-  return Array.from(hourlyBuckets.entries())
+  return Array.from(buckets.entries())
     .map(([timestamp, bucket]) => ({
       timestamp,
       completed: bucket.completed,
@@ -1260,15 +1276,16 @@ function buildOverviewTimeSeries(
 }
 
 function addMetricToBuckets(
-  hourlyBuckets: Map<number, TimeSeriesBucket>,
+  buckets: Map<number, TimeSeriesBucket>,
   snapshot: QueueMetricSnapshot | null,
   type: "completed" | "failed",
   cutoff: number,
   now: number,
+  bucketMs: number,
 ): void {
   forEachMetricPointInRange(snapshot, cutoff, now, (value, minute) => {
-    const hourStart = Math.floor(minute / HOUR_MS) * HOUR_MS;
-    const bucket = hourlyBuckets.get(hourStart);
+    const bucketStart = Math.floor(minute / bucketMs) * bucketMs;
+    const bucket = buckets.get(bucketStart);
     if (bucket) {
       bucket[type] += value;
     }
