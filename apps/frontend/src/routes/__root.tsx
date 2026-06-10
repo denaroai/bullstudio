@@ -35,7 +35,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: getDocumentIdentity()?.title ?? "bullstudio CLI",
+        title: getDocumentIdentity()?.title ?? "bullstudio - Queue dashboard",
       },
     ],
     links: [

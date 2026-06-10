@@ -145,7 +145,7 @@ export function AppSidebar() {
               {dashboardTitle}
             </span>
             <span className="text-[10px] text-sidebar-foreground/55 uppercase tracking-wider">
-              {dashboardIdentity ? "Embedded" : "CLI"}
+              {dashboardIdentity ? "Embedded" : "Standalone"}
             </span>
           </div>
         </div>
