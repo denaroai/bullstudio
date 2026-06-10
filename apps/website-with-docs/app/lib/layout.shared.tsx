@@ -12,6 +12,10 @@ export function baseOptions(): BaseLayoutProps {
         text: "Docs",
         url: "/docs",
       },
+      {
+        text: "Comparisons",
+        url: "/comparisons",
+      },
     ],
     githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
   };

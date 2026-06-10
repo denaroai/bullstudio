@@ -7,6 +7,11 @@ import { createGetUrl, getSlugs } from "fumadocs-core/source";
 const getUrl = createGetUrl("/docs");
 const docsDir = fileURLToPath(new URL("./content/docs", import.meta.url));
 
+const getComparisonUrl = createGetUrl("/comparisons");
+const comparisonsDir = fileURLToPath(
+  new URL("./content/comparisons", import.meta.url),
+);
+
 async function getMdxFiles(directory: string, prefix = ""): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
   const files: string[] = [];
@@ -48,6 +53,12 @@ export default {
         getUrl(slugs),
         `/llms.mdx/docs/${[...slugs, "content.md"].join("/")}`,
       );
+    }
+
+    // Prerender each "Bullstudio vs X" article so it ships as static,
+    // crawlable HTML (the whole point — these exist for SEO).
+    for (const entry of await getMdxFiles(comparisonsDir)) {
+      paths.push(getComparisonUrl(getSlugs(entry)));
     }
 
     return paths;

@@ -9,4 +9,11 @@ export const docs = defineDocs({
   },
 });
 
+// SEO "Bullstudio vs X" comparison articles. Authored as MDX in
+// content/comparisons and surfaced at /comparisons. Uses the default
+// frontmatter schema (title + optional description).
+export const comparisons = defineDocs({
+  dir: "content/comparisons",
+});
+
 export default defineConfig();

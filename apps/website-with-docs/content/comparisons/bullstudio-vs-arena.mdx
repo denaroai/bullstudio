@@ -1,0 +1,65 @@
+---
+title: Bullstudio vs Arena
+description: Arena is a long-standing dashboard for Bull, BullMQ, and Bee-Queue. See how it compares to Bullstudio on scope, setup, and modern BullMQ support.
+---
+
+[Arena](https://github.com/bee-queue/arena) is one of the original queue dashboards — a web UI that spans [Bull](https://github.com/OptimalBits/bull), [BullMQ](https://github.com/taskforcesh/bullmq), and [Bee-Queue](https://github.com/bee-queue/bee-queue). If you're weighing it against Bullstudio, the trade-off is breadth versus depth.
+
+## The short version
+
+**Arena** covers three queue libraries and can connect to multiple Redis instances from one config. If you run a mix of Bull, BullMQ, and Bee-Queue, that breadth is genuinely useful.
+
+**Bullstudio** focuses on Bull and BullMQ specifically, and invests that focus in deeper job inspection, flow tracing, and a frictionless standalone mode.
+
+## At a glance
+
+| | Bullstudio | Arena |
+| --- | --- | --- |
+| Queue libraries | Bull, BullMQ | Bull, BullMQ, Bee-Queue |
+| Standalone mode | ✅ `npx bullstudio` | ✅ via config file |
+| Embedded mode | ✅ Express, Fastify, Hono, NestJS, Next.js | ✅ as Express middleware |
+| Job inspection | Data, return value, attempts, full stack trace | Data, return value, stack trace |
+| Flow / parent-child tracing | ✅ First-class | ⚠️ Limited |
+| Setup to first view | One command, no config | Write a JSON config of queues |
+| License | MIT | MIT |
+
+> Both projects evolve — check the latest docs before committing.
+
+## Setup
+
+Arena is typically driven by a config that enumerates the queues and connections you want to watch:
+
+```json
+{
+  "queues": [
+    {
+      "type": "bullmq",
+      "name": "emails",
+      "hostId": "Local Redis",
+      "redis": { "host": "localhost", "port": 6379 }
+    }
+  ]
+}
+```
+
+That explicit list is handy when you want a curated, persistent view. Bullstudio takes the opposite default — point it at Redis and it discovers your queues for you:
+
+```bash
+npx bullstudio -r redis://localhost:6379
+```
+
+No config to author before you can look at anything. When you want curation or embedding, the [docs](/docs) cover configuration and framework integration.
+
+## Where each one shines
+
+**Arena** is the better fit if Bee-Queue is in your stack, or you want a single config-driven view spanning several libraries and hosts.
+
+**Bullstudio** is the better fit if you're all-in on Bull/BullMQ and care about debugging depth — inspecting every attempt of a failed job, tracing flows across queues, and acting on jobs inline — with zero-config standalone access whenever you need it.
+
+## Try it
+
+```bash
+npx bullstudio -r redis://localhost:6379
+```
+
+See the [documentation](/docs) for embedded setup and configuration options.
