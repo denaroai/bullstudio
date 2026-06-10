@@ -69,6 +69,12 @@ export interface QueueAdapter {
   listWorkers?(): Promise<Worker[]>;
   listFlows?(options?: { limit?: number }): Promise<FlowSummary[]>;
   getFlow?(flowId: string): Promise<FlowTree | null>;
+  /**
+   * Resolve the full flow a job belongs to. Walks up from the given job to the
+   * flow's root (across queues) and returns the entire tree, or `null` when the
+   * job is not part of a flow.
+   */
+  getJobFlow?(jobId: string): Promise<FlowTree | null>;
   listJobSchedulers?(options?: { limit?: number }): Promise<JobScheduler[]>;
   getJobScheduler?(target: JobSchedulerTarget): Promise<JobScheduler | null>;
   upsertJobScheduler?(input: UpsertJobSchedulerInput): Promise<void>;

@@ -160,6 +160,7 @@ export function createBullMqQueueAdapter(
     },
     listFlows: async (options) => listFlows(queue, flowProducer, options),
     getFlow: async (flowId) => getFlow(queue, flowProducer, flowId),
+    getJobFlow: async (jobId) => getJobFlow(queue, flowProducer, jobId),
     listJobSchedulers: async (options) => {
       const limit = options?.limit ?? 50;
       const schedulers = await queue.getJobSchedulers(0, limit - 1, true);
@@ -354,6 +355,76 @@ async function getBullMqFlow(
   } catch {
     return null;
   }
+}
+
+/**
+ * Parse a BullMQ parent job key (`<prefix>:<queueName>:<jobId>`) into its
+ * components. Prefixes may themselves contain colons, so only the last two
+ * segments are treated as the queue name and job id.
+ */
+function parseFlowJobKey(
+  key: string,
+): { prefix: string; queueName: string; id: string } | null {
+  const parts = key.split(":");
+  if (parts.length < 3) {
+    return null;
+  }
+  const id = parts.pop() as string;
+  const queueName = parts.pop() as string;
+  return { prefix: parts.join(":"), queueName, id };
+}
+
+/**
+ * Build the full flow tree a job belongs to. `flowProducer.getFlow` only walks
+ * downward to children, so we climb the `parentKey` chain (which can cross
+ * queues) to find the flow root before materialising the whole tree.
+ */
+async function getJobFlow(
+  queue: Queue,
+  flowProducer: FlowProducer,
+  jobId: string,
+): Promise<FlowTree | null> {
+  const prefix = getQueuePrefix(queue);
+
+  let rootNode = await getBullMqFlow(flowProducer, {
+    id: jobId,
+    queueName: queue.name,
+    prefix,
+  });
+  if (!rootNode) {
+    return null;
+  }
+
+  let rootId = jobId;
+  let rootQueueName = queue.name;
+  let parentKey = rootNode.job.parentKey;
+
+  while (parentKey) {
+    const parsed = parseFlowJobKey(parentKey);
+    if (!parsed) {
+      break;
+    }
+    const parentNode = await getBullMqFlow(flowProducer, parsed);
+    if (!parentNode) {
+      break;
+    }
+    rootNode = parentNode;
+    rootId = parsed.id;
+    rootQueueName = parsed.queueName;
+    parentKey = parentNode.job.parentKey;
+  }
+
+  const root = await convertFlowTree(rootNode);
+  const stats = await countFlowStats(rootNode);
+
+  return {
+    id: rootId,
+    root,
+    queueName: rootQueueName,
+    totalNodes: stats.total,
+    completedNodes: stats.completed,
+    failedNodes: stats.failed,
+  };
 }
 
 async function countFlowStats(tree: JobNode): Promise<{

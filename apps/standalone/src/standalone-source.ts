@@ -119,6 +119,7 @@ export function createStandaloneQueueSource(): PrivateDashboardQueueSource {
     },
     listFlows,
     getFlow,
+    getJobFlow,
     listWorkers: async (input) => {
       const provider = await getQueueProvider();
       const queues = await getQueuesForWorkerList(input);
@@ -552,6 +553,87 @@ async function getFlow(input: FlowTargetInput): Promise<FlowTree | null> {
 
     return null;
   }
+}
+
+async function getJobFlow(input: JobTargetInput): Promise<FlowTree | null> {
+  const provider = await getQueueProvider();
+  const capabilities = provider.getCapabilities();
+
+  if (!capabilities.supportsFlows) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Flows are not supported by this queue provider (Bull)",
+    });
+  }
+
+  const queue = await resolveQueue(input);
+  const producer = await getFlowProducer();
+
+  try {
+    // `producer.getFlow` only walks down to children, so climb the parentKey
+    // chain (which can cross queues) to the flow root before building the tree.
+    let rootNode = await producer.getFlow({
+      id: input.jobId,
+      queueName: queue.name,
+      prefix: queue.prefix,
+    });
+    if (!rootNode) {
+      return null;
+    }
+
+    let rootId = input.jobId;
+    let rootQueueName = queue.name;
+    let parentKey = rootNode.job.parentKey;
+
+    while (parentKey) {
+      const parsed = parseFlowJobKey(parentKey);
+      if (!parsed) {
+        break;
+      }
+      const parentNode = await producer.getFlow(parsed);
+      if (!parentNode) {
+        break;
+      }
+      rootNode = parentNode;
+      rootId = parsed.id;
+      rootQueueName = parsed.queueName;
+      parentKey = parentNode.job.parentKey;
+    }
+
+    const root = await convertFlowTree(rootNode);
+    const stats = await countFlowStats(rootNode);
+
+    return {
+      id: rootId,
+      root,
+      queueName: rootQueueName,
+      totalNodes: stats.total,
+      completedNodes: stats.completed,
+      failedNodes: stats.failed,
+    };
+  } catch (error) {
+    if (error instanceof TRPCError) {
+      throw error;
+    }
+
+    return null;
+  }
+}
+
+/**
+ * Parse a BullMQ parent job key (`<prefix>:<queueName>:<jobId>`). Prefixes may
+ * contain colons, so only the last two segments are the queue name and job id.
+ */
+function parseFlowJobKey(
+  key: string,
+): { prefix: string; queueName: string; id: string } | null {
+  const parts = key.split(":");
+  if (parts.length < 3) {
+    return null;
+  }
+  const id = parts.pop() as string;
+  const queueName = parts.pop() as string;
+  return { prefix: parts.join(":"), queueName, id };
 }
 
 async function getFlowProducer(): Promise<FlowProducer> {

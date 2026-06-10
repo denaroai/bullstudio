@@ -94,6 +94,13 @@ export function createEmbeddedDashboard(
       const getFlow = getQueueAdapter(queueAdaptersByKey, queueKey).getFlow;
       return getFlow ? getFlow(flowId) : null;
     },
+    getJobFlow: async (queueKey, jobId) => {
+      const getJobFlow = getQueueAdapter(
+        queueAdaptersByKey,
+        queueKey,
+      ).getJobFlow;
+      return getJobFlow ? getJobFlow(jobId) : null;
+    },
     listQueueSchedulers: async (queueKey, options) => {
       const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
       return adapter.listJobSchedulers

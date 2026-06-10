@@ -1,3 +1,4 @@
+import type { FlowNode } from "@bullstudio/connect-types";
 import dayjs from "@bullstudio/dayjs";
 import { Button } from "@bullstudio/ui/components/button";
 import { Skeleton } from "@bullstudio/ui/components/skeleton";
@@ -13,10 +14,20 @@ import {
   JobStatusBadge,
 } from "@bullstudio/ui/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { FlowGraph } from "@/components/flows/FlowGraph";
 import { useTRPC } from "@/integrations/trpc/react";
+import { DEFAULT_JOBS_SEARCH } from "@/lib/jobs";
+
+function flowHasActiveJobs(node: FlowNode): boolean {
+  const activeStates = ["active", "waiting", "delayed", "waiting-children"];
+  if (activeStates.includes(node.status)) return true;
+  if (!node.children) return false;
+  return node.children.some(flowHasActiveJobs);
+}
 
 interface JobDetailProps {
   jobId: string;
@@ -66,6 +77,35 @@ export function JobDetail({
       { queueKey, queueName, jobId, prefix },
       { enabled: !!job },
     ),
+  );
+
+  // Resolving the flow walks up to the root across queues, so it is loaded
+  // lazily once the job is in view and never blocks the rest of the detail UI.
+  const { data: flowTree } = useQuery(
+    trpc.flows.forJob.queryOptions(
+      { queueKey, queueName, jobId, prefix },
+      {
+        enabled: !!job,
+        refetchInterval(query) {
+          const data = query.state.data;
+          if (!data) return false;
+          return flowHasActiveJobs(data.root) ? 2000 : false;
+        },
+      },
+    ),
+  );
+  const isFlow = !!flowTree && flowTree.totalNodes > 1;
+
+  const navigate = useNavigate();
+  const handleFlowNodeClick = useCallback(
+    (clickedJobId: string, jobQueueName: string) => {
+      navigate({
+        to: "/queues/$queueName/jobs",
+        params: { queueName: jobQueueName },
+        search: { ...DEFAULT_JOBS_SEARCH, selected: clickedJobId },
+      });
+    },
+    [navigate],
   );
 
   const retryMutation = useMutation(
@@ -137,6 +177,9 @@ export function JobDetail({
         ? "In progress"
         : "Pending";
 
+  const delayMs = job.status === "delayed" ? job.delay : undefined;
+  const scheduledFor = delayMs != null ? dayjs(job.timestamp + delayMs) : null;
+
   return (
     <div className="space-y-4 p-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -204,6 +247,16 @@ export function JobDetail({
           value={`${job.attemptsMade} / ${job.attemptsLimit + 1}`}
         />
         <MetadataItem title="Duration" value={duration} />
+        {delayMs != null && scheduledFor && (
+          <>
+            <MetadataItem title="Delay" value={formatDuration(delayMs)} />
+            <MetadataItem
+              title="Scheduled for"
+              value={scheduledFor.format("MMM D, HH:mm:ss")}
+              subtitle={scheduledFor.fromNow()}
+            />
+          </>
+        )}
       </dl>
 
       <Tabs defaultValue="data" className="w-full gap-3">
@@ -217,6 +270,11 @@ export function JobDetail({
           <TabsTrigger value="result" className="h-6 rounded-sm px-3 text-xs">
             Result
           </TabsTrigger>
+          {isFlow && (
+            <TabsTrigger value="flow" className="h-6 rounded-sm px-3 text-xs">
+              Flow
+            </TabsTrigger>
+          )}
           {job.status === "failed" && (
             <TabsTrigger value="error" className="h-6 rounded-sm px-3 text-xs">
               Error
@@ -248,6 +306,40 @@ export function JobDetail({
             )}
           </DetailPanel>
         </TabsContent>
+
+        {isFlow && flowTree && (
+          <TabsContent value="flow">
+            <DetailPanel title="Flow">
+              <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <span>
+                  <span className="font-mono text-foreground">
+                    {flowTree.totalNodes}
+                  </span>{" "}
+                  jobs
+                </span>
+                <span>
+                  <span className="font-mono text-emerald-400">
+                    {flowTree.completedNodes}
+                  </span>{" "}
+                  completed
+                </span>
+                <span>
+                  <span
+                    className={`font-mono ${flowTree.failedNodes > 0 ? "text-red-400" : "text-foreground"}`}
+                  >
+                    {flowTree.failedNodes}
+                  </span>{" "}
+                  failed
+                </span>
+              </div>
+              <FlowGraph
+                root={flowTree.root}
+                onNodeClick={handleFlowNodeClick}
+                heightClassName="h-[420px]"
+              />
+            </DetailPanel>
+          </TabsContent>
+        )}
 
         <TabsContent value="result">
           <DetailPanel title="Return Value">
@@ -282,7 +374,7 @@ export function JobDetail({
                     <h4 className="mb-1 text-xs text-muted-foreground">
                       Stack Trace
                     </h4>
-                    <pre className="overflow-x-auto rounded-md bg-muted/70 p-4 font-mono text-xs text-foreground">
+                    <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-md bg-muted/70 p-4 font-mono text-xs text-foreground">
                       {job.stacktrace.join("\n")}
                     </pre>
                   </div>
@@ -306,18 +398,16 @@ function MetadataItem({
   subtitle?: string;
 }) {
   return (
-    <div className="min-w-0 border-b p-4 last:border-b-0 sm:odd:border-r sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0">
-      <dt className="text-[11px] font-medium uppercase tracking-normal text-muted-foreground">
+    <div className="flex min-w-0 items-baseline justify-between gap-2 border-b px-3 py-2 last:border-b-0 sm:odd:border-r sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0">
+      <dt className="shrink-0 text-[11px] font-medium uppercase tracking-normal text-muted-foreground">
         {title}
       </dt>
-      <dd className="mt-1 truncate font-mono text-sm text-foreground">
+      <dd className="min-w-0 truncate text-right font-mono text-xs text-foreground">
         {value}
+        {subtitle && (
+          <span className="ml-1.5 text-muted-foreground">{subtitle}</span>
+        )}
       </dd>
-      {subtitle && (
-        <dd className="mt-0.5 font-mono text-xs text-muted-foreground">
-          {subtitle}
-        </dd>
-      )}
     </div>
   );
 }

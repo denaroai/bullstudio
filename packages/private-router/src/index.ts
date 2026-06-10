@@ -321,6 +321,7 @@ export interface PrivateDashboardQueueSource {
     input?: FlowListInput,
   ): Promise<Array<FlowSummary & { queueKey?: string }>>;
   getFlow(input: FlowTargetInput): Promise<FlowTree | null>;
+  getJobFlow(input: JobTargetInput): Promise<FlowTree | null>;
   listWorkers(
     input: WorkerListInput,
   ): Promise<Array<Worker & { queueKey?: string }>>;
@@ -624,6 +625,15 @@ export function createPrivateDashboardRouter(
           }
 
           return flow;
+        }),
+      forJob: authenticatedProcedure
+        .input(jobTargetSchema)
+        .query(async ({ input }) => {
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "flows", "Flows");
+          // Returns the full flow tree the job belongs to, or null when the
+          // job is standalone. Callers use null to hide the flow view.
+          return source.getJobFlow(input);
         }),
     }),
     workers: t.router({

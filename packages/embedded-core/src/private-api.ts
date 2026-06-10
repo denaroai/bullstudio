@@ -139,6 +139,10 @@ export function createEmbeddedQueueSource(
       const queue = await getQueueForTarget(dashboard, input);
       return dashboard.getFlow(queue.key, input.flowId);
     },
+    getJobFlow: async (input) => {
+      const queue = await getQueueForTarget(dashboard, input);
+      return dashboard.getJobFlow(queue.key, input.jobId);
+    },
     listWorkers: async (input) => {
       const queues = await getQueuesForWorkerList(dashboard, input);
       const workers: Array<Worker & { queueKey?: string }> = [];

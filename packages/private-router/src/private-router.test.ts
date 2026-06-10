@@ -1046,6 +1046,7 @@ function createFakeSource(options: FakeSourceOptions = {}): FakeSource {
               children: undefined,
             },
           },
+    getJobFlow: async () => null,
     listWorkers: vi.fn(async (input: WorkerListInput) =>
       workers.filter(
         (worker) =>

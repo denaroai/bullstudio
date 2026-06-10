@@ -176,6 +176,7 @@ export interface EmbeddedDashboardInstance {
     queueKey?: string;
   }): Promise<FlowSummary[]>;
   getFlow(queueKey: string, flowId: string): Promise<FlowTree | null>;
+  getJobFlow(queueKey: string, jobId: string): Promise<FlowTree | null>;
   listQueueSchedulers(
     queueKey: string,
     options?: { limit?: number },
