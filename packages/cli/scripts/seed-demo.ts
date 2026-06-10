@@ -6,9 +6,14 @@
  * failed / delayed / paused), several job schedulers (cron + fixed interval),
  * and a batch of multi-level parent/child flows.
  *
- * Snapshot (default): seed data, process a slice to populate completed/failed,
- *                     print a summary, then exit.
+ * The backlog is dripped in gradually over ~30 minutes (SEED_SPREAD_MINUTES)
+ * while workers run, so completed/failed timestamps and throughput metrics span
+ * a realistic timespan instead of a single instant.
+ *
+ * Snapshot (default): drip the backlog over the window, then print a summary
+ *                     and exit. Shorten the window for a quick run:
  *   npx tsx scripts/seed-demo.ts
+ *   SEED_SPREAD_MINUTES=2 npx tsx scripts/seed-demo.ts
  *
  * Live: keep workers + schedulers running so the dashboard updates in realtime.
  *   npx tsx scripts/seed-demo.ts --live
@@ -34,8 +39,15 @@ const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const LIVE = process.argv.includes("--live");
 const CLEAN_ON_EXIT = process.argv.includes("--clean");
 
-/** Roughly how long the snapshot workers churn before we freeze the state. */
-const PROCESS_WINDOW_MS = 14_000;
+/**
+ * Wall-clock window over which the backlog is dripped in (workers run the whole
+ * time), so completed/failed timestamps and throughput metrics span a realistic
+ * range instead of a single instant. Override with SEED_SPREAD_MINUTES.
+ */
+const SPREAD_MS = (Number(process.env.SEED_SPREAD_MINUTES) || 30) * 60_000;
+
+/** How often a drip batch is enqueued; ~120 ticks across the window. */
+const TICK_MS = Math.min(15_000, Math.max(2_000, Math.round(SPREAD_MS / 120)));
 
 // ---------------------------------------------------------------------------
 // Domain model — a production-ish SaaS backend.
@@ -262,22 +274,59 @@ function buildQueues(connection: ConnectionOptions): Map<string, Queue> {
   return queues;
 }
 
-async function seedBacklog(queues: Map<string, Queue>): Promise<void> {
-  for (const spec of QUEUES) {
-    const queue = queues.get(spec.name);
-    if (!queue) {
-      continue;
-    }
-    const jobs = Array.from({ length: spec.backlog }, () => {
-      const jobType = randomElement(spec.jobTypes);
-      return {
-        name: jobType.name,
-        data: generateJobData(),
-        opts: randomJobOptions(),
-      };
+interface DripJob {
+  name: string;
+  data: Record<string, unknown>;
+  opts: JobsOptions;
+}
+
+/** Builds a queue's backlog already bucketed into one array per tick. */
+function planDrip(spec: QueueSpec, ticks: number): DripJob[][] {
+  const buckets: DripJob[][] = Array.from({ length: ticks }, () => []);
+  for (let i = 0; i < spec.backlog; i++) {
+    const jobType = randomElement(spec.jobTypes);
+    const tick = randomInt(0, ticks - 1);
+    buckets[tick]?.push({
+      name: jobType.name,
+      data: generateJobData(),
+      opts: randomJobOptions(),
     });
-    await queue.addBulk(jobs);
-    console.log(`  ✓ ${spec.name}: enqueued ${jobs.length} jobs`);
+  }
+  return buckets;
+}
+
+/**
+ * Enqueues every queue's backlog gradually over SPREAD_MS while the already
+ * running workers consume it, so the data spans a realistic timespan.
+ */
+async function dripBacklog(queues: Map<string, Queue>): Promise<void> {
+  const ticks = Math.max(1, Math.round(SPREAD_MS / TICK_MS));
+  const total = QUEUES.reduce((sum, spec) => sum + spec.backlog, 0);
+  const plans = QUEUES.map((spec) => ({
+    spec,
+    buckets: planDrip(spec, ticks),
+  }));
+  console.log(
+    `  dripping ~${total} jobs over ${Math.round(SPREAD_MS / 60_000)}m ` +
+      `(${ticks} ticks, every ${Math.round(TICK_MS / 1000)}s)`,
+  );
+
+  let enqueued = 0;
+  for (let tick = 0; tick < ticks; tick++) {
+    for (const { spec, buckets } of plans) {
+      const batch = buckets[tick];
+      if (!batch || batch.length === 0) {
+        continue;
+      }
+      await queues.get(spec.name)?.addBulk(batch);
+      enqueued += batch.length;
+    }
+    if (tick % 10 === 0 || tick === ticks - 1) {
+      console.log(`  [${ts()}] enqueued ${enqueued}/${total}`);
+    }
+    if (tick < ticks - 1) {
+      await new Promise((resolve) => setTimeout(resolve, TICK_MS));
+    }
   }
 }
 
@@ -309,7 +358,7 @@ async function seedFlows(connection: ConnectionOptions): Promise<void> {
   for (let i = 0; i < FLOW_COUNT; i++) {
     const orderId = `order_${randomInt(10000, 99999)}`;
     await flowProducer.add({
-      name: "fulfill-order",
+      name: "fulfill-order-flow",
       queueName: FLOW_QUEUE,
       data: { orderId, items: randomInt(1, 6) },
       opts: flowOpts,
@@ -403,18 +452,15 @@ async function main(): Promise<void> {
 
   const queues = buildQueues(connection);
 
-  console.log("Enqueuing backlog:");
-  await seedBacklog(queues);
-
-  console.log("\nRegistering schedulers:");
+  console.log("Registering schedulers:");
   await seedSchedulers(queues);
 
   console.log("\nCreating flows:");
   await seedFlows(connection);
 
-  console.log("\nProcessing jobs to populate completed/failed/active...");
+  console.log("\nStarting workers and dripping in the backlog:");
   const workers = startWorkers(connection);
-  await new Promise((resolve) => setTimeout(resolve, PROCESS_WINDOW_MS));
+  await dripBacklog(queues);
 
   // Leave one queue paused so the dashboard shows a paused state.
   await queues.get("webhooks")?.pause();
