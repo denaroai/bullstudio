@@ -148,6 +148,25 @@ export type JobListInput = {
   status?: JobStatus;
   limit?: number;
   offset?: number;
+  search?: string;
+  sortField?: JobListSortField;
+  sortOrder?: JobListSortOrder;
+};
+
+export type JobListSortField =
+  | "name"
+  | "queueName"
+  | "status"
+  | "timestamp"
+  | "duration";
+
+export type JobListSortOrder = "asc" | "desc";
+
+export type JobListResponse<T> = {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
 };
 
 export type JobTargetInput = {
@@ -300,6 +319,14 @@ const authenticatedProcedure = t.procedure.use(({ ctx, next }) => {
 });
 
 const jobStatusSchema = z.enum(supportedJobStatuses);
+const jobListSortFieldSchema = z.enum([
+  "name",
+  "queueName",
+  "status",
+  "timestamp",
+  "duration",
+]);
+const jobListSortOrderSchema = z.enum(["asc", "desc"]);
 
 const queueTargetSchema = z.object({
   queueKey: z.string().optional(),
@@ -325,6 +352,9 @@ const jobListSchema = z
     status: jobStatusSchema.optional(),
     limit: z.number().min(1).max(1000).default(100),
     offset: z.number().min(0).default(0),
+    search: z.string().trim().optional(),
+    sortField: jobListSortFieldSchema.default("timestamp"),
+    sortOrder: jobListSortOrderSchema.default("desc"),
   })
   .optional();
 
@@ -475,17 +505,33 @@ export function createPrivateDashboardRouter(
         .input(jobListSchema)
         .query(async ({ input }) => {
           const normalized = normalizeJobListInput(input);
-          const jobs = await source.listJobs(getSourceJobListInput(normalized));
-          return mergeSortAndPageJobs(jobs, normalized);
+          const totalCandidates = await countJobsForListInput(
+            source,
+            normalized,
+          );
+          if (totalCandidates === 0) {
+            return filterSortAndPageJobs([], normalized, 0);
+          }
+          const jobs = await source.listJobs(
+            getSourceJobListInput(normalized, totalCandidates),
+          );
+          return filterSortAndPageJobs(jobs, normalized, totalCandidates);
         }),
       listSummary: authenticatedProcedure
         .input(jobListSchema)
         .query(async ({ input }) => {
           const normalized = normalizeJobListInput(input);
-          const jobs = await source.listJobSummaries(
-            getSourceJobListInput(normalized),
+          const totalCandidates = await countJobsForListInput(
+            source,
+            normalized,
           );
-          return mergeSortAndPageJobs(jobs, normalized);
+          if (totalCandidates === 0) {
+            return filterSortAndPageJobs([], normalized, 0);
+          }
+          const jobs = await source.listJobSummaries(
+            getSourceJobListInput(normalized, totalCandidates),
+          );
+          return filterSortAndPageJobs(jobs, normalized, totalCandidates);
         }),
       get: authenticatedProcedure
         .input(jobTargetSchema)
@@ -682,6 +728,14 @@ export function aggregateOverviewMetrics(
   };
 }
 
+type NormalizedJobListInput = Required<
+  Pick<
+    JobListInput,
+    "limit" | "offset" | "sortField" | "sortOrder" | "search"
+  >
+> &
+  Omit<JobListInput, "limit" | "offset" | "sortField" | "sortOrder" | "search">;
+
 export function mergeSortAndPageJobs<T extends { timestamp: number }>(
   jobs: T[],
   input: Pick<JobListInput, "limit" | "offset"> = {},
@@ -692,6 +746,36 @@ export function mergeSortAndPageJobs<T extends { timestamp: number }>(
   return [...jobs]
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(offset, offset + limit);
+}
+
+export function filterSortAndPageJobs<
+  T extends {
+    id: string;
+    name: string;
+    queueName: string;
+    status: JobStatus;
+    timestamp: number;
+    prefix?: string;
+    processedOn?: number;
+    finishedOn?: number;
+  },
+>(
+  jobs: T[],
+  input: NormalizedJobListInput,
+  totalCandidates = jobs.length,
+): JobListResponse<T> {
+  const searched = input.search
+    ? jobs.filter((job) => jobMatchesSearch(job, input.search))
+    : jobs;
+  const sorted = sortJobList(searched, input.sortField, input.sortOrder);
+  const total = input.search ? searched.length : totalCandidates;
+
+  return {
+    items: sorted.slice(input.offset, input.offset + input.limit),
+    total,
+    limit: input.limit,
+    offset: input.offset,
+  };
 }
 
 async function getOverviewMetrics(
@@ -724,8 +808,7 @@ async function getOverviewMetrics(
 
 function normalizeJobListInput(
   input: JobListInput | undefined,
-): Required<Pick<JobListInput, "limit" | "offset">> &
-  Omit<JobListInput, "limit" | "offset"> {
+): NormalizedJobListInput {
   return {
     queueKey: input?.queueKey,
     queueName: input?.queueName,
@@ -733,18 +816,146 @@ function normalizeJobListInput(
     status: input?.status,
     limit: input?.limit ?? 100,
     offset: input?.offset ?? 0,
+    search: input?.search?.trim() ?? "",
+    sortField: input?.sortField ?? "timestamp",
+    sortOrder: input?.sortOrder ?? "desc",
   };
 }
 
 function getSourceJobListInput(
-  input: Required<Pick<JobListInput, "limit" | "offset">> &
-    Omit<JobListInput, "limit" | "offset">,
+  input: NormalizedJobListInput,
+  totalCandidates: number,
 ): JobListInput {
+  const needsFullCandidateSet =
+    input.search || input.sortField !== "timestamp" || input.sortOrder !== "desc";
+
   return {
-    ...input,
-    limit: input.limit + input.offset,
+    queueKey: input.queueKey,
+    queueName: input.queueName,
+    prefix: input.prefix,
+    status: input.status,
+    limit: needsFullCandidateSet ? totalCandidates : input.limit + input.offset,
     offset: 0,
   };
+}
+
+async function countJobsForListInput(
+  source: PrivateDashboardQueueSource,
+  input: NormalizedJobListInput,
+): Promise<number> {
+  const queues =
+    input.queueKey || input.queueName
+      ? [await resolveQueueTarget(source, input)]
+      : await source.listQueues();
+
+  return queues.reduce(
+    (total, queue) => total + countQueueJobs(queue, input.status),
+    0,
+  );
+}
+
+function countQueueJobs(queue: DashboardQueue, status?: JobStatus): number {
+  if (!queue.jobCounts) {
+    return 0;
+  }
+
+  if (!status) {
+    const bullMqOnlyCount =
+      queue.provider !== "bull"
+        ? queue.jobCounts.paused +
+          queue.jobCounts.prioritized +
+          queue.jobCounts.waitingChildren
+        : 0;
+
+    return (
+      queue.jobCounts.waiting +
+      queue.jobCounts.active +
+      queue.jobCounts.completed +
+      queue.jobCounts.failed +
+      queue.jobCounts.delayed +
+      bullMqOnlyCount
+    );
+  }
+
+  if (queue.provider === "bull" && (status === "paused" || status === "waiting-children")) {
+    return 0;
+  }
+
+  if (status === "waiting-children") {
+    return queue.jobCounts.waitingChildren;
+  }
+
+  return queue.jobCounts[status];
+}
+
+function jobMatchesSearch(
+  job: { id: string; name: string; queueName: string; prefix?: string },
+  search: string,
+): boolean {
+  const query = search.toLowerCase();
+  return [job.id, job.name, job.queueName, job.prefix].some((field) =>
+    field?.toLowerCase().includes(query),
+  );
+}
+
+function sortJobList<
+  T extends {
+    name: string;
+    queueName: string;
+    status: JobStatus;
+    timestamp: number;
+    processedOn?: number;
+    finishedOn?: number;
+  },
+>(jobs: T[], field: JobListSortField, order: JobListSortOrder): T[] {
+  return [...jobs].sort((a, b) => {
+    const direction = order === "asc" ? 1 : -1;
+    const comparison = compareJobListValues(a, b, field);
+    if (comparison !== 0) {
+      return comparison * direction;
+    }
+    return (b.timestamp - a.timestamp) || a.name.localeCompare(b.name);
+  });
+}
+
+function compareJobListValues<
+  T extends {
+    name: string;
+    queueName: string;
+    status: JobStatus;
+    timestamp: number;
+    processedOn?: number;
+    finishedOn?: number;
+  },
+>(a: T, b: T, field: JobListSortField): number {
+  switch (field) {
+    case "name":
+      return a.name.localeCompare(b.name);
+    case "queueName":
+      return a.queueName.localeCompare(b.queueName);
+    case "status":
+      return a.status.localeCompare(b.status);
+    case "duration":
+      return getJobDuration(a) - getJobDuration(b);
+    case "timestamp":
+      return a.timestamp - b.timestamp;
+  }
+}
+
+function getJobDuration(job: {
+  timestamp: number;
+  processedOn?: number;
+  finishedOn?: number;
+}): number {
+  if (job.finishedOn) {
+    return job.finishedOn - (job.processedOn ?? job.timestamp);
+  }
+
+  if (job.processedOn) {
+    return Date.now() - job.processedOn;
+  }
+
+  return 0;
 }
 
 async function assertCanMutate(

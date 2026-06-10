@@ -3,6 +3,11 @@ import dayjs from "@bullstudio/dayjs";
 import { Button } from "@bullstudio/ui/components/button";
 import { Input } from "@bullstudio/ui/components/input";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+} from "@bullstudio/ui/components/pagination";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -30,12 +35,16 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Inbox,
   Layers,
   RefreshCw,
   Search,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Header from "@/components/Header";
 import { useTRPC } from "@/integrations/trpc/react";
 import {
@@ -58,11 +67,17 @@ export enum FilterableStatus {
 }
 
 type SortField = "name" | "queueName" | "status" | "timestamp" | "duration";
-type SortOrder = "asc" | "desc";
 
 const jobSearchSchema = z.object({
   queueKey: z.string().optional(),
   statusFilter: z.enum(FilterableStatus).default(FilterableStatus.All),
+  q: z.string().optional(),
+  page: z.coerce.number().int().min(1).catch(1),
+  pageSize: z.coerce.number().int().min(10).max(1000).catch(50),
+  sortField: z
+    .enum(["name", "queueName", "status", "timestamp", "duration"])
+    .catch("timestamp"),
+  sortOrder: z.enum(["asc", "desc"]).catch("desc"),
 });
 type JobSearch = z.infer<typeof jobSearchSchema>;
 
@@ -84,6 +99,7 @@ const BASE_STATUS_TABS: { value: FilterableStatus | "all"; label: string }[] = [
 const ALL_QUEUES_VALUE = "__all__";
 const SEARCH_DEBOUNCE_MS = 300;
 const JOBS_SKELETON_KEYS = ["job-1", "job-2", "job-3", "job-4", "job-5"];
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 250];
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -99,13 +115,20 @@ function useDebounce<T>(value: T, delay: number): T {
 function JobsPage() {
   const trpc = useTRPC();
   const navigate = useNavigate({ from: Route.fullPath });
+  const pendingPaginationScrollY = useRef<number | null>(null);
 
-  const { queueKey: queueKeySearch, statusFilter } = Route.useSearch();
+  const {
+    queueKey: queueKeySearch,
+    statusFilter,
+    q,
+    page,
+    pageSize,
+    sortField,
+    sortOrder,
+  } = Route.useSearch();
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(q ?? "");
   const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
-  const [sortField, setSortField] = useState<SortField>("timestamp");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   const { data: connectionInfo } = useQuery(
     trpc.connection.info.queryOptions(),
@@ -117,6 +140,88 @@ function JobsPage() {
   const hasMultiplePrefixes = (queueSource?.prefixes.length ?? 0) > 1;
 
   const parsed = queueKeySearch ? parseQueueKey(queueKeySearch) : null;
+
+  const { data: queues, isLoading: loadingQueues } = useQuery(
+    trpc.queues.list.queryOptions(),
+  );
+
+  const selectedQueue = useMemo(() => {
+    if (!parsed || !queues) {
+      return null;
+    }
+
+    return (
+      queues.find(
+        (queue) =>
+          queue.name === parsed.name && (queue.prefix ?? "") === parsed.prefix,
+      ) ?? null
+    );
+  }, [parsed, queues]);
+
+  const statusCounts = useMemo(() => {
+    const queuesForCounts = selectedQueue
+      ? [selectedQueue]
+      : (queues ?? []);
+
+    return queuesForCounts.reduce(
+      (counts, queue) => {
+        const jobCounts = queue.jobCounts;
+        counts.waiting += jobCounts?.waiting ?? 0;
+        counts.active += jobCounts?.active ?? 0;
+        counts.completed += jobCounts?.completed ?? 0;
+        counts.failed += jobCounts?.failed ?? 0;
+        counts.delayed += jobCounts?.delayed ?? 0;
+        counts.paused += jobCounts?.paused ?? 0;
+        counts.waitingChildren += jobCounts?.waitingChildren ?? 0;
+        counts.prioritized += jobCounts?.prioritized ?? 0;
+        return counts;
+      },
+      {
+        waiting: 0,
+        active: 0,
+        completed: 0,
+        failed: 0,
+        delayed: 0,
+        paused: 0,
+        waitingChildren: 0,
+        prioritized: 0,
+      },
+    );
+  }, [queues, selectedQueue]);
+
+  const getStatusCount = (status: FilterableStatus | "all") => {
+    if (!queues) {
+      return null;
+    }
+
+    switch (status) {
+      case FilterableStatus.All:
+        return (
+          statusCounts.waiting +
+          statusCounts.active +
+          statusCounts.completed +
+          statusCounts.failed +
+          statusCounts.delayed +
+          statusCounts.paused +
+          statusCounts.waitingChildren +
+          statusCounts.prioritized
+        );
+      case FilterableStatus.Waiting:
+        return statusCounts.waiting;
+      case FilterableStatus.Active:
+        return statusCounts.active;
+      case FilterableStatus.Completed:
+        return statusCounts.completed;
+      case FilterableStatus.Failed:
+        return statusCounts.failed;
+      case FilterableStatus.Delayed:
+        return statusCounts.delayed;
+      case FilterableStatus.Paused:
+        return statusCounts.paused;
+      case FilterableStatus.WaitingChildren:
+        return statusCounts.waitingChildren;
+    }
+  };
 
   // Build status tabs based on provider capabilities
   const statusTabs = useMemo(() => {
@@ -133,95 +238,107 @@ function JobsPage() {
     return BASE_STATUS_TABS;
   }, [queueSource?.features.flows.visible]);
 
-  const { data: queues, isLoading: loadingQueues } = useQuery(
-    trpc.queues.list.queryOptions(),
-  );
-
   const {
-    data: jobs,
+    data: jobsResponse,
     isLoading: loadingJobs,
+    isFetching: fetchingJobs,
     refetch: refetchJobs,
   } = useQuery(
     trpc.jobs.listSummary.queryOptions({
       queueName: parsed?.name,
       prefix: parsed?.prefix,
       status: statusFilter !== "all" ? statusFilter : undefined,
-      limit: 500,
+      search: q,
+      sortField,
+      sortOrder,
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
     }),
   );
 
-  // Client-side filtering and sorting
-  const filteredAndSortedJobs = useMemo(() => {
-    let filtered = jobs ?? [];
+  const hasJobsResponse = jobsResponse !== undefined;
+  const jobs = jobsResponse?.items ?? [];
+  const totalJobs = jobsResponse?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalJobs / pageSize));
+  const firstVisibleJob = totalJobs === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastVisibleJob = Math.min(page * pageSize, totalJobs);
 
-    // Search filter (searches only summary fields - no payload data)
-    if (debouncedSearchQuery) {
-      const query = debouncedSearchQuery.toLowerCase();
-      filtered = filtered.filter((job) => {
-        const searchableFields = [job.name, job.id, job.queueName];
-        return searchableFields.some(
-          (field) => field && String(field).toLowerCase().includes(query),
-        );
-      });
+  useEffect(() => {
+    setSearchQuery(q ?? "");
+  }, [q]);
+
+  useEffect(() => {
+    const nextQuery = debouncedSearchQuery.trim() || undefined;
+    if (nextQuery === q) {
+      return;
     }
 
-    // Sort
-    return [...filtered].sort((a, b) => {
-      let aVal: string | number;
-      let bVal: string | number;
-
-      switch (sortField) {
-        case "name":
-          aVal = a.name.toLowerCase();
-          bVal = b.name.toLowerCase();
-          break;
-        case "queueName":
-          aVal = a.queueName.toLowerCase();
-          bVal = b.queueName.toLowerCase();
-          break;
-        case "status":
-          aVal = a.status;
-          bVal = b.status;
-          break;
-        case "timestamp":
-          aVal = a.timestamp;
-          bVal = b.timestamp;
-          break;
-        case "duration":
-          aVal = a.finishedOn
-            ? a.finishedOn - a.timestamp
-            : a.processedOn
-              ? Date.now() - a.processedOn
-              : 0;
-          bVal = b.finishedOn
-            ? b.finishedOn - b.timestamp
-            : b.processedOn
-              ? Date.now() - b.processedOn
-              : 0;
-          break;
-        default:
-          aVal = a.timestamp;
-          bVal = b.timestamp;
-      }
-
-      if (typeof aVal === "string" && typeof bVal === "string") {
-        return sortOrder === "asc"
-          ? aVal.localeCompare(bVal)
-          : bVal.localeCompare(aVal);
-      }
-      return sortOrder === "asc"
-        ? (aVal as number) - (bVal as number)
-        : (bVal as number) - (aVal as number);
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        q: nextQuery,
+        page: 1,
+      }),
+      replace: true,
     });
-  }, [jobs, debouncedSearchQuery, sortField, sortOrder]);
+  }, [debouncedSearchQuery, navigate, q]);
+
+  useEffect(() => {
+    if (hasJobsResponse && page > totalPages) {
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          page: totalPages,
+        }),
+        replace: true,
+      });
+    }
+  }, [hasJobsResponse, navigate, page, totalPages]);
+
+  useEffect(() => {
+    if (
+      fetchingJobs ||
+      !hasJobsResponse ||
+      pendingPaginationScrollY.current === null
+    ) {
+      return;
+    }
+
+    const scrollY = pendingPaginationScrollY.current;
+    pendingPaginationScrollY.current = null;
+    requestAnimationFrame(() => window.scrollTo({ top: scrollY }));
+  }, [fetchingJobs, hasJobsResponse]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          sortOrder: sortOrder === "asc" ? "desc" : "asc",
+          page: 1,
+        }),
+      });
     } else {
-      setSortField(field);
-      setSortOrder("desc");
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          sortField: field,
+          sortOrder: "desc",
+          page: 1,
+        }),
+      });
     }
+  };
+
+  const navigateToPage = (nextPage: number) => {
+    const boundedPage = Math.min(Math.max(nextPage, 1), totalPages);
+    pendingPaginationScrollY.current = window.scrollY;
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        page: boundedPage,
+      }),
+    });
   };
 
   const SortIcon = ({ field }: { field: SortField }) => {
@@ -262,7 +379,7 @@ function JobsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-[calc(100dvh-3rem)] min-h-0 flex-col gap-6 overflow-hidden">
       <Header title="Jobs" />
 
       {/* Header Controls */}
@@ -276,6 +393,7 @@ function JobsPage() {
                 search: (prev) => ({
                   ...prev,
                   queueKey: value === ALL_QUEUES_VALUE ? undefined : value,
+                  page: 1,
                 }),
               })
             }
@@ -320,9 +438,12 @@ function JobsPage() {
             variant="outline"
             size="icon"
             onClick={() => refetchJobs()}
+            disabled={fetchingJobs}
             className="bg-card"
           >
-            <RefreshCw className="size-4" />
+            <RefreshCw
+              className={`size-4 ${fetchingJobs ? "animate-spin" : ""}`}
+            />
           </Button>
         </div>
 
@@ -346,6 +467,7 @@ function JobsPage() {
             search: (prev) => ({
               ...prev,
               statusFilter: v as FilterableStatus,
+              page: 1,
             }),
           })
         }
@@ -355,9 +477,14 @@ function JobsPage() {
             <TabsTrigger
               key={tab.value}
               value={tab.value}
-              className="data-[state=active]:bg-background"
+              className="group data-[state=active]:bg-background"
             >
-              {tab.label}
+              <span>{tab.label}</span>
+              {getStatusCount(tab.value) !== null && (
+                <span className="ml-1.5 rounded-sm border border-border/70 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground tabular-nums group-data-[state=active]:border-border group-data-[state=active]:bg-background group-data-[state=active]:text-foreground">
+                  {getStatusCount(tab.value)?.toLocaleString()}
+                </span>
+              )}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -365,129 +492,232 @@ function JobsPage() {
 
       {/* Jobs Table */}
       {loadingJobs ? (
-        <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border bg-card">
           <div className="p-8 space-y-4">
             {JOBS_SKELETON_KEYS.map((key) => (
               <Skeleton key={key} className="h-12 w-full" />
             ))}
           </div>
         </div>
-      ) : filteredAndSortedJobs.length === 0 ? (
-        <EmptyState
-          icon={<Inbox className="size-12" />}
-          title="No jobs found"
-          description={
-            searchQuery
-              ? "Try adjusting your search query"
-              : "No jobs matching your filters"
-          }
-        />
+      ) : jobs.length === 0 ? (
+        <div className="min-h-0 flex-1">
+          <EmptyState
+            icon={<Inbox className="size-12" />}
+            title="No jobs found"
+            description={
+              searchQuery
+                ? "Try adjusting your search query"
+                : "No jobs matching your filters"
+            }
+          />
+        </div>
       ) : (
-        <div className="rounded-lg border bg-card overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead
-                  className="cursor-pointer hover:text-foreground transition-colors"
-                  onClick={() => handleSort("name")}
-                >
-                  <div className="flex items-center gap-2">
-                    Job
-                    <SortIcon field="name" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:text-foreground transition-colors"
-                  onClick={() => handleSort("queueName")}
-                >
-                  <div className="flex items-center gap-2">
-                    Queue
-                    <SortIcon field="queueName" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:text-foreground transition-colors"
-                  onClick={() => handleSort("status")}
-                >
-                  <div className="flex items-center gap-2">
-                    Status
-                    <SortIcon field="status" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:text-foreground transition-colors"
-                  onClick={() => handleSort("timestamp")}
-                >
-                  <div className="flex items-center gap-2">
-                    Queued At
-                    <SortIcon field="timestamp" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:text-foreground transition-colors text-right"
-                  onClick={() => handleSort("duration")}
-                >
-                  <div className="flex items-center justify-end gap-2">
-                    Duration
-                    <SortIcon field="duration" />
-                  </div>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAndSortedJobs.map((job) => (
-                <TableRow
-                  key={`${job.prefix ?? ""}-${job.queueName}-${job.id}`}
-                  className="cursor-pointer hover:bg-muted/60 transition-colors"
-                  onClick={() => navigateToJob(job.id, job)}
-                >
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-foreground">
-                        {job.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {job.id}
-                      </span>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
+          <div className="min-h-0 flex-1 overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead
+                    className="sticky top-0 z-10 cursor-pointer bg-card hover:text-foreground transition-colors"
+                    onClick={() => handleSort("name")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Job
+                      <SortIcon field="name" />
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-mono text-sm text-muted-foreground">
-                      {hasMultiplePrefixes && job.prefix && (
-                        <span className="text-muted-foreground mr-1">
-                          {job.prefix}/
-                        </span>
-                      )}
-                      {job.queueName}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <JobStatusBadge
-                      status={job.status as JobStatus}
-                      size="sm"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-sm text-foreground">
-                        {dayjs(job.timestamp).fromNow()}
-                      </span>
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {dayjs(job.timestamp).format("MMM D, HH:mm:ss")}
-                      </span>
+                  </TableHead>
+                  <TableHead
+                    className="sticky top-0 z-10 cursor-pointer bg-card hover:text-foreground transition-colors"
+                    onClick={() => handleSort("queueName")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Queue
+                      <SortIcon field="queueName" />
                     </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatDuration(job)}
-                  </TableCell>
+                  </TableHead>
+                  <TableHead
+                    className="sticky top-0 z-10 cursor-pointer bg-card hover:text-foreground transition-colors"
+                    onClick={() => handleSort("status")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Status
+                      <SortIcon field="status" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="sticky top-0 z-10 cursor-pointer bg-card hover:text-foreground transition-colors"
+                    onClick={() => handleSort("timestamp")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Queued At
+                      <SortIcon field="timestamp" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="sticky top-0 z-10 cursor-pointer bg-card hover:text-foreground transition-colors text-right"
+                    onClick={() => handleSort("duration")}
+                  >
+                    <div className="flex items-center justify-end gap-2">
+                      Duration
+                      <SortIcon field="duration" />
+                    </div>
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {jobs.map((job) => (
+                  <TableRow
+                    key={`${job.prefix ?? ""}-${job.queueName}-${job.id}`}
+                    className="cursor-pointer hover:bg-muted/60 transition-colors"
+                    onClick={() => navigateToJob(job.id, job)}
+                  >
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">
+                          {job.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {job.id}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm text-muted-foreground">
+                        {hasMultiplePrefixes && job.prefix && (
+                          <span className="text-muted-foreground mr-1">
+                            {job.prefix}/
+                          </span>
+                        )}
+                        {job.queueName}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <JobStatusBadge
+                        status={job.status as JobStatus}
+                        size="sm"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-foreground">
+                          {dayjs(job.timestamp).fromNow()}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {dayjs(job.timestamp).format("MMM D, HH:mm:ss")}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {formatDuration(job)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
 
-          {/* Results Count */}
-          <div className="px-4 py-3 border-t text-sm text-muted-foreground">
-            Showing {filteredAndSortedJobs.length} of {jobs?.length ?? 0} jobs
+          {/* Pagination */}
+          <div className="shrink-0 flex flex-col gap-3 border-t px-4 py-3 text-sm text-muted-foreground lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              Showing {firstVisibleJob.toLocaleString()}-
+              {lastVisibleJob.toLocaleString()} of {totalJobs.toLocaleString()}{" "}
+              jobs
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-2">
+                <span>Rows</span>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(value) =>
+                    navigate({
+                      search: (prev) => ({
+                        ...prev,
+                        pageSize: Number(value),
+                        page: 1,
+                      }),
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-8 w-[82px] bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((option) => (
+                      <SelectItem key={option} value={String(option)}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Pagination className="mx-0 w-auto justify-start">
+                <PaginationContent>
+                  <PaginationItem>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Go to first page"
+                      disabled={page === 1}
+                      onClick={() => navigateToPage(1)}
+                    >
+                      <ChevronsLeft className="size-4" />
+                    </Button>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1 px-2.5 sm:pl-2.5"
+                      disabled={page === 1}
+                      onClick={() => navigateToPage(page - 1)}
+                    >
+                      <ChevronLeft className="size-4" />
+                      <span className="hidden sm:block">Previous</span>
+                    </Button>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="min-w-24 cursor-default"
+                      aria-current="page"
+                    >
+                      {page.toLocaleString()} / {totalPages.toLocaleString()}
+                    </Button>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1 px-2.5 sm:pr-2.5"
+                      disabled={page >= totalPages}
+                      onClick={() => navigateToPage(page + 1)}
+                    >
+                      <span className="hidden sm:block">Next</span>
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Go to last page"
+                      disabled={page >= totalPages}
+                      onClick={() => navigateToPage(totalPages)}
+                    >
+                      <ChevronsRight className="size-4" />
+                    </Button>
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           </div>
         </div>
       )}

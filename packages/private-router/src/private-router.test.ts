@@ -91,9 +91,27 @@ describe("createPrivateDashboardRouter", () => {
     ).resolves.toEqual({
       success: true,
     });
-    await expect(caller.jobs.list({ limit: 10 })).resolves.toHaveLength(3);
-    await expect(caller.jobs.listSummary({ limit: 10 })).resolves.toHaveLength(
-      3,
+    await expect(caller.jobs.list({ limit: 10 })).resolves.toMatchObject({
+      items: expect.arrayContaining([
+        expect.objectContaining({ id: "failed" }),
+        expect.objectContaining({ id: "completed" }),
+        expect.objectContaining({ id: "waiting" }),
+      ]),
+      total: 3,
+      limit: 10,
+      offset: 0,
+    });
+    await expect(caller.jobs.listSummary({ limit: 10 })).resolves.toMatchObject(
+      {
+        items: expect.arrayContaining([
+          expect.objectContaining({ id: "failed" }),
+          expect.objectContaining({ id: "completed" }),
+          expect.objectContaining({ id: "waiting" }),
+        ]),
+        total: 3,
+        limit: 10,
+        offset: 0,
+      },
     );
     await expect(
       caller.jobs.get({
@@ -411,17 +429,102 @@ describe("createPrivateDashboardRouter", () => {
     const caller =
       createPrivateDashboardRouter(source).createCaller(authenticatedContext);
 
-    await expect(
-      caller.jobs.list({ limit: 1, offset: 1 }),
-    ).resolves.toMatchObject([{ id: "middle" }]);
+    await expect(caller.jobs.list({ limit: 1, offset: 1 })).resolves.toEqual({
+      items: [expect.objectContaining({ id: "middle" })],
+      total: 3,
+      limit: 1,
+      offset: 1,
+    });
     expect(source.listJobs).toHaveBeenCalledWith({
       limit: 2,
       offset: 0,
+      queueKey: undefined,
+      queueName: undefined,
+      prefix: undefined,
+      status: undefined,
     });
     expect(mergeSortAndPageJobs(source.jobs, { limit: 2 })).toMatchObject([
       { id: "newest" },
       { id: "middle" },
     ]);
+  });
+
+  it("searches job summaries on summary fields before paging", async () => {
+    const source = createFakeSource({
+      jobs: [
+        createJob({ id: "1", name: "send-email", queueName: "email" }),
+        createJob({ id: "2", name: "build-report", queueName: "reports" }),
+        createJob({ id: "3", name: "send-sms", queueName: "sms" }),
+      ],
+    });
+    const caller =
+      createPrivateDashboardRouter(source).createCaller(authenticatedContext);
+
+    await expect(
+      caller.jobs.listSummary({ search: "report", limit: 10 }),
+    ).resolves.toMatchObject({
+      items: [{ id: "2" }],
+      total: 1,
+      limit: 10,
+      offset: 0,
+    });
+  });
+
+  it("sorts job summaries by jobs table fields before paging", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
+    const source = createFakeSource({
+      jobs: [
+        createJob({
+          id: "a",
+          name: "zeta",
+          queueName: "email",
+          status: "waiting",
+          timestamp: 100,
+          processedOn: 150,
+          finishedOn: 250,
+        }),
+        createJob({
+          id: "b",
+          name: "alpha",
+          queueName: "reports",
+          status: "failed",
+          timestamp: 300,
+          processedOn: 320,
+          finishedOn: 340,
+        }),
+        createJob({
+          id: "c",
+          name: "middle",
+          queueName: "audit",
+          status: "completed",
+          timestamp: 200,
+          processedOn: 210,
+          finishedOn: 260,
+        }),
+      ],
+    });
+    const caller =
+      createPrivateDashboardRouter(source).createCaller(authenticatedContext);
+
+    await expect(
+      caller.jobs.listSummary({ sortField: "name", sortOrder: "asc" }),
+    ).resolves.toMatchObject({ items: [{ id: "b" }, { id: "c" }, { id: "a" }] });
+    await expect(
+      caller.jobs.listSummary({ sortField: "queueName", sortOrder: "asc" }),
+    ).resolves.toMatchObject({ items: [{ id: "c" }, { id: "a" }, { id: "b" }] });
+    await expect(
+      caller.jobs.listSummary({ sortField: "status", sortOrder: "asc" }),
+    ).resolves.toMatchObject({ items: [{ id: "c" }, { id: "b" }, { id: "a" }] });
+    await expect(
+      caller.jobs.listSummary({ sortField: "timestamp", sortOrder: "asc" }),
+    ).resolves.toMatchObject({ items: [{ id: "a" }, { id: "c" }, { id: "b" }] });
+    await expect(
+      caller.jobs.listSummary({ sortField: "duration", sortOrder: "desc" }),
+    ).resolves.toMatchObject({ items: [{ id: "a" }, { id: "c" }, { id: "b" }] });
+
+    vi.useRealTimers();
   });
 
   it("preserves job and flow error payloads from the queue source", async () => {
@@ -547,22 +650,32 @@ type FakeSourceOptions = {
 
 function createFakeSource(options: FakeSourceOptions = {}): FakeSource {
   const mode = options.mode ?? "embedded";
-  const queues = options.queues ?? [
-    createQueue({ key: "email-critical", name: "email", prefix: "critical" }),
-    createQueue({ key: "reports", name: "reports", prefix: "ops" }),
-  ];
   const jobs = options.jobs ?? [
     createJob({ id: "failed", status: "failed", timestamp: 300 }),
     createJob({ id: "completed", status: "completed", timestamp: 200 }),
     createJob({ id: "waiting", status: "waiting", timestamp: 100 }),
   ];
+  const queues =
+    options.queues ??
+    withJobCounts(
+      [
+        createQueue({ key: "email-critical", name: "email", prefix: "critical" }),
+        createQueue({ key: "reports", name: "reports", prefix: "ops" }),
+      ],
+      jobs,
+    );
   const summaries =
     options.summaries ??
     jobs.map((job) =>
       createJobSummary({
         id: job.id,
+        name: job.name,
+        queueName: job.queueName,
+        prefix: job.prefix,
         status: job.status,
         timestamp: job.timestamp,
+        processedOn: job.processedOn,
+        finishedOn: job.finishedOn,
       }),
     );
   const workers = options.workers ?? [
@@ -818,6 +931,36 @@ function createQueue(overrides: Partial<DashboardQueue> = {}): DashboardQueue {
     capabilities: allCapabilities,
     ...overrides,
   };
+}
+
+function withJobCounts(
+  queues: DashboardQueue[],
+  jobs: Array<Job | JobSummary>,
+): DashboardQueue[] {
+  return queues.map((queue) => {
+    const matchingJobs = jobs.filter(
+      (job) =>
+        job.queueName === queue.name &&
+        (job.prefix ?? "bull") === (queue.prefix ?? "bull"),
+    );
+
+    return {
+      ...queue,
+      jobCounts: {
+        waiting: matchingJobs.filter((job) => job.status === "waiting").length,
+        active: matchingJobs.filter((job) => job.status === "active").length,
+        completed: matchingJobs.filter((job) => job.status === "completed")
+          .length,
+        failed: matchingJobs.filter((job) => job.status === "failed").length,
+        delayed: matchingJobs.filter((job) => job.status === "delayed").length,
+        paused: matchingJobs.filter((job) => job.status === "paused").length,
+        prioritized: 0,
+        waitingChildren: matchingJobs.filter(
+          (job) => job.status === "waiting-children",
+        ).length,
+      },
+    };
+  });
 }
 
 function createJob(overrides: Partial<Job> = {}): Job {

@@ -178,6 +178,10 @@ function QueuePage() {
       search: () => ({
         queueKey: key,
         statusFilter: FilterableStatus.All,
+        page: 1,
+        pageSize: 50,
+        sortField: "timestamp" as const,
+        sortOrder: "desc" as const,
       }),
     });
   };

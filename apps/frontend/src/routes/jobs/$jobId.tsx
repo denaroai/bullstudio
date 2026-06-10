@@ -100,7 +100,16 @@ function JobDetailPage() {
       onSuccess: (data) => {
         toast.success(data.message);
         queryClient.invalidateQueries({ queryKey: [["jobs"]] });
-        navigate({ to: "/jobs", search: { statusFilter: FilterableStatus.All } });
+        navigate({
+          to: "/jobs",
+          search: {
+            statusFilter: FilterableStatus.All,
+            page: 1,
+            pageSize: 50,
+            sortField: "timestamp",
+            sortOrder: "desc",
+          },
+        });
       },
       onError: (error) => {
         toast.error("Failed to remove job", {
@@ -111,7 +120,16 @@ function JobDetailPage() {
   );
 
   const goBack = () => {
-    navigate({ to: "/jobs", search: { statusFilter: FilterableStatus.All } });
+    navigate({
+      to: "/jobs",
+      search: {
+        statusFilter: FilterableStatus.All,
+        page: 1,
+        pageSize: 50,
+        sortField: "timestamp",
+        sortOrder: "desc",
+      },
+    });
   };
 
   if (isLoading) {

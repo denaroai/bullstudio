@@ -172,6 +172,10 @@ function WorkerSheetBody({
                 search={{
                   queueKey: selectedQueueKey,
                   statusFilter: FilterableStatus.All,
+                  page: 1,
+                  pageSize: 50,
+                  sortField: "timestamp",
+                  sortOrder: "desc",
                 }}
               >
                 <BriefcaseBusiness className="size-4" />

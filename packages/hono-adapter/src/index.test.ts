@@ -87,7 +87,12 @@ describe("bullstudio Hono adapter", () => {
       "/ops/bullstudio/api/trpc/jobs.listSummary",
     );
     expect(jobsResponse.status).toBe(200);
-    await expect(readTrpcResultData(jobsResponse)).resolves.toEqual([]);
+    await expect(readTrpcResultData(jobsResponse)).resolves.toEqual({
+      items: [],
+      total: 0,
+      limit: 100,
+      offset: 0,
+    });
 
     const readOnlyMutationResponse = await host.request(
       "/ops/bullstudio/api/trpc/queues.pause",
