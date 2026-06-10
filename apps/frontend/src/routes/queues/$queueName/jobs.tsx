@@ -318,9 +318,9 @@ function QueueJobsPage() {
               }),
             })
           }
-          className="min-w-0 overflow-x-auto"
+          className="min-w-0 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          <TabsList className="border border-border">
+          <TabsList className="w-max border border-border">
             {statusTabs.map((tab) => (
               <TabsTrigger
                 key={tab.value}
@@ -338,7 +338,7 @@ function QueueJobsPage() {
           </TabsList>
         </Tabs>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <Button
             variant="outline"
             size="icon"
