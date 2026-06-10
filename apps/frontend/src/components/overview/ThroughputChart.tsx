@@ -15,7 +15,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@bullstudio/ui/components/chart";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 type TimeSeriesDataPoint = OverviewMetricsResponse["timeSeries"][number];
 
@@ -51,7 +51,7 @@ export function ThroughputChart({ data, timeRange }: ThroughputChartProps) {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-64 w-full">
-          <BarChart data={formattedData} accessibilityLayer>
+          <LineChart data={formattedData} accessibilityLayer>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="var(--border)"
@@ -72,19 +72,21 @@ export function ThroughputChart({ data, timeRange }: ThroughputChartProps) {
             />
             <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />
-            <Bar
+            <Line
               dataKey="completed"
-              fill="var(--color-completed)"
-              radius={[4, 4, 0, 0]}
-              stackId="stack"
+              type="monotone"
+              stroke="var(--color-completed)"
+              strokeWidth={2}
+              dot={false}
             />
-            <Bar
+            <Line
               dataKey="failed"
-              fill="var(--color-failed)"
-              radius={[4, 4, 0, 0]}
-              stackId="stack"
+              type="monotone"
+              stroke="var(--color-failed)"
+              strokeWidth={2}
+              dot={false}
             />
-          </BarChart>
+          </LineChart>
         </ChartContainer>
       </CardContent>
     </Card>
