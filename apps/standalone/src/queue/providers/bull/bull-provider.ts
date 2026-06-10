@@ -9,6 +9,7 @@ import type {
   JobSummary,
   QueueAdapter,
   UpsertJobSchedulerInput,
+  Worker,
   WorkerCount,
 } from "@bullstudio/connect-types";
 import Bull from "bull";
@@ -270,6 +271,12 @@ export class BullProvider implements QueueService {
     prefix?: string,
   ): Promise<WorkerCount> {
     return this.getOrCreateQueueAdapter(queueName, prefix).getWorkerCount();
+  }
+
+  async listWorkers(queueName: string, prefix?: string): Promise<Worker[]> {
+    return (
+      this.getOrCreateQueueAdapter(queueName, prefix).listWorkers?.() ?? []
+    );
   }
 
   async listJobSchedulers(

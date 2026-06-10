@@ -6,6 +6,7 @@ import type {
   JobScheduler,
   JobStatus,
   JobSummary,
+  Worker,
 } from "@bullstudio/connect-types";
 import {
   type DashboardQueue,
@@ -18,6 +19,7 @@ import {
   type QueueTargetInput,
   type SchedulerTargetInput,
   type SchedulerUpsertInput,
+  type WorkerListInput,
   supportedJobStatuses,
 } from "@bullstudio/private-router";
 import { TRPCError } from "@trpc/server";
@@ -114,6 +116,43 @@ export function createStandaloneQueueSource(): PrivateDashboardQueueSource {
     },
     listFlows,
     getFlow,
+    listWorkers: async (input) => {
+      const provider = await getQueueProvider();
+      const queues = await getQueuesForWorkerList(input);
+      const workers: Worker[] = [];
+
+      for (const queue of queues) {
+        const queueWorkers = await provider.listWorkers(
+          queue.name,
+          queue.prefix,
+        );
+        workers.push(
+          ...queueWorkers.map((worker) => ({
+            ...worker,
+            prefix: worker.prefix ?? queue.prefix,
+            queueKey: queue.key,
+            provider: worker.provider ?? queue.provider,
+          })),
+        );
+      }
+
+      return workers.slice(0, input.limit ?? 200);
+    },
+    getWorker: async (input) => {
+      const provider = await getQueueProvider();
+      const queue = await resolveQueue(input);
+      const workers = await provider.listWorkers(queue.name, queue.prefix);
+      return (
+        workers
+          .map((worker) => ({
+            ...worker,
+            prefix: worker.prefix ?? queue.prefix,
+            queueKey: queue.key,
+            provider: worker.provider ?? queue.provider,
+          }))
+          .find((worker) => worker.id === input.workerId) ?? null
+      );
+    },
     listJobSchedulers: async (input) => {
       const provider = await getQueueProvider();
       const queues = await getQueuesForListInput(input);
@@ -167,6 +206,7 @@ async function getStandaloneQueueSourceStatus(): Promise<QueueSourceStatus> {
     capabilities: {
       flows: capabilities.supportsFlows,
       schedulers: capabilities.supportsSchedulers,
+      workers: true,
       supportedStatuses: capabilities.supportedJobStates,
       mutationsAllowed: true,
     },
@@ -224,6 +264,17 @@ async function resolveQueue(input: QueueTargetInput): Promise<DashboardQueue> {
 
 async function getQueuesForListInput(
   input: JobListInput,
+): Promise<DashboardQueue[]> {
+  if (input.queueKey || input.queueName) {
+    return [await resolveQueue(input)];
+  }
+
+  const provider = await getQueueProvider();
+  return provider.getQueues();
+}
+
+async function getQueuesForWorkerList(
+  input: WorkerListInput,
 ): Promise<DashboardQueue[]> {
   if (input.queueKey || input.queueName) {
     return [await resolveQueue(input)];

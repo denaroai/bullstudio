@@ -2,6 +2,7 @@ import {
   createJobNotFoundError,
   createWorkerCount,
   filterJobsByName,
+  mapRedisClientWorker,
   normalizeJobCounts,
   sortJobs,
   toJobSummary,
@@ -146,6 +147,16 @@ export function createBullMqQueueAdapter(
       const workers = await queue.getWorkers();
       return createWorkerCount(queue.name, workers);
     },
+    listWorkers: async () => {
+      const prefix = getQueuePrefix(queue);
+      const workers = await queue.getWorkers();
+      return workers.map((worker) =>
+        mapRedisClientWorker(worker, queue.name, {
+          prefix,
+          provider: "bullmq",
+        }),
+      );
+    },
     listFlows: async (options) => listFlows(queue, flowProducer, options),
     getFlow: async (flowId) => getFlow(queue, flowProducer, flowId),
     listJobSchedulers: async (options) => {
@@ -206,9 +217,7 @@ function mapScheduler(
     template: scheduler.template
       ? {
           data: scheduler.template.data,
-          opts: scheduler.template.opts as
-            | Record<string, unknown>
-            | undefined,
+          opts: scheduler.template.opts as Record<string, unknown> | undefined,
         }
       : undefined,
   };

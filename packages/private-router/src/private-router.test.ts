@@ -3,6 +3,7 @@ import type {
   FlowTree,
   Job,
   JobSummary,
+  Worker,
 } from "@bullstudio/connect-types";
 import { TRPCError } from "@trpc/server";
 import { describe, expect, it, vi } from "vitest";
@@ -24,6 +25,8 @@ import {
   type QueueMutationResponse,
   type QueueSourceStatus,
   type QueueTargetInput,
+  type WorkerListInput,
+  type WorkerTargetInput,
 } from "./index";
 
 const allCapabilities: AdapterCapabilities = {
@@ -34,6 +37,7 @@ const allCapabilities: AdapterCapabilities = {
   queuePause: true,
   queueResume: true,
   queueDrain: true,
+  schedulers: true,
   workers: true,
 };
 const authenticatedContext = { authenticated: true };
@@ -127,6 +131,14 @@ describe("createPrivateDashboardRouter", () => {
         flowId: "flow-1",
       }),
     ).resolves.toMatchObject({ id: "flow-1" });
+    await expect(caller.workers.list({ limit: 10 })).resolves.toHaveLength(2);
+    await expect(
+      caller.workers.get({
+        queueKey: "email-critical",
+        queueName: "email",
+        workerId: "critical:email:worker-a:127.0.0.1:1",
+      }),
+    ).resolves.toMatchObject({ name: "worker-a" });
   });
 
   it("preserves standalone Redis connection fields and omits them in embedded mode", async () => {
@@ -255,6 +267,7 @@ describe("createPrivateDashboardRouter", () => {
             queuePause: false,
             queueResume: false,
             queueDrain: false,
+            workers: false,
           },
         }),
       ],
@@ -296,6 +309,41 @@ describe("createPrivateDashboardRouter", () => {
       }),
       "BAD_REQUEST",
       "Flows",
+    );
+    await expectTrpcError(
+      caller.workers.list({ queueKey: "email-critical" }),
+      "BAD_REQUEST",
+      "Workers",
+    );
+  });
+
+  it("lists workers with queue filters and returns NOT_FOUND for a missing worker", async () => {
+    const source = createFakeSource();
+    const caller =
+      createPrivateDashboardRouter(source).createCaller(authenticatedContext);
+
+    await expect(
+      caller.workers.list({ queueName: "email", prefix: "critical" }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: "critical:email:worker-a:127.0.0.1:1",
+        queueKey: "email-critical",
+      }),
+    ]);
+    expect(source.listWorkers).toHaveBeenCalledWith({
+      queueName: "email",
+      prefix: "critical",
+      limit: 200,
+    });
+
+    await expectTrpcError(
+      caller.workers.get({
+        queueKey: "email-critical",
+        queueName: "email",
+        workerId: "missing",
+      }),
+      "NOT_FOUND",
+      "Worker missing not found",
     );
   });
 
@@ -451,6 +499,7 @@ describe("createPrivateDashboardRouter", () => {
 type FakeSource = PrivateDashboardQueueSource & {
   jobs: Job[];
   summaries: JobSummary[];
+  workers: Worker[];
   resolveCalls: QueueTargetInput[];
   pauseQueue: ReturnType<
     typeof vi.fn<[QueueTargetInput], Promise<QueueMutationResponse>>
@@ -476,6 +525,12 @@ type FakeSource = PrivateDashboardQueueSource & {
   removeJob: ReturnType<
     typeof vi.fn<[JobTargetInput], Promise<JobRemoveResponse>>
   >;
+  listWorkers: ReturnType<
+    typeof vi.fn<
+      [WorkerListInput],
+      Promise<Array<Worker & { queueKey?: string }>>
+    >
+  >;
 };
 
 type FakeSourceOptions = {
@@ -484,6 +539,7 @@ type FakeSourceOptions = {
   queues?: DashboardQueue[];
   jobs?: Job[];
   summaries?: JobSummary[];
+  workers?: Worker[];
   getJob?: (input: JobTargetInput) => Job | null;
   retryJob?: (input: JobTargetInput) => JobRetryResponse;
   getFlow?: (input: FlowTargetInput) => FlowTree | null;
@@ -509,6 +565,24 @@ function createFakeSource(options: FakeSourceOptions = {}): FakeSource {
         timestamp: job.timestamp,
       }),
     );
+  const workers = options.workers ?? [
+    createWorker({
+      id: "critical:email:worker-a:127.0.0.1:1",
+      name: "worker-a",
+      queueName: "email",
+      prefix: "critical",
+      queueKey: "email-critical",
+      address: "127.0.0.1:1",
+    }),
+    createWorker({
+      id: "ops:reports:worker-b:127.0.0.1:2",
+      name: "worker-b",
+      queueName: "reports",
+      prefix: "ops",
+      queueKey: "reports",
+      address: "127.0.0.1:2",
+    }),
+  ];
   const resolveCalls: QueueTargetInput[] = [];
 
   return {
@@ -516,6 +590,7 @@ function createFakeSource(options: FakeSourceOptions = {}): FakeSource {
     readOnly: options.readOnly ?? false,
     jobs,
     summaries,
+    workers,
     resolveCalls,
     getStatus: async () => createStatus(mode, options.readOnly ?? false),
     listQueues: async () => queues,
@@ -652,6 +727,22 @@ function createFakeSource(options: FakeSourceOptions = {}): FakeSource {
               children: undefined,
             },
           },
+    listWorkers: vi.fn(async (input: WorkerListInput) =>
+      workers.filter(
+        (worker) =>
+          (!input.queueKey || worker.queueKey === input.queueKey) &&
+          (!input.queueName || worker.queueName === input.queueName) &&
+          (!input.prefix || worker.prefix === input.prefix),
+      ),
+    ),
+    getWorker: async (input: WorkerTargetInput) =>
+      workers.find(
+        (worker) =>
+          worker.id === input.workerId &&
+          (!input.queueKey || worker.queueKey === input.queueKey) &&
+          (!input.queueName || worker.queueName === input.queueName) &&
+          (!input.prefix || worker.prefix === input.prefix),
+      ) ?? null,
   };
 }
 
@@ -675,6 +766,8 @@ function createStatus(
       prefixes: ["critical", "ops"],
       capabilities: {
         flows: true,
+        schedulers: true,
+        workers: true,
         supportedStatuses: [
           "waiting",
           "active",
@@ -753,6 +846,25 @@ function createJobSummary(overrides: Partial<JobSummary> = {}): JobSummary {
     progress: 0,
     attemptsMade: 1,
     timestamp: 100,
+    ...overrides,
+  };
+}
+
+function createWorker(overrides: Partial<Worker> = {}): Worker {
+  return {
+    id: "critical:email:worker-a:127.0.0.1:1",
+    name: "worker-a",
+    queueName: "email",
+    prefix: "critical",
+    queueKey: "email-critical",
+    provider: "bullmq",
+    address: "127.0.0.1:1",
+    age: 10,
+    idle: 1,
+    metadata: {
+      name: "worker-a",
+      addr: "127.0.0.1:1",
+    },
     ...overrides,
   };
 }

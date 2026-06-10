@@ -19,6 +19,7 @@ describe("getQueueSourceViewModel", () => {
       capabilities: {
         flows: true,
         schedulers: true,
+        workers: true,
         supportedStatuses: ["waiting", "waiting-children"],
         mutationsAllowed: true,
       },
@@ -38,6 +39,10 @@ describe("getQueueSourceViewModel", () => {
       },
       features: {
         flows: {
+          visible: true,
+          enabled: true,
+        },
+        workers: {
           visible: true,
           enabled: true,
         },

@@ -7,25 +7,30 @@ import {
 } from "@bullstudio/ui/components/select";
 import { Layers } from "lucide-react";
 import { queueKey } from "@/lib/queue-key";
-import type { SchedulerQueueOption } from "./types";
 
 const ALL_QUEUES_VALUE = "__all__";
 
-interface SchedulerQueueFilterProps {
+export interface QueueFilterOption {
+  key?: string;
+  name: string;
+  prefix?: string;
+}
+
+interface QueueFilterProps {
   hasMultiplePrefixes: boolean;
   isLoading: boolean;
-  queues?: SchedulerQueueOption[];
+  queues?: QueueFilterOption[];
   selectedQueueKey?: string;
   onQueueKeyChange: (queueKey?: string) => void;
 }
 
-export function SchedulerQueueFilter({
+export function QueueFilter({
   hasMultiplePrefixes,
   isLoading,
   queues,
   selectedQueueKey,
   onQueueKeyChange,
-}: SchedulerQueueFilterProps) {
+}: QueueFilterProps) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Select

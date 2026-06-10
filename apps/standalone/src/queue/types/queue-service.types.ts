@@ -7,6 +7,7 @@ import type {
   JobSummary,
   Queue,
   UpsertJobSchedulerInput,
+  Worker,
   WorkerCount,
 } from "@bullstudio/connect-types";
 import type { QueueProviderCapabilities } from "./provider-capabilities.types";
@@ -92,6 +93,7 @@ export interface QueueService {
 
   // Worker operations
   getWorkerCount(queueName: string, prefix?: string): Promise<WorkerCount>;
+  listWorkers(queueName: string, prefix?: string): Promise<Worker[]>;
 
   // Job scheduler operations
   listJobSchedulers(

@@ -247,7 +247,7 @@ function JobDetailPage() {
         />
         <MetadataItem
           title="Attempts"
-          value={`${job.attemptsMade} / ${job.attemptsLimit}`}
+          value={`${job.attemptsMade} / ${job.attemptsLimit + 1}`}
         />
         <MetadataItem title="Duration" value={duration} />
       </dl>

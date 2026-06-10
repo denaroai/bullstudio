@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
-import { SchedulerQueueFilter } from "@/components/schedulers/SchedulerQueueFilter";
+import { QueueFilter } from "@/components/QueueFilter";
 import { SchedulerSheet } from "@/components/schedulers/SchedulerSheet";
 import { SchedulersHeader } from "@/components/schedulers/SchedulersHeader";
 import { SchedulersTable } from "@/components/schedulers/SchedulersTable";
@@ -78,7 +78,7 @@ function SchedulersPage() {
         }}
       />
 
-      <SchedulerQueueFilter
+      <QueueFilter
         hasMultiplePrefixes={hasMultiplePrefixes}
         isLoading={loadingQueues}
         queues={queues}

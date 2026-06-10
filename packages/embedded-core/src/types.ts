@@ -12,6 +12,7 @@ import type {
   QueueAdapter,
   QueueAdapterProvider,
   UpsertJobSchedulerInput,
+  Worker,
   WorkerCount,
 } from "@bullstudio/connect-types";
 
@@ -161,6 +162,7 @@ export interface EmbeddedDashboardInstance {
   retryJob(queueKey: string, jobId: string): Promise<void>;
   removeJob(queueKey: string, jobId: string): Promise<void>;
   getWorkerCount(queueKey: string): Promise<WorkerCount>;
+  listWorkers(queueKey: string): Promise<Worker[]>;
   listFlows(options?: { limit?: number }): Promise<FlowSummary[]>;
   getFlow(queueKey: string, flowId: string): Promise<FlowTree | null>;
   listQueueSchedulers(

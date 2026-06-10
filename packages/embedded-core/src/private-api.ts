@@ -3,6 +3,7 @@ import type {
   JobQueryOptions,
   JobScheduler,
   JobSummary,
+  Worker,
 } from "@bullstudio/connect-types";
 import {
   createPrivateDashboardRouter,
@@ -16,6 +17,7 @@ import {
   type SchedulerListInput,
   type SchedulerTargetInput,
   type SchedulerUpsertInput,
+  type WorkerListInput,
 } from "@bullstudio/private-router";
 import { TRPCError } from "@trpc/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
@@ -124,6 +126,45 @@ export function createEmbeddedQueueSource(
     getFlow: async (input) => {
       const queue = await getQueueForTarget(dashboard, input);
       return dashboard.getFlow(queue.key, input.flowId);
+    },
+    listWorkers: async (input) => {
+      const queues = await getQueuesForWorkerList(dashboard, input);
+      const workers: Array<Worker & { queueKey?: string }> = [];
+
+      for (const queue of queues) {
+        if (!queue.capabilities.workers) {
+          if (input.queueKey || input.queueName) {
+            assertWorkerCapability(queue);
+          }
+          continue;
+        }
+        const queueWorkers = await dashboard.listWorkers(queue.key);
+        workers.push(
+          ...queueWorkers.map((worker) => ({
+            ...worker,
+            prefix: worker.prefix ?? queue.prefix,
+            queueKey: queue.key,
+            provider: worker.provider ?? queue.provider,
+          })),
+        );
+      }
+
+      return workers.slice(0, input.limit ?? 200);
+    },
+    getWorker: async (input) => {
+      const queue = await getQueueForTarget(dashboard, input);
+      assertWorkerCapability(queue);
+      const workers = await dashboard.listWorkers(queue.key);
+      return (
+        workers
+          .map((worker) => ({
+            ...worker,
+            prefix: worker.prefix ?? queue.prefix,
+            queueKey: queue.key,
+            provider: worker.provider ?? queue.provider,
+          }))
+          .find((worker) => worker.id === input.workerId) ?? null
+      );
     },
     listJobSchedulers: async (input) => {
       const queues = await getQueuesForSchedulerList(dashboard, input);
@@ -303,6 +344,17 @@ async function getQueuesForSchedulerList(
   return dashboard.listQueues();
 }
 
+async function getQueuesForWorkerList(
+  dashboard: EmbeddedDashboardInstance,
+  input: WorkerListInput,
+): Promise<DashboardQueue[]> {
+  if (input.queueKey || input.queueName) {
+    return [await getSuppliedQueueByPrivateApiInput(dashboard, input)];
+  }
+
+  return dashboard.listQueues();
+}
+
 async function upsertJobScheduler(
   dashboard: EmbeddedDashboardInstance,
   input: SchedulerUpsertInput,
@@ -346,6 +398,15 @@ function assertSchedulerCapability(queue: DashboardQueue): void {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: `Job schedulers are not supported for supplied queue "${queue.key}".`,
+    });
+  }
+}
+
+function assertWorkerCapability(queue: DashboardQueue): void {
+  if (!queue.capabilities.workers) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Workers are not supported for supplied queue "${queue.key}".`,
     });
   }
 }

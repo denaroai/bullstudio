@@ -6,6 +6,7 @@ import type {
   JobScheduler,
   JobStatus,
   JobSummary,
+  Worker,
   AdapterCapabilities as QueueAdapterCapabilities,
 } from "@bullstudio/connect-types";
 import { initTRPC, TRPCError } from "@trpc/server";
@@ -39,6 +40,7 @@ export type QueueSourceStatus =
       capabilities: {
         flows: boolean;
         schedulers: boolean;
+        workers: boolean;
         supportedStatuses: string[];
         mutationsAllowed: boolean;
       };
@@ -62,6 +64,7 @@ export type ConnectionInfo = {
   prefixes: string[];
   capabilities: {
     supportsFlows: boolean;
+    workers: boolean;
     supportedStatuses: string[];
   };
   queueSource: QueueSourceStatus;
@@ -221,6 +224,21 @@ export type SchedulerMutationResponse = {
   message: string;
 };
 
+export type WorkerListInput = {
+  queueKey?: string;
+  queueName?: string;
+  prefix?: string;
+  limit?: number;
+};
+
+export type WorkerTargetInput = {
+  queueKey?: string;
+  queueName?: string;
+  name?: string;
+  prefix?: string;
+  workerId: string;
+};
+
 export interface PrivateDashboardQueueSource {
   mode: "standalone" | "embedded";
   readOnly: boolean;
@@ -243,6 +261,10 @@ export interface PrivateDashboardQueueSource {
     input?: FlowListInput,
   ): Promise<Array<FlowSummary & { queueKey?: string }>>;
   getFlow(input: FlowTargetInput): Promise<FlowTree | null>;
+  listWorkers(
+    input: WorkerListInput,
+  ): Promise<Array<Worker & { queueKey?: string }>>;
+  getWorker(input: WorkerTargetInput): Promise<Worker | null>;
   listJobSchedulers(
     input: SchedulerListInput,
   ): Promise<Array<JobScheduler & { queueKey?: string }>>;
@@ -336,6 +358,23 @@ const schedulerListSchema = z
     limit: z.number().min(1).max(500).default(100),
   })
   .optional();
+
+const workerListSchema = z
+  .object({
+    queueKey: z.string().optional(),
+    queueName: z.string().optional(),
+    prefix: z.string().optional(),
+    limit: z.number().min(1).max(1000).default(200),
+  })
+  .optional();
+
+const workerTargetSchema = z.object({
+  queueKey: z.string().optional(),
+  queueName: z.string().optional(),
+  name: z.string().optional(),
+  prefix: z.string().optional(),
+  workerId: z.string(),
+});
 
 const schedulerTargetSchema = z.object({
   queueKey: z.string().optional(),
@@ -497,6 +536,34 @@ export function createPrivateDashboardRouter(
           return flow;
         }),
     }),
+    workers: t.router({
+      list: authenticatedProcedure
+        .input(workerListSchema)
+        .query(async ({ input }) => {
+          if (input?.queueKey || input?.queueName) {
+            const queue = await resolveQueueTarget(source, input);
+            assertQueueCapability(source, queue, "workers", "Workers");
+          }
+          return source.listWorkers(input ?? { limit: 200 });
+        }),
+      get: authenticatedProcedure
+        .input(workerTargetSchema)
+        .query(async ({ input }) => {
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "workers", "Workers");
+          const worker = await source.getWorker(input);
+
+          if (!worker) {
+            const queueLabel = input.queueName ?? input.queueKey ?? "unknown";
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: `Worker ${input.workerId} not found in queue ${queueLabel}`,
+            });
+          }
+
+          return worker;
+        }),
+    }),
     schedulers: t.router({
       list: authenticatedProcedure
         .input(schedulerListSchema)
@@ -560,6 +627,7 @@ export async function createConnectionInfo(
       prefixes,
       capabilities: {
         supportsFlows: queueSource.capabilities.flows,
+        workers: queueSource.capabilities.workers,
         supportedStatuses: queueSource.capabilities.supportedStatuses,
       },
       queueSource,
@@ -577,6 +645,7 @@ export async function createConnectionInfo(
     prefixes,
     capabilities: {
       supportsFlows: queueSource.capabilities.flows,
+      workers: queueSource.capabilities.workers,
       supportedStatuses: [...supportedJobStatuses],
     },
     queueSource,

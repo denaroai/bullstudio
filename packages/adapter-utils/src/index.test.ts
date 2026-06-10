@@ -2,6 +2,7 @@ import {
   createJobNotFoundError,
   createWorkerCount,
   filterJobsByName,
+  mapRedisClientWorker,
   normalizeJobCounts,
   sortJobs,
   toJobSummary,
@@ -85,6 +86,43 @@ describe("adapter utils", () => {
     expect(createJobNotFoundError("email", "1").message).toBe(
       'Job "1" was not found in queue "email".',
     );
+  });
+
+  it("maps Redis client records to worker metadata", () => {
+    expect(
+      mapRedisClientWorker(
+        {
+          id: "12",
+          name: "worker-a",
+          addr: "127.0.0.1:6379",
+          age: "20",
+          idle: 3,
+          flags: "N",
+          db: 0,
+          nested: { ignored: true },
+        },
+        "email",
+        { prefix: "bull", provider: "bullmq" },
+      ),
+    ).toEqual({
+      id: "bull:email:worker-a:127.0.0.1:6379",
+      name: "worker-a",
+      queueName: "email",
+      prefix: "bull",
+      provider: "bullmq",
+      address: "127.0.0.1:6379",
+      age: 20,
+      idle: 3,
+      metadata: {
+        id: "12",
+        name: "worker-a",
+        addr: "127.0.0.1:6379",
+        age: "20",
+        idle: "3",
+        flags: "N",
+        db: "0",
+      },
+    });
   });
 });
 

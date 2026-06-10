@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useSearch } from "@tanstack/react-router";
 import {
   CalendarClock,
+  Cpu,
   Database,
   Github,
   LayoutDashboard,
@@ -118,6 +119,14 @@ export function AppSidebar() {
       title: "Schedulers",
       href: "/schedulers",
       icon: CalendarClock,
+    });
+  }
+
+  if (queueSource?.features.workers.visible) {
+    navItems.push({
+      title: "Workers",
+      href: "/workers",
+      icon: Cpu,
     });
   }
 

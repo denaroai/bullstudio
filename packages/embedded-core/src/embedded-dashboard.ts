@@ -73,6 +73,10 @@ export function createEmbeddedDashboard(
       ),
     getWorkerCount: (queueKey) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getWorkerCount(),
+    listWorkers: async (queueKey) => {
+      const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+      return adapter.listWorkers ? adapter.listWorkers() : [];
+    },
     listFlows: (options) => listFlows(resolvedConfig.queues, options),
     getFlow: async (queueKey, flowId) => {
       const getFlow = getQueueAdapter(queueAdaptersByKey, queueKey).getFlow;
@@ -80,7 +84,9 @@ export function createEmbeddedDashboard(
     },
     listQueueSchedulers: async (queueKey, options) => {
       const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
-      return adapter.listJobSchedulers ? adapter.listJobSchedulers(options) : [];
+      return adapter.listJobSchedulers
+        ? adapter.listJobSchedulers(options)
+        : [];
     },
     getJobScheduler: async (queueKey, target) => {
       const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);

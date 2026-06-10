@@ -2,6 +2,7 @@ import {
   createJobNotFoundError,
   createWorkerCount,
   filterJobsByName,
+  mapRedisClientWorker,
   normalizeJobCounts,
   sortJobs,
   toJobSummary,
@@ -126,6 +127,16 @@ export function createBullQueueAdapter(
       const workers = await queue.getWorkers();
       return createWorkerCount(queue.name, workers);
     },
+    listWorkers: async () => {
+      const prefix = getQueuePrefix(queue);
+      const workers = await queue.getWorkers();
+      return workers.map((worker) =>
+        mapRedisClientWorker(worker, queue.name, {
+          prefix,
+          provider: "bull",
+        }),
+      );
+    },
     listJobSchedulers: async (options) => {
       const limit = options?.limit ?? 50;
       const jobs = await queue.getRepeatableJobs(0, limit - 1, true);
@@ -191,9 +202,8 @@ function mapScheduler(
     prefix,
     strategy: pattern ? "cron" : "every",
     pattern,
-    every: pattern || every === undefined || Number.isNaN(every)
-      ? undefined
-      : every,
+    every:
+      pattern || every === undefined || Number.isNaN(every) ? undefined : every,
     tz: job.tz,
     next: job.next,
     endDate: job.endDate,

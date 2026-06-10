@@ -6,7 +6,7 @@ import type {
   JobSchedulerTarget,
   UpsertJobSchedulerInput,
 } from "./scheduler";
-import type { WorkerCount } from "./worker";
+import type { Worker, WorkerCount } from "./worker";
 
 export type QueueAdapterProvider = "bullmq" | "bull";
 
@@ -39,6 +39,7 @@ export interface QueueAdapter {
   retryJob(jobId: string): Promise<void>;
   removeJob(jobId: string): Promise<void>;
   getWorkerCount(): Promise<WorkerCount>;
+  listWorkers?(): Promise<Worker[]>;
   listFlows?(options?: { limit?: number }): Promise<FlowSummary[]>;
   getFlow?(flowId: string): Promise<FlowTree | null>;
   listJobSchedulers?(options?: { limit?: number }): Promise<JobScheduler[]>;

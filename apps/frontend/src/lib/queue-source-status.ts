@@ -23,6 +23,7 @@ interface StandaloneQueueSourceStatus {
   capabilities: {
     flows: boolean;
     schedulers: boolean;
+    workers: boolean;
     supportedStatuses: string[];
     mutationsAllowed: boolean;
   };
@@ -102,7 +103,7 @@ export function getQueueSourceViewModel(
           status.capabilities.schedulers,
           status.capabilities.mutationsAllowed,
         ),
-        workers: enabledFeature(true),
+        workers: enabledFeature(status.capabilities.workers),
         mutations: enabledFeature(status.capabilities.mutationsAllowed),
       },
     };
