@@ -10,6 +10,28 @@ import type { Worker, WorkerCount } from "./worker";
 
 export type QueueAdapterProvider = "bullmq" | "bull";
 
+export type QueueMetricType = "completed" | "failed";
+
+/**
+ * Lightweight, per-minute throughput counters maintained natively by
+ * Bull/BullMQ (the `metrics` worker option). Unlike raw jobs, these survive
+ * job removal, so they give accurate throughput even when `removeOnComplete`
+ * is enabled.
+ */
+export interface QueueMetricSnapshot {
+  meta: {
+    /** Cumulative count of finished jobs of this type, all-time. */
+    count: number;
+    /** Timestamp (ms) of the most recently recorded data point. */
+    prevTS: number;
+    prevCount: number;
+  };
+  /** Per-minute job counts, newest first (index 0 === the `prevTS` minute). */
+  data: number[];
+  /** Number of data points returned. */
+  count: number;
+}
+
 export interface AdapterCapabilities {
   flows: boolean;
   jobLogs: boolean;
@@ -34,6 +56,11 @@ export interface QueueAdapter {
   drainQueue(): Promise<void>;
   getJobs(options?: JobQueryOptions): Promise<Job[]>;
   getJobsSummary(options?: JobQueryOptions): Promise<JobSummary[]>;
+  /**
+   * Native throughput metrics, when the underlying queue records them.
+   * Optional: omitted by adapters whose backend has no metrics API.
+   */
+  getMetrics?(type: QueueMetricType): Promise<QueueMetricSnapshot>;
   getJob(jobId: string): Promise<Job | null>;
   getJobLogs(jobId: string): Promise<{ logs: string[]; count: number }>;
   retryJob(jobId: string): Promise<void>;

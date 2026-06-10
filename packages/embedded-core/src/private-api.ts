@@ -13,6 +13,8 @@ import {
   type PrivateDashboardContext,
   type PrivateDashboardQueueSource,
   type QueueSourceStatus as PrivateQueueSourceStatus,
+  type QueueMetricsListInput,
+  type QueueMetricsSummary,
   type QueueTargetInput,
   type SchedulerListInput,
   type SchedulerTargetInput,
@@ -97,6 +99,7 @@ export function createEmbeddedQueueSource(
 
       return jobs;
     },
+    listQueueMetrics: (input) => listQueueMetrics(dashboard, input),
     getJob: async (input) => {
       const queue = await getQueueForTarget(dashboard, input);
       return dashboard.getJob(queue.key, input.jobId);
@@ -251,6 +254,30 @@ async function getQueuesForJobList(
   }
 
   return dashboard.listQueues();
+}
+
+async function listQueueMetrics(
+  dashboard: EmbeddedDashboardInstance,
+  input: QueueMetricsListInput,
+): Promise<QueueMetricsSummary[]> {
+  const queues = await getQueuesForJobList(dashboard, input);
+
+  return Promise.all(
+    queues.map(async (queue) => {
+      const [completed, failed] = await Promise.all([
+        dashboard.getQueueMetrics(queue.key, "completed"),
+        dashboard.getQueueMetrics(queue.key, "failed"),
+      ]);
+
+      return {
+        queueKey: queue.key,
+        queueName: queue.name,
+        prefix: queue.prefix,
+        completed,
+        failed,
+      };
+    }),
+  );
 }
 
 function getQueueJobQueryOptions(input: JobListInput): JobQueryOptions {

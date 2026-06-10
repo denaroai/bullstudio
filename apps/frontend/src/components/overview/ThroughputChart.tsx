@@ -16,12 +16,14 @@ import {
   ChartTooltipContent,
 } from "@bullstudio/ui/components/chart";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { MetricsFallbackNotice } from "./MetricsFallbackNotice";
 
 type TimeSeriesDataPoint = OverviewMetricsResponse["timeSeries"][number];
 
 type ThroughputChartProps = {
   data: TimeSeriesDataPoint[];
   timeRange: number;
+  nativeMetrics: OverviewMetricsResponse["nativeMetrics"];
 };
 
 const chartConfig: ChartConfig = {
@@ -35,7 +37,11 @@ const chartConfig: ChartConfig = {
   },
 };
 
-export function ThroughputChart({ data, timeRange }: ThroughputChartProps) {
+export function ThroughputChart({
+  data,
+  timeRange,
+  nativeMetrics,
+}: ThroughputChartProps) {
   const formattedData = data.map((point) => ({
     ...point,
     time: dayjs(point.timestamp).format(timeRange <= 24 ? "HH:mm" : "MMM D"),
@@ -88,6 +94,7 @@ export function ThroughputChart({ data, timeRange }: ThroughputChartProps) {
             />
           </LineChart>
         </ChartContainer>
+        <MetricsFallbackNotice nativeMetrics={nativeMetrics} className="mt-3" />
       </CardContent>
     </Card>
   );

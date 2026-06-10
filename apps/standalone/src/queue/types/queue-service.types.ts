@@ -6,6 +6,8 @@ import type {
   JobSchedulerTarget,
   JobSummary,
   Queue,
+  QueueMetricSnapshot,
+  QueueMetricType,
   UpsertJobSchedulerInput,
   Worker,
   WorkerCount,
@@ -78,6 +80,11 @@ export interface QueueService {
     options?: JobQueryOptions,
     prefix?: string,
   ): Promise<JobSummary[]>;
+  getMetrics(
+    queueName: string,
+    type: QueueMetricType,
+    prefix?: string,
+  ): Promise<QueueMetricSnapshot | null>;
   getJob(
     queueName: string,
     jobId: string,

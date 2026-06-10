@@ -8,6 +8,8 @@ import type {
   JobSchedulerTarget,
   JobSummary,
   QueueAdapter,
+  QueueMetricSnapshot,
+  QueueMetricType,
   UpsertJobSchedulerInput,
   Worker,
   WorkerCount,
@@ -232,6 +234,15 @@ export class BullMqProvider implements QueueService {
     return this.getOrCreateQueueAdapter(queueName, prefix).getJobsSummary(
       options,
     );
+  }
+
+  async getMetrics(
+    queueName: string,
+    type: QueueMetricType,
+    prefix?: string,
+  ): Promise<QueueMetricSnapshot | null> {
+    const adapter = this.getOrCreateQueueAdapter(queueName, prefix);
+    return adapter.getMetrics ? adapter.getMetrics(type) : null;
   }
 
   async getJob(

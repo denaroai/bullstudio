@@ -59,6 +59,10 @@ export function createEmbeddedDashboard(
       getQueueAdapter(queueAdaptersByKey, queueKey).getJobs(options),
     getJobsSummary: (queueKey, options) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getJobsSummary(options),
+    getQueueMetrics: async (queueKey, type) => {
+      const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+      return adapter.getMetrics ? adapter.getMetrics(type) : null;
+    },
     getJob: (queueKey, jobId) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getJob(jobId),
     getJobLogs: (queueKey, jobId) =>

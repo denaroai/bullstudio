@@ -15,12 +15,14 @@ import {
   type JobListInput,
   type JobTargetInput,
   type PrivateDashboardQueueSource,
+  type QueueMetricsListInput,
+  type QueueMetricsSummary,
   type QueueSourceStatus,
   type QueueTargetInput,
   type SchedulerTargetInput,
   type SchedulerUpsertInput,
-  type WorkerListInput,
   supportedJobStatuses,
+  type WorkerListInput,
 } from "@bullstudio/private-router";
 import { TRPCError } from "@trpc/server";
 import { FlowProducer, type JobNode } from "bullmq";
@@ -84,6 +86,7 @@ export function createStandaloneQueueSource(): PrivateDashboardQueueSource {
 
       return jobs;
     },
+    listQueueMetrics,
     getJob: async (input) => {
       const provider = await getQueueProvider();
       const queue = await resolveQueue(input);
@@ -271,6 +274,30 @@ async function getQueuesForListInput(
 
   const provider = await getQueueProvider();
   return provider.getQueues();
+}
+
+async function listQueueMetrics(
+  input: QueueMetricsListInput,
+): Promise<QueueMetricsSummary[]> {
+  const provider = await getQueueProvider();
+  const queues = await getQueuesForListInput(input);
+
+  return Promise.all(
+    queues.map(async (queue) => {
+      const [completed, failed] = await Promise.all([
+        provider.getMetrics(queue.name, "completed", queue.prefix),
+        provider.getMetrics(queue.name, "failed", queue.prefix),
+      ]);
+
+      return {
+        queueKey: queue.key,
+        queueName: queue.name,
+        prefix: queue.prefix,
+        completed,
+        failed,
+      };
+    }),
+  );
 }
 
 async function getQueuesForWorkerList(

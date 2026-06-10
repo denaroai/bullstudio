@@ -1,6 +1,12 @@
 import { randomBytes } from "node:crypto";
 import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
-import { type ConnectionOptions, FlowProducer, Queue, Worker } from "bullmq";
+import {
+  type ConnectionOptions,
+  FlowProducer,
+  MetricsTime,
+  Queue,
+  Worker,
+} from "bullmq";
 import Redis from "ioredis";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -265,6 +271,49 @@ describe("createBullMqQueueAdapter with Redis", () => {
     const remaining = await adapter.listJobSchedulers?.();
     expect(remaining).toHaveLength(1);
     expect(remaining?.[0]).toMatchObject({ id: "heartbeat" });
+  });
+
+  it("reads native throughput metrics recorded by a worker", async () => {
+    const prefix = uniquePrefix("bullmq-adapter");
+    const queueName = "metrics";
+    const queue = track(new Queue(queueName, { prefix, connection }));
+    const adapter = createBullMqQueueAdapter(queue);
+
+    // Tracked for cleanup; the worker just needs to process the jobs so the
+    // queue records native metrics.
+    track(
+      new Worker(
+        queueName,
+        async (job) => {
+          if (job.name === "boom") {
+            throw new Error("simulated failure");
+          }
+          return { ok: true };
+        },
+        {
+          prefix,
+          connection,
+          metrics: { maxDataPoints: MetricsTime.ONE_HOUR },
+        },
+      ),
+    );
+
+    const firstOk = await queue.add("ok", {});
+    const secondOk = await queue.add("ok", {});
+    const failing = await queue.add("boom", {});
+
+    await waitForBullMqJob(queue, firstOk.id as string, "completed");
+    await waitForBullMqJob(queue, secondOk.id as string, "completed");
+    await waitForBullMqJob(queue, failing.id as string, "failed");
+
+    const completedMetrics = await adapter.getMetrics?.("completed");
+    const failedMetrics = await adapter.getMetrics?.("failed");
+
+    expect(completedMetrics?.meta.count).toBeGreaterThanOrEqual(2);
+    expect(failedMetrics?.meta.count).toBeGreaterThanOrEqual(1);
+    expect(
+      completedMetrics?.data.every((point) => typeof point === "number"),
+    ).toBe(true);
   });
 
   async function processBullMqJob(options: {

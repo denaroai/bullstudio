@@ -169,10 +169,15 @@ function OverviewPage() {
             summary={metrics.summary}
             timeSeries={metrics.timeSeries}
             timeRange={timeRange}
+            nativeMetrics={metrics.nativeMetrics}
           />
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <ThroughputChart data={metrics.timeSeries} timeRange={timeRange} />
+            <ThroughputChart
+              data={metrics.timeSeries}
+              timeRange={timeRange}
+              nativeMetrics={metrics.nativeMetrics}
+            />
             <ProcessingTimeChart
               data={metrics.timeSeries}
               timeRange={timeRange}

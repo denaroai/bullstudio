@@ -14,6 +14,8 @@ import type {
   JobSchedulerRepeat,
   JobStatus,
   QueueAdapter,
+  QueueMetricSnapshot,
+  QueueMetricType,
 } from "@bullstudio/connect-types";
 import type Bull from "bull";
 
@@ -104,6 +106,7 @@ export function createBullQueueAdapter(
 
       return summaries.map(toJobSummary);
     },
+    getMetrics: (type) => getMetrics(queue, type),
     getJob: async (jobId) => {
       const job = await queue.getJob(jobId);
       return job ? mapJob(job, queue.name) : null;
@@ -174,6 +177,33 @@ export function createBullQueueAdapter(
       await queue.removeRepeatableByKey(target.key);
       return true;
     },
+  };
+}
+
+// Bull exposes `getMetrics` at runtime (same shape as BullMQ) but it is absent
+// from `@types/bull`, and its `data` points come back as raw strings.
+type BullMetricsQueue = Bull.Queue & {
+  getMetrics(
+    type: QueueMetricType,
+    start?: number,
+    end?: number,
+  ): Promise<{
+    meta: { count: number; prevTS: number; prevCount: number };
+    data: Array<number | string>;
+    count: number;
+  }>;
+};
+
+async function getMetrics(
+  queue: Bull.Queue,
+  type: QueueMetricType,
+): Promise<QueueMetricSnapshot> {
+  const metrics = await (queue as BullMetricsQueue).getMetrics(type);
+
+  return {
+    meta: metrics.meta,
+    data: metrics.data.map((point) => Number(point) || 0),
+    count: metrics.count,
   };
 }
 

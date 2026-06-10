@@ -19,6 +19,40 @@ Common checks:
 
 If Redis is empty, standalone mode shows an empty state until a Bull or BullMQ queue writes data.
 
+### Throughput metrics
+
+The Overview throughput chart and the Throughput and Failure rate cards prefer the native, lightweight metrics that Bull and BullMQ can record (per-minute completed and failed counters). These counters persist even after the jobs themselves are removed, so they stay accurate over time.
+
+We recommend enabling the `metrics` option so these counts remain correct. For BullMQ, set it on the worker:
+
+```ts
+import { MetricsTime, Worker } from "bullmq";
+
+const worker = new Worker(
+  "email",
+  async (job) => {
+    await sendEmail(job.data);
+  },
+  {
+    connection,
+    metrics: { maxDataPoints: MetricsTime.ONE_WEEK },
+  },
+);
+```
+
+For Bull v4, set it on the queue:
+
+```ts
+import Bull from "bull";
+
+const queue = new Bull("email", {
+  // Two weeks of per-minute data points (60 * 24 * 14).
+  metrics: { maxDataPoints: 20160 },
+});
+```
+
+If metrics are not enabled, Bullstudio falls back to counting the finished jobs currently stored in Redis. This fallback can be **inaccurate**: queues using `removeOnComplete` / `removeOnFail`, or whose older jobs have aged out, will report lower throughput than actually occurred. The choice is made per queue, so queues with metrics enabled use them while the rest fall back.
+
 ## Jobs
 
 Use Jobs to inspect and manage individual jobs.

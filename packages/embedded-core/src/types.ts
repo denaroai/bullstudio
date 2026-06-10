@@ -11,6 +11,8 @@ import type {
   Queue,
   QueueAdapter,
   QueueAdapterProvider,
+  QueueMetricSnapshot,
+  QueueMetricType,
   UpsertJobSchedulerInput,
   Worker,
   WorkerCount,
@@ -22,6 +24,8 @@ export type {
   AdapterCapabilities,
   QueueAdapter,
   QueueAdapterProvider,
+  QueueMetricSnapshot,
+  QueueMetricType,
 } from "@bullstudio/connect-types";
 
 export type DashboardProtection =
@@ -151,6 +155,10 @@ export interface EmbeddedDashboardInstance {
     queueKey: string,
     options?: JobQueryOptions,
   ): Promise<JobSummary[]>;
+  getQueueMetrics(
+    queueKey: string,
+    type: QueueMetricType,
+  ): Promise<QueueMetricSnapshot | null>;
   getJob(queueKey: string, jobId: string): Promise<Job | null>;
   getJobLogs(
     queueKey: string,

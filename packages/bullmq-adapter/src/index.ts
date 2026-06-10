@@ -124,6 +124,7 @@ export function createBullMqQueueAdapter(
 
       return filteredSummaries;
     },
+    getMetrics: (type) => queue.getMetrics(type),
     getJob: async (jobId) => {
       const job = await queue.getJob(jobId);
       return job ? mapJob(job, queue.name) : null;

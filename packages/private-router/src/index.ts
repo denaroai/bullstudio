@@ -6,8 +6,9 @@ import type {
   JobScheduler,
   JobStatus,
   JobSummary,
-  Worker,
   AdapterCapabilities as QueueAdapterCapabilities,
+  QueueMetricSnapshot,
+  Worker,
 } from "@bullstudio/connect-types";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
@@ -106,6 +107,26 @@ export type OverviewMetricsInput = {
   prefix?: string;
 };
 
+export type QueueMetricsListInput = {
+  queueKey?: string;
+  queueName?: string;
+  prefix?: string;
+};
+
+/**
+ * Native throughput metrics for a single queue. `completed`/`failed` are
+ * `null` when the queue's backend exposes no metrics API; both are present
+ * (but may be empty) when it does. Whether metrics are actually being
+ * recorded is signalled by `meta.count > 0`.
+ */
+export type QueueMetricsSummary = {
+  queueKey?: string;
+  queueName: string;
+  prefix?: string;
+  completed: QueueMetricSnapshot | null;
+  failed: QueueMetricSnapshot | null;
+};
+
 export type OverviewMetricsResponse = {
   summary: {
     totalCompleted: number;
@@ -138,6 +159,16 @@ export type OverviewMetricsResponse = {
     lastFailedReason?: string;
   }>;
   queuesCount: number;
+  /**
+   * Coverage of native Bull/BullMQ throughput metrics for the queues in scope.
+   * When `recordingQueues < totalQueues`, some throughput/failure figures were
+   * estimated from raw jobs in Redis instead of `getMetrics()`, and may be
+   * inaccurate (e.g. when finished jobs are removed).
+   */
+  nativeMetrics: {
+    totalQueues: number;
+    recordingQueues: number;
+  };
   lastUpdated: number;
 };
 
@@ -269,6 +300,9 @@ export interface PrivateDashboardQueueSource {
   listJobSummaries(
     input: JobListInput,
   ): Promise<Array<JobSummary & { queueKey?: string }>>;
+  listQueueMetrics(
+    input: QueueMetricsListInput,
+  ): Promise<QueueMetricsSummary[]>;
   getJob(input: JobTargetInput): Promise<Job | null>;
   getJobLogs(input: JobTargetInput): Promise<JobLogsResponse>;
   retryJob(input: JobTargetInput): Promise<JobRetryResponse>;
@@ -698,41 +732,140 @@ export async function createConnectionInfo(
   };
 }
 
+const HOUR_MS = 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
+
+type OverviewJobSummary = JobSummary & { queueKey?: string };
+
 export function aggregateOverviewMetrics(
-  jobs: JobSummary[],
+  jobs: OverviewJobSummary[],
   timeRangeHours: number,
   queuesCount: number,
+  queueMetrics: QueueMetricsSummary[] = [],
+  now: number = Date.now(),
 ): OverviewMetricsResponse {
-  const completedJobs = jobs.filter((job) => job.status === "completed");
-  const failedJobs = jobs.filter((job) => job.status === "failed");
+  const cutoff = now - timeRangeHours * HOUR_MS;
+  // A queue is "metric-backed" only when it is actively recording metrics.
+  // Otherwise its throughput falls back to counting raw job summaries.
+  const metricBackedQueues = queueMetrics.filter(hasRecordedMetrics);
+
+  const fallbackJobs = jobs.filter(
+    (job) => !isMetricBacked(job, metricBackedQueues),
+  );
+  const totalCompleted =
+    fallbackJobs.filter((job) => job.status === "completed").length +
+    sumMetricsInRange(metricBackedQueues, "completed", cutoff, now);
+  const totalFailed =
+    fallbackJobs.filter((job) => job.status === "failed").length +
+    sumMetricsInRange(metricBackedQueues, "failed", cutoff, now);
+  const totalJobs = totalCompleted + totalFailed;
+
+  // Timing, slowest jobs, and failing types are never available from metrics,
+  // so they always derive from the full set of raw job summaries.
   const jobsWithProcessingTime = jobs.filter(
     (job) => job.processedOn && job.finishedOn,
   );
   const jobsWithDelay = jobs.filter((job) => job.processedOn && job.timestamp);
-  const totalJobs = completedJobs.length + failedJobs.length;
+  const failedJobs = jobs.filter((job) => job.status === "failed");
 
   return {
     summary: {
-      totalCompleted: completedJobs.length,
-      totalFailed: failedJobs.length,
+      totalCompleted,
+      totalFailed,
       avgThroughputPerHour: totalJobs / timeRangeHours,
-      failureRate: totalJobs > 0 ? (failedJobs.length / totalJobs) * 100 : 0,
+      failureRate: totalJobs > 0 ? (totalFailed / totalJobs) * 100 : 0,
       avgProcessingTimeMs: averageProcessingTime(jobsWithProcessingTime),
       avgDelayMs: Math.max(0, averageDelay(jobsWithDelay)),
     },
-    timeSeries: buildOverviewTimeSeries(jobs, timeRangeHours),
+    timeSeries: buildOverviewTimeSeries(
+      jobs,
+      timeRangeHours,
+      metricBackedQueues,
+      now,
+    ),
     slowestJobs: buildOverviewSlowestJobs(jobsWithProcessingTime),
     failingJobTypes: buildOverviewFailingJobTypes(failedJobs),
     queuesCount,
-    lastUpdated: Date.now(),
+    nativeMetrics: {
+      totalQueues: queueMetrics.length,
+      recordingQueues: metricBackedQueues.length,
+    },
+    lastUpdated: now,
   };
 }
 
+function hasRecordedMetrics(metric: QueueMetricsSummary): boolean {
+  return (
+    (metric.completed?.meta.count ?? 0) > 0 ||
+    (metric.failed?.meta.count ?? 0) > 0
+  );
+}
+
+function isMetricBacked(
+  job: OverviewJobSummary,
+  metricBackedQueues: QueueMetricsSummary[],
+): boolean {
+  return metricBackedQueues.some((metric) => metricMatchesJob(metric, job));
+}
+
+function metricMatchesJob(
+  metric: QueueMetricsSummary,
+  job: OverviewJobSummary,
+): boolean {
+  if (metric.queueKey && job.queueKey) {
+    return metric.queueKey === job.queueKey;
+  }
+  return (
+    metric.queueName === job.queueName &&
+    (!metric.prefix || metric.prefix === job.prefix)
+  );
+}
+
+/**
+ * Walk a metric snapshot's per-minute data points, newest first, invoking
+ * `visit` for each non-zero point that falls inside `[cutoff, now]`.
+ */
+function forEachMetricPointInRange(
+  snapshot: QueueMetricSnapshot | null,
+  cutoff: number,
+  now: number,
+  visit: (value: number, minute: number) => void,
+): void {
+  if (!snapshot || snapshot.meta.count === 0) {
+    return;
+  }
+
+  const newestMinute = Math.floor(snapshot.meta.prevTS / MINUTE_MS) * MINUTE_MS;
+  for (let index = 0; index < snapshot.data.length; index++) {
+    const value = snapshot.data[index];
+    if (!value) {
+      continue;
+    }
+    const minute = newestMinute - index * MINUTE_MS;
+    if (minute < cutoff || minute > now) {
+      continue;
+    }
+    visit(value, minute);
+  }
+}
+
+function sumMetricsInRange(
+  metricBackedQueues: QueueMetricsSummary[],
+  type: "completed" | "failed",
+  cutoff: number,
+  now: number,
+): number {
+  let total = 0;
+  for (const metric of metricBackedQueues) {
+    forEachMetricPointInRange(metric[type], cutoff, now, (value) => {
+      total += value;
+    });
+  }
+  return total;
+}
+
 type NormalizedJobListInput = Required<
-  Pick<
-    JobListInput,
-    "limit" | "offset" | "sortField" | "sortOrder" | "search"
-  >
+  Pick<JobListInput, "limit" | "offset" | "sortField" | "sortOrder" | "search">
 > &
   Omit<JobListInput, "limit" | "offset" | "sortField" | "sortOrder" | "search">;
 
@@ -787,7 +920,8 @@ async function getOverviewMetrics(
       ? await resolveQueueTarget(source, input)
       : undefined;
   const queuesCount = target ? 1 : (await source.listQueues()).length;
-  const cutoffTimestamp = Date.now() - input.timeRangeHours * 60 * 60 * 1000;
+  const now = Date.now();
+  const cutoffTimestamp = now - input.timeRangeHours * HOUR_MS;
   const sourceInput = {
     queueKey: input.queueKey,
     queueName: input.queueName,
@@ -795,15 +929,30 @@ async function getOverviewMetrics(
     limit: 1000,
     offset: 0,
   };
-  const [completed, failed] = await Promise.all([
+  const metricsInput: QueueMetricsListInput = {
+    queueKey: input.queueKey,
+    queueName: input.queueName,
+    prefix: input.prefix,
+  };
+  // Native throughput metrics give accurate completed/failed counts even when
+  // jobs are removed; raw job summaries still feed timing, slowest jobs, and
+  // failing-type breakdowns, which metrics cannot provide.
+  const [completed, failed, queueMetrics] = await Promise.all([
     source.listJobSummaries({ ...sourceInput, status: "completed" }),
     source.listJobSummaries({ ...sourceInput, status: "failed" }),
+    source.listQueueMetrics(metricsInput),
   ]);
   const jobs = [...completed, ...failed].filter(
     (job) => job.finishedOn && job.finishedOn >= cutoffTimestamp,
   );
 
-  return aggregateOverviewMetrics(jobs, input.timeRangeHours, queuesCount);
+  return aggregateOverviewMetrics(
+    jobs,
+    input.timeRangeHours,
+    queuesCount,
+    queueMetrics,
+    now,
+  );
 }
 
 function normalizeJobListInput(
@@ -827,7 +976,9 @@ function getSourceJobListInput(
   totalCandidates: number,
 ): JobListInput {
   const needsFullCandidateSet =
-    input.search || input.sortField !== "timestamp" || input.sortOrder !== "desc";
+    input.search ||
+    input.sortField !== "timestamp" ||
+    input.sortOrder !== "desc";
 
   return {
     queueKey: input.queueKey,
@@ -877,7 +1028,10 @@ function countQueueJobs(queue: DashboardQueue, status?: JobStatus): number {
     );
   }
 
-  if (queue.provider === "bull" && (status === "paused" || status === "waiting-children")) {
+  if (
+    queue.provider === "bull" &&
+    (status === "paused" || status === "waiting-children")
+  ) {
     return 0;
   }
 
@@ -914,7 +1068,7 @@ function sortJobList<
     if (comparison !== 0) {
       return comparison * direction;
     }
-    return (b.timestamp - a.timestamp) || a.name.localeCompare(b.name);
+    return b.timestamp - a.timestamp || a.name.localeCompare(b.name);
   });
 }
 
@@ -1024,18 +1178,25 @@ function averageDelay(jobs: JobSummary[]): number {
   );
 }
 
+type TimeSeriesBucket = {
+  // All raw jobs in the hour, used for timing regardless of metric backing.
+  timingJobs: OverviewJobSummary[];
+  completed: number;
+  failed: number;
+};
+
 function buildOverviewTimeSeries(
-  jobs: JobSummary[],
+  jobs: OverviewJobSummary[],
   timeRangeHours: number,
+  metricBackedQueues: QueueMetricsSummary[],
+  now: number,
 ): OverviewMetricsResponse["timeSeries"] {
-  const hourlyBuckets = new Map<number, JobSummary[]>();
-  const now = Date.now();
+  const cutoff = now - timeRangeHours * HOUR_MS;
+  const hourlyBuckets = new Map<number, TimeSeriesBucket>();
 
   for (let index = 0; index < timeRangeHours; index++) {
-    const bucketTime = now - index * 60 * 60 * 1000;
-    const hourStart =
-      Math.floor(bucketTime / (60 * 60 * 1000)) * (60 * 60 * 1000);
-    hourlyBuckets.set(hourStart, []);
+    const hourStart = Math.floor((now - index * HOUR_MS) / HOUR_MS) * HOUR_MS;
+    hourlyBuckets.set(hourStart, { timingJobs: [], completed: 0, failed: 0 });
   }
 
   for (const job of jobs) {
@@ -1043,28 +1204,65 @@ function buildOverviewTimeSeries(
       continue;
     }
 
-    const hourStart =
-      Math.floor(job.finishedOn / (60 * 60 * 1000)) * (60 * 60 * 1000);
+    const hourStart = Math.floor(job.finishedOn / HOUR_MS) * HOUR_MS;
     const bucket = hourlyBuckets.get(hourStart);
-    if (bucket) {
-      bucket.push(job);
+    if (!bucket) {
+      continue;
+    }
+
+    bucket.timingJobs.push(job);
+    // Only count jobs from queues without metrics; metric-backed queues
+    // contribute their counts from the snapshot below.
+    if (!isMetricBacked(job, metricBackedQueues)) {
+      if (job.status === "completed") {
+        bucket.completed++;
+      } else if (job.status === "failed") {
+        bucket.failed++;
+      }
     }
   }
 
+  for (const metric of metricBackedQueues) {
+    addMetricToBuckets(
+      hourlyBuckets,
+      metric.completed,
+      "completed",
+      cutoff,
+      now,
+    );
+    addMetricToBuckets(hourlyBuckets, metric.failed, "failed", cutoff, now);
+  }
+
   return Array.from(hourlyBuckets.entries())
-    .map(([timestamp, bucketJobs]) => ({
+    .map(([timestamp, bucket]) => ({
       timestamp,
-      completed: bucketJobs.filter((job) => job.status === "completed").length,
-      failed: bucketJobs.filter((job) => job.status === "failed").length,
+      completed: bucket.completed,
+      failed: bucket.failed,
       avgProcessingTimeMs: averageProcessingTime(
-        bucketJobs.filter((job) => job.processedOn && job.finishedOn),
+        bucket.timingJobs.filter((job) => job.processedOn && job.finishedOn),
       ),
       avgDelayMs: Math.max(
         0,
-        averageDelay(bucketJobs.filter((job) => job.processedOn)),
+        averageDelay(bucket.timingJobs.filter((job) => job.processedOn)),
       ),
     }))
     .sort((a, b) => a.timestamp - b.timestamp);
+}
+
+function addMetricToBuckets(
+  hourlyBuckets: Map<number, TimeSeriesBucket>,
+  snapshot: QueueMetricSnapshot | null,
+  type: "completed" | "failed",
+  cutoff: number,
+  now: number,
+): void {
+  forEachMetricPointInRange(snapshot, cutoff, now, (value, minute) => {
+    const hourStart = Math.floor(minute / HOUR_MS) * HOUR_MS;
+    const bucket = hourlyBuckets.get(hourStart);
+    if (bucket) {
+      bucket[type] += value;
+    }
+  });
 }
 
 function buildOverviewSlowestJobs(

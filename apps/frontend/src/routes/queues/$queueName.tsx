@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { queueKey } from "src/lib/queue-key";
 import Header from "@/components/Header";
 import { FailingJobTypesTable } from "@/components/overview/FailingJobTypesTable";
 import { JobStateCards } from "@/components/overview/JobStateCards";
@@ -46,7 +47,6 @@ import { SlowestJobsTable } from "@/components/overview/SlowestJobsTable";
 import { ThroughputChart } from "@/components/overview/ThroughputChart";
 import { useTRPC } from "@/integrations/trpc/react";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
-import { queueKey } from "src/lib/queue-key";
 import { FilterableStatus } from "../jobs";
 
 export const Route = createFileRoute("/queues/$queueName")({
@@ -342,11 +342,16 @@ function QueuePage() {
               summary={metrics.summary}
               timeSeries={metrics.timeSeries}
               timeRange={timeRange}
+              nativeMetrics={metrics.nativeMetrics}
             />
           </section>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <ThroughputChart data={metrics.timeSeries} timeRange={timeRange} />
+            <ThroughputChart
+              data={metrics.timeSeries}
+              timeRange={timeRange}
+              nativeMetrics={metrics.nativeMetrics}
+            />
             <ProcessingTimeChart
               data={metrics.timeSeries}
               timeRange={timeRange}

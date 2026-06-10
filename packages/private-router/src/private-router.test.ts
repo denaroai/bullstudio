@@ -3,6 +3,7 @@ import type {
   FlowTree,
   Job,
   JobSummary,
+  QueueMetricSnapshot,
   Worker,
 } from "@bullstudio/connect-types";
 import { TRPCError } from "@trpc/server";
@@ -22,6 +23,8 @@ import {
   type JobTargetInput,
   mergeSortAndPageJobs,
   type PrivateDashboardQueueSource,
+  type QueueMetricsListInput,
+  type QueueMetricsSummary,
   type QueueMutationResponse,
   type QueueSourceStatus,
   type QueueTargetInput,
@@ -510,19 +513,29 @@ describe("createPrivateDashboardRouter", () => {
 
     await expect(
       caller.jobs.listSummary({ sortField: "name", sortOrder: "asc" }),
-    ).resolves.toMatchObject({ items: [{ id: "b" }, { id: "c" }, { id: "a" }] });
+    ).resolves.toMatchObject({
+      items: [{ id: "b" }, { id: "c" }, { id: "a" }],
+    });
     await expect(
       caller.jobs.listSummary({ sortField: "queueName", sortOrder: "asc" }),
-    ).resolves.toMatchObject({ items: [{ id: "c" }, { id: "a" }, { id: "b" }] });
+    ).resolves.toMatchObject({
+      items: [{ id: "c" }, { id: "a" }, { id: "b" }],
+    });
     await expect(
       caller.jobs.listSummary({ sortField: "status", sortOrder: "asc" }),
-    ).resolves.toMatchObject({ items: [{ id: "c" }, { id: "b" }, { id: "a" }] });
+    ).resolves.toMatchObject({
+      items: [{ id: "c" }, { id: "b" }, { id: "a" }],
+    });
     await expect(
       caller.jobs.listSummary({ sortField: "timestamp", sortOrder: "asc" }),
-    ).resolves.toMatchObject({ items: [{ id: "a" }, { id: "c" }, { id: "b" }] });
+    ).resolves.toMatchObject({
+      items: [{ id: "a" }, { id: "c" }, { id: "b" }],
+    });
     await expect(
       caller.jobs.listSummary({ sortField: "duration", sortOrder: "desc" }),
-    ).resolves.toMatchObject({ items: [{ id: "a" }, { id: "c" }, { id: "b" }] });
+    ).resolves.toMatchObject({
+      items: [{ id: "a" }, { id: "c" }, { id: "b" }],
+    });
 
     vi.useRealTimers();
   });
@@ -567,6 +580,134 @@ describe("createPrivateDashboardRouter", () => {
       "NOT_FOUND",
       "Flow missing not found in queue email",
     );
+  });
+
+  it("prefers recorded queue metrics over raw job counts for throughput", () => {
+    const now = Date.UTC(2026, 4, 27, 12, 0, 0);
+    const snapshot = (data: number[]): QueueMetricSnapshot => ({
+      meta: {
+        count: data.reduce((sum, point) => sum + point, 0),
+        prevTS: now,
+        prevCount: 0,
+      },
+      data,
+      count: data.length,
+    });
+
+    const response = aggregateOverviewMetrics(
+      [
+        // Queue A records metrics: its raw jobs must not be counted again, but
+        // they still feed processing-time, since metrics carry no timing.
+        {
+          ...createJobSummary({
+            id: "a1",
+            queueName: "qa",
+            prefix: "p",
+            status: "completed",
+            processedOn: now - 2000,
+            finishedOn: now - 1000,
+          }),
+          queueKey: "A",
+        },
+        // Queue B has no metrics, so its raw jobs are counted as a fallback.
+        {
+          ...createJobSummary({
+            id: "b1",
+            queueName: "qb",
+            prefix: "p",
+            status: "completed",
+            processedOn: now - 2000,
+            finishedOn: now - 1000,
+          }),
+          queueKey: "B",
+        },
+        {
+          ...createJobSummary({
+            id: "b2",
+            queueName: "qb",
+            prefix: "p",
+            status: "failed",
+            processedOn: now - 2000,
+            finishedOn: now - 1000,
+          }),
+          queueKey: "B",
+        },
+      ],
+      2,
+      2,
+      [
+        {
+          queueKey: "A",
+          queueName: "qa",
+          prefix: "p",
+          completed: snapshot([3, 2]),
+          failed: snapshot([1]),
+        },
+        {
+          queueKey: "B",
+          queueName: "qb",
+          prefix: "p",
+          completed: null,
+          failed: null,
+        },
+      ],
+      now,
+    );
+
+    expect(response.summary).toMatchObject({
+      totalCompleted: 6, // 5 from queue A metrics + 1 raw job from queue B
+      totalFailed: 2, // 1 from queue A metrics + 1 raw job from queue B
+      avgThroughputPerHour: 4, // 8 finished jobs / 2 hours
+      failureRate: 25,
+      // Timing still comes from all raw jobs, including metric-backed queue A.
+      avgProcessingTimeMs: 1000,
+    });
+    // Queue B falls back to raw jobs, so coverage is partial.
+    expect(response.nativeMetrics).toEqual({
+      totalQueues: 2,
+      recordingQueues: 1,
+    });
+  });
+
+  it("uses recorded queue metrics for overview throughput via the router", async () => {
+    vi.setSystemTime(new Date("2026-05-27T12:00:00.000Z"));
+    const now = Date.now();
+    const source = createFakeSource({
+      summaries: [],
+      queueMetrics: [
+        {
+          queueKey: "email-critical",
+          queueName: "email",
+          prefix: "critical",
+          completed: {
+            meta: { count: 9, prevTS: now, prevCount: 0 },
+            data: [5, 4],
+            count: 2,
+          },
+          failed: {
+            meta: { count: 1, prevTS: now, prevCount: 0 },
+            data: [1],
+            count: 1,
+          },
+        },
+      ],
+    });
+    const caller =
+      createPrivateDashboardRouter(source).createCaller(authenticatedContext);
+
+    const response = await caller.overview.metrics({ timeRangeHours: 24 });
+
+    expect(response.summary).toMatchObject({
+      totalCompleted: 9,
+      totalFailed: 1,
+    });
+    expect(response.nativeMetrics).toEqual({
+      totalQueues: 1,
+      recordingQueues: 1,
+    });
+    expect(source.listQueueMetrics).toHaveBeenCalled();
+
+    vi.useRealTimers();
   });
 
   it("exports pure aggregation helpers", () => {
@@ -622,6 +763,9 @@ type FakeSource = PrivateDashboardQueueSource & {
       Promise<Array<JobSummary & { queueKey?: string }>>
     >
   >;
+  listQueueMetrics: ReturnType<
+    typeof vi.fn<[QueueMetricsListInput], Promise<QueueMetricsSummary[]>>
+  >;
   retryJob: ReturnType<
     typeof vi.fn<[JobTargetInput], Promise<JobRetryResponse>>
   >;
@@ -642,6 +786,7 @@ type FakeSourceOptions = {
   queues?: DashboardQueue[];
   jobs?: Job[];
   summaries?: JobSummary[];
+  queueMetrics?: QueueMetricsSummary[];
   workers?: Worker[];
   getJob?: (input: JobTargetInput) => Job | null;
   retryJob?: (input: JobTargetInput) => JobRetryResponse;
@@ -659,7 +804,11 @@ function createFakeSource(options: FakeSourceOptions = {}): FakeSource {
     options.queues ??
     withJobCounts(
       [
-        createQueue({ key: "email-critical", name: "email", prefix: "critical" }),
+        createQueue({
+          key: "email-critical",
+          name: "email",
+          prefix: "critical",
+        }),
         createQueue({ key: "reports", name: "reports", prefix: "ops" }),
       ],
       jobs,
@@ -769,6 +918,9 @@ function createFakeSource(options: FakeSourceOptions = {}): FakeSource {
     ),
     listJobSummaries: vi.fn(async (input: JobListInput) =>
       summaries.filter((job) => !input.status || job.status === input.status),
+    ),
+    listQueueMetrics: vi.fn(
+      async (_input: QueueMetricsListInput) => options.queueMetrics ?? [],
     ),
     getJob: async (input) =>
       options.getJob
