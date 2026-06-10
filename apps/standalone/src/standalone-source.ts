@@ -432,7 +432,10 @@ async function listFlows(input: FlowListInput): Promise<FlowSummary[]> {
 
   const limit = input?.limit ?? 50;
   const producer = await getFlowProducer();
-  const queues = await provider.getQueues();
+  const queues =
+    input?.queueKey || input?.queueName
+      ? [await resolveQueue(input)]
+      : await provider.getQueues();
   const flows: FlowSummary[] = [];
   const seenJobIds = new Set<string>();
 

@@ -196,11 +196,11 @@ function QueueFlowsPage() {
                         >
                           <FlowDetail
                             flowId={flow.id}
-                            queueName={queueName}
+                            queueName={flow.queueName}
                             prefix={flow.prefix ?? prefix}
                             queueKey={queueKey(
                               flow.prefix ?? prefix ?? "",
-                              queueName,
+                              flow.queueName,
                             )}
                           />
                         </TableCell>
