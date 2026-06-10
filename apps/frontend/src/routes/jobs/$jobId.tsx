@@ -27,7 +27,7 @@ import { memo, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useTRPC } from "@/integrations/trpc/react";
-import { FilterableStatus } from "./index";
+import { FilterableStatus } from "@/lib/jobs";
 
 const searchSchema = z.object({
   queueName: z.string(),
@@ -101,7 +101,8 @@ function JobDetailPage() {
         toast.success(data.message);
         queryClient.invalidateQueries({ queryKey: [["jobs"]] });
         navigate({
-          to: "/jobs",
+          to: "/queues/$queueName/jobs",
+          params: { queueName },
           search: {
             statusFilter: FilterableStatus.All,
             page: 1,
@@ -121,7 +122,8 @@ function JobDetailPage() {
 
   const goBack = () => {
     navigate({
-      to: "/jobs",
+      to: "/queues/$queueName/jobs",
+      params: { queueName },
       search: {
         statusFilter: FilterableStatus.All,
         page: 1,

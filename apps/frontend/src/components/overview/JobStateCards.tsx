@@ -11,12 +11,12 @@ import {
   type LucideIcon,
   XCircle,
 } from "lucide-react";
-import { FilterableStatus } from "@/routes/jobs";
+import { FilterableStatus } from "@/lib/jobs";
 
 type JobStateCardsProps = {
   counts: JobCounts;
-  /** When provided, each card links to the jobs page filtered to this queue and state. */
-  queueKey?: string;
+  /** When provided, each card links to this queue's jobs view filtered to the card's state. */
+  queueName?: string;
 };
 
 const JOB_STATES = [
@@ -71,14 +71,14 @@ const JOB_STATES = [
   filter: FilterableStatus;
 }>;
 
-export function JobStateCards({ counts, queueKey }: JobStateCardsProps) {
+export function JobStateCards({ counts, queueName }: JobStateCardsProps) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       {JOB_STATES.map((state) => {
         const card = (
           <Card
             className={`bg-card p-4${
-              queueKey
+              queueName
                 ? " h-full transition-colors hover:border-ring/40 hover:bg-accent/40"
                 : ""
             }`}
@@ -93,16 +93,16 @@ export function JobStateCards({ counts, queueKey }: JobStateCardsProps) {
           </Card>
         );
 
-        if (!queueKey) {
+        if (!queueName) {
           return <div key={state.key}>{card}</div>;
         }
 
         return (
           <Link
             key={state.key}
-            to="/jobs"
+            to="/queues/$queueName/jobs"
+            params={{ queueName }}
             search={{
-              queueKey,
               statusFilter: state.filter,
               page: 1,
               pageSize: 50,

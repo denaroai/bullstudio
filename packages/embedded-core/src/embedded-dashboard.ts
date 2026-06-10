@@ -81,7 +81,15 @@ export function createEmbeddedDashboard(
       const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
       return adapter.listWorkers ? adapter.listWorkers() : [];
     },
-    listFlows: (options) => listFlows(resolvedConfig.queues, options),
+    listFlows: (options) =>
+      listFlows(
+        options?.queueKey
+          ? resolvedConfig.queues.filter(
+              (queue) => queue.key === options.queueKey,
+            )
+          : resolvedConfig.queues,
+        options,
+      ),
     getFlow: async (queueKey, flowId) => {
       const getFlow = getQueueAdapter(queueAdaptersByKey, queueKey).getFlow;
       return getFlow ? getFlow(flowId) : null;

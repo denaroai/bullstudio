@@ -75,8 +75,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         ) : (
           <SidebarProvider>
             <AppSidebar />
-            <SidebarInset className="overflow-y-auto">
-              <main className="flex-1 p-6">{children}</main>
+            <SidebarInset className="h-svh overflow-hidden">
+              <main className="flex flex-1 flex-col overflow-y-auto p-6">
+                {children}
+              </main>
             </SidebarInset>
           </SidebarProvider>
         )}

@@ -11,11 +11,14 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
 } from "@bullstudio/ui/components/sidebar";
 import { cn } from "@bullstudio/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useLocation, useSearch } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import {
   CalendarClock,
   Cpu,
@@ -42,7 +45,6 @@ import {
   getBasePath,
   getDashboardIdentity,
 } from "@/lib/runtime-config";
-import { queueKey } from "src/lib/queue-key";
 
 interface AuthSessionResponse {
   authEnabled?: boolean;
@@ -55,8 +57,6 @@ export function AppSidebar() {
   const dashboardIdentity = getDashboardIdentity();
   const dashboardLogo = dashboardIdentity?.logo;
   const dashboardTitle = dashboardIdentity?.title ?? "bullstudio";
-
-  const search = useSearch({ strict: false });
 
   const { data: connectionInfo } = useQuery(
     trpc.connection.info.queryOptions(),
@@ -72,61 +72,78 @@ export function AppSidebar() {
     return pathname.startsWith(href);
   };
 
-  const isQueueActive = (
-    queueName: string,
-    queuePrefix: string | undefined,
-  ) => {
-    const searchQueueKey = search.queueKey;
-    if (
-      // Check if the active queue in search params matches this queue
-      searchQueueKey &&
-      searchQueueKey === queueKey(queuePrefix ?? "", queueName)
-    ) {
-      return true;
-    }
-    return pathname.startsWith(`/queues/${queueName}`);
+  const queueBasePath = (queueName: string) => `/queues/${queueName}`;
+
+  const isQueueActive = (queueName: string) => {
+    const base = queueBasePath(queueName);
+    return pathname === base || pathname.startsWith(`${base}/`);
   };
+
+  // A sub-route is active when the pathname matches it exactly. The queue
+  // "Overview" sub-item maps to the bare base path (no trailing segment).
+  const isQueueSubActive = (queueName: string, segment: string) =>
+    pathname === `${queueBasePath(queueName)}${segment}`;
 
   const queues = useQuery(trpc.queues.list.queryOptions());
 
-  // Build navigation items based on provider capabilities
-  const baseNavItems = [
+  // Top-level navigation is now just the aggregate Overview. Jobs / Flows /
+  // Schedulers / Workers live per-queue (see the sub-nav below).
+  const navItems = [
     {
       title: "Overview",
       href: "/",
       icon: LayoutDashboard,
     },
+  ];
+
+  // Per-queue sub-navigation, gated by provider capabilities. Rendered beneath
+  // the active queue. `to`/`label` map to the queue sub-routes.
+  const queueSubNav: {
+    title: string;
+    to:
+      | "/queues/$queueName"
+      | "/queues/$queueName/jobs"
+      | "/queues/$queueName/flows"
+      | "/queues/$queueName/schedulers"
+      | "/queues/$queueName/workers";
+    segment: string;
+    icon: typeof LayoutDashboard;
+  }[] = [
+    {
+      title: "Overview",
+      to: "/queues/$queueName",
+      segment: "",
+      icon: LayoutDashboard,
+    },
     {
       title: "Jobs",
-      href: "/jobs",
+      to: "/queues/$queueName/jobs",
+      segment: "/jobs",
       icon: ListTodo,
     },
   ];
 
-  // Extend navigation based on provider capabilities.
-  const navItems = [...baseNavItems];
-
-  // Only show Flows for providers that support it (BullMQ)
   if (queueSource?.features.flows.visible) {
-    navItems.push({
+    queueSubNav.push({
       title: "Flows",
-      href: "/flows",
+      to: "/queues/$queueName/flows",
+      segment: "/flows",
       icon: Workflow,
     });
   }
-
   if (queueSource?.features.schedulers.visible) {
-    navItems.push({
+    queueSubNav.push({
       title: "Schedulers",
-      href: "/schedulers",
+      to: "/queues/$queueName/schedulers",
+      segment: "/schedulers",
       icon: CalendarClock,
     });
   }
-
   if (queueSource?.features.workers.visible) {
-    navItems.push({
+    queueSubNav.push({
       title: "Workers",
-      href: "/workers",
+      to: "/queues/$queueName/workers",
+      segment: "/workers",
       icon: Cpu,
     });
   }
@@ -184,34 +201,58 @@ export function AppSidebar() {
           <SidebarGroupLabel>Queues</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {queues.data?.map((queue) => (
-                <SidebarMenuItem key={queue.name}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isQueueActive(queue.name, queue.prefix)}
-                    tooltip={queue.name}
-                    className="h-9"
-                  >
-                    <Link
-                      to="/queues/$queueName"
-                      params={{ queueName: queue.name }}
-                      className={cn(
-                        "h-9",
-                        isActive(`/queues/${queue.label}`) &&
-                          "bg-sidebar-accent/50",
-                      )}
+              {queues.data?.map((queue) => {
+                const queueActive = isQueueActive(queue.name);
+
+                return (
+                  <SidebarMenuItem key={queue.name}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={queueActive}
+                      tooltip={queue.name}
+                      className="h-9"
                     >
-                      {queue.jobCounts && (
-                        <JobDistributionPie
-                          counts={queue.jobCounts}
-                          className="group-data-[collapsible=icon]:hidden"
-                        />
-                      )}
-                      <span className="font-mono text-sm">{queue.name}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                      <Link
+                        to="/queues/$queueName"
+                        params={{ queueName: queue.name }}
+                        className="h-9"
+                      >
+                        {queue.jobCounts && (
+                          <JobDistributionPie
+                            counts={queue.jobCounts}
+                            className="group-data-[collapsible=icon]:hidden"
+                          />
+                        )}
+                        <span className="font-mono text-sm">{queue.name}</span>
+                      </Link>
+                    </SidebarMenuButton>
+
+                    {queueActive && (
+                      <SidebarMenuSub className="group-data-[collapsible=icon]:hidden">
+                        {queueSubNav.map((item) => (
+                          <SidebarMenuSubItem key={item.title}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={isQueueSubActive(
+                                queue.name,
+                                item.segment,
+                              )}
+                            >
+                              <Link
+                                to={item.to}
+                                params={{ queueName: queue.name }}
+                              >
+                                <item.icon className="size-4" />
+                                <span>{item.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    )}
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

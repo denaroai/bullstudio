@@ -125,7 +125,16 @@ export function createEmbeddedQueueSource(
       await dashboard.drainQueue(queue.key);
       return { success: true };
     },
-    listFlows: (input) => dashboard.listFlows(getFlowListInput(input)),
+    listFlows: async (input) => {
+      if (input?.queueKey || input?.queueName) {
+        const queue = await getSuppliedQueueByPrivateApiInput(dashboard, input);
+        return dashboard.listFlows({
+          limit: input?.limit,
+          queueKey: queue.key,
+        });
+      }
+      return dashboard.listFlows(getFlowListInput(input));
+    },
     getFlow: async (input) => {
       const queue = await getQueueForTarget(dashboard, input);
       return dashboard.getFlow(queue.key, input.flowId);

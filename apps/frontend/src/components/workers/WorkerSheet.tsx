@@ -24,8 +24,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { DashboardQueue } from "@bullstudio/private-router";
 import { useTRPC } from "@/integrations/trpc/react";
-import { queueKey as buildQueueKey } from "@/lib/queue-key";
-import { FilterableStatus } from "@/routes/jobs/index";
+import { FilterableStatus } from "@/lib/jobs";
 import type { PrivateWorker, QueueActionState } from "./types";
 
 interface WorkerSheetProps {
@@ -81,8 +80,6 @@ function WorkerSheetBody({
     queueName: worker.queueName,
     prefix: worker.prefix,
   };
-  const selectedQueueKey =
-    worker.queueKey ?? buildQueueKey(worker.prefix ?? "", worker.queueName);
 
   const pause = useMutation(
     trpc.queues.pause.mutationOptions({
@@ -168,9 +165,9 @@ function WorkerSheetBody({
           <div className="grid grid-cols-2 gap-2">
             <Button asChild variant="outline" className="justify-start">
               <Link
-                to="/jobs"
+                to="/queues/$queueName/jobs"
+                params={{ queueName: worker.queueName }}
                 search={{
-                  queueKey: selectedQueueKey,
                   statusFilter: FilterableStatus.All,
                   page: 1,
                   pageSize: 50,

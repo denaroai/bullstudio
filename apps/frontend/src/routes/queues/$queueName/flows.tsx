@@ -1,5 +1,3 @@
-"use client";
-
 import type { FlowSummary } from "@bullstudio/connect-types";
 import dayjs from "@bullstudio/dayjs";
 import { Button } from "@bullstudio/ui/components/button";
@@ -20,9 +18,9 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CheckCircle, Inbox, RefreshCw, Workflow, XCircle } from "lucide-react";
-import Header from "@/components/Header";
-import { useTRPC } from "@/integrations/trpc/react";
 import { getFlowDetailSearch } from "@/lib/flow-detail-navigation";
+import { queueKey } from "@/lib/queue-key";
+import { useTRPC } from "@/integrations/trpc/react";
 
 type PrivateFlowSummary = FlowSummary & { queueKey?: string };
 
@@ -34,13 +32,18 @@ const flowSkeletonRows = [
   "flow-skeleton-5",
 ];
 
-export const Route = createFileRoute("/flows/")({
-  component: FlowsPage,
+export const Route = createFileRoute("/queues/$queueName/flows")({
+  component: QueueFlowsPage,
 });
 
-function FlowsPage() {
+function QueueFlowsPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
+  const { queueName } = Route.useParams();
+
+  const { data: queues } = useQuery(trpc.queues.list.queryOptions());
+  const queue = queues?.find((item) => item.name === queueName);
+  const prefix = queue?.prefix;
 
   const {
     data: flows,
@@ -48,30 +51,36 @@ function FlowsPage() {
     refetch,
     isFetching,
   } = useQuery(
-    trpc.flows.list.queryOptions(undefined, {
-      refetchInterval(query) {
-        const flowsData = query.state.data;
-        if (!flowsData || flowsData.length === 0) return false;
-        const hasActiveFlows = flowsData.some(
-          (f) => !["completed", "failed"].includes(f.status),
-        );
-        return hasActiveFlows ? 2000 : false;
+    trpc.flows.list.queryOptions(
+      { queueName, prefix },
+      {
+        refetchInterval(query) {
+          const flowsData = query.state.data;
+          if (!flowsData || flowsData.length === 0) return false;
+          const hasActiveFlows = flowsData.some(
+            (f) => !["completed", "failed"].includes(f.status),
+          );
+          return hasActiveFlows ? 2000 : false;
+        },
       },
-    }),
+    ),
   );
 
   const navigateToFlow = (flow: PrivateFlowSummary) => {
     navigate({
       to: "/flows/$flowId",
       params: { flowId: flow.id },
-      search: getFlowDetailSearch(flow),
+      search: getFlowDetailSearch({
+        queueName,
+        prefix: flow.prefix ?? prefix,
+        queueKey: queueKey(flow.prefix ?? prefix ?? "", queueName),
+      }),
     });
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Header title="Flows" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-end">
         <Button
           variant="outline"
           size="sm"
@@ -106,7 +115,6 @@ function FlowsPage() {
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead>Flow</TableHead>
-                <TableHead>Queue</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Jobs</TableHead>
                 <TableHead>Created</TableHead>
@@ -133,11 +141,6 @@ function FlowsPage() {
                         </span>
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-mono text-sm text-muted-foreground">
-                      {flow.queueName}
-                    </span>
                   </TableCell>
                   <TableCell>
                     <JobStatusBadge

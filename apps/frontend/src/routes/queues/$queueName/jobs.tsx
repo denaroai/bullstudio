@@ -40,51 +40,24 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Inbox,
-  Layers,
   RefreshCw,
   Search,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import Header from "@/components/Header";
-import { useTRPC } from "@/integrations/trpc/react";
+import { useEffect, useRef, useState } from "react";
+import { getJobDetailSearch } from "@/lib/job-detail-navigation";
 import {
-  getJobDetailSearch,
-  type JobDetailNavigationSource,
-} from "@/lib/job-detail-navigation";
-import { parseQueueKey, queueKey } from "@/lib/queue-key";
+  FilterableStatus,
+  type JobSortField,
+  jobsSearchSchema,
+} from "@/lib/jobs";
+import { queueKey } from "@/lib/queue-key";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
-import { z } from "zod";
+import { useTRPC } from "@/integrations/trpc/react";
 
-export enum FilterableStatus {
-  All = "all",
-  Waiting = "waiting",
-  Active = "active",
-  Completed = "completed",
-  Failed = "failed",
-  Delayed = "delayed",
-  Paused = "paused",
-  WaitingChildren = "waiting-children",
-}
-
-type SortField = "name" | "queueName" | "status" | "timestamp" | "duration";
-
-const jobSearchSchema = z.object({
-  queueKey: z.string().optional(),
-  statusFilter: z.enum(FilterableStatus).default(FilterableStatus.All),
-  q: z.string().optional(),
-  page: z.coerce.number().int().min(1).catch(1),
-  pageSize: z.coerce.number().int().min(10).max(1000).catch(50),
-  sortField: z
-    .enum(["name", "queueName", "status", "timestamp", "duration"])
-    .catch("timestamp"),
-  sortOrder: z.enum(["asc", "desc"]).catch("desc"),
-});
-type JobSearch = z.infer<typeof jobSearchSchema>;
-
-export const Route = createFileRoute("/jobs/")({
-  component: JobsPage,
-  validateSearch: (search: Record<string, unknown>): JobSearch =>
-    jobSearchSchema.parse(search),
+export const Route = createFileRoute("/queues/$queueName/jobs")({
+  component: QueueJobsPage,
+  validateSearch: (search: Record<string, unknown>) =>
+    jobsSearchSchema.parse(search),
 });
 
 const BASE_STATUS_TABS: { value: FilterableStatus | "all"; label: string }[] = [
@@ -96,7 +69,6 @@ const BASE_STATUS_TABS: { value: FilterableStatus | "all"; label: string }[] = [
   { value: FilterableStatus.Delayed, label: "Delayed" },
 ];
 
-const ALL_QUEUES_VALUE = "__all__";
 const SEARCH_DEBOUNCE_MS = 300;
 const JOBS_SKELETON_KEYS = ["job-1", "job-2", "job-3", "job-4", "job-5"];
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 250];
@@ -112,20 +84,14 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-function JobsPage() {
+function QueueJobsPage() {
   const trpc = useTRPC();
   const navigate = useNavigate({ from: Route.fullPath });
-  const pendingPaginationScrollY = useRef<number | null>(null);
+  const { queueName } = Route.useParams();
+  const tableScrollRef = useRef<HTMLDivElement>(null);
 
-  const {
-    queueKey: queueKeySearch,
-    statusFilter,
-    q,
-    page,
-    pageSize,
-    sortField,
-    sortOrder,
-  } = Route.useSearch();
+  const { statusFilter, q, page, pageSize, sortField, sortOrder } =
+    Route.useSearch();
 
   const [searchQuery, setSearchQuery] = useState(q ?? "");
   const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
@@ -137,60 +103,23 @@ function JobsPage() {
     ? getQueueSourceViewModel(connectionInfo.queueSource)
     : null;
 
-  const hasMultiplePrefixes = (queueSource?.prefixes.length ?? 0) > 1;
+  const { data: queues } = useQuery(trpc.queues.list.queryOptions());
+  const queue = queues?.find((item) => item.name === queueName);
+  const prefix = queue?.prefix;
 
-  const parsed = queueKeySearch ? parseQueueKey(queueKeySearch) : null;
-
-  const { data: queues, isLoading: loadingQueues } = useQuery(
-    trpc.queues.list.queryOptions(),
-  );
-
-  const selectedQueue = useMemo(() => {
-    if (!parsed || !queues) {
-      return null;
-    }
-
-    return (
-      queues.find(
-        (queue) =>
-          queue.name === parsed.name && (queue.prefix ?? "") === parsed.prefix,
-      ) ?? null
-    );
-  }, [parsed, queues]);
-
-  const statusCounts = useMemo(() => {
-    const queuesForCounts = selectedQueue
-      ? [selectedQueue]
-      : (queues ?? []);
-
-    return queuesForCounts.reduce(
-      (counts, queue) => {
-        const jobCounts = queue.jobCounts;
-        counts.waiting += jobCounts?.waiting ?? 0;
-        counts.active += jobCounts?.active ?? 0;
-        counts.completed += jobCounts?.completed ?? 0;
-        counts.failed += jobCounts?.failed ?? 0;
-        counts.delayed += jobCounts?.delayed ?? 0;
-        counts.paused += jobCounts?.paused ?? 0;
-        counts.waitingChildren += jobCounts?.waitingChildren ?? 0;
-        counts.prioritized += jobCounts?.prioritized ?? 0;
-        return counts;
-      },
-      {
-        waiting: 0,
-        active: 0,
-        completed: 0,
-        failed: 0,
-        delayed: 0,
-        paused: 0,
-        waitingChildren: 0,
-        prioritized: 0,
-      },
-    );
-  }, [queues, selectedQueue]);
+  const statusCounts = {
+    waiting: queue?.jobCounts?.waiting ?? 0,
+    active: queue?.jobCounts?.active ?? 0,
+    completed: queue?.jobCounts?.completed ?? 0,
+    failed: queue?.jobCounts?.failed ?? 0,
+    delayed: queue?.jobCounts?.delayed ?? 0,
+    paused: queue?.jobCounts?.paused ?? 0,
+    waitingChildren: queue?.jobCounts?.waitingChildren ?? 0,
+    prioritized: queue?.jobCounts?.prioritized ?? 0,
+  };
 
   const getStatusCount = (status: FilterableStatus | "all") => {
-    if (!queues) {
+    if (!queue?.jobCounts) {
       return null;
     }
 
@@ -223,20 +152,15 @@ function JobsPage() {
     }
   };
 
-  // Build status tabs based on provider capabilities
-  const statusTabs = useMemo(() => {
-    // If provider supports flows (BullMQ), add waiting-children tab
-    if (queueSource?.features.flows.visible) {
-      return [
+  const statusTabs = queueSource?.features.flows.visible
+    ? [
         ...BASE_STATUS_TABS,
         {
           value: "waiting-children" as FilterableStatus,
           label: "Waiting Children",
         },
-      ];
-    }
-    return BASE_STATUS_TABS;
-  }, [queueSource?.features.flows.visible]);
+      ]
+    : BASE_STATUS_TABS;
 
   const {
     data: jobsResponse,
@@ -245,8 +169,8 @@ function JobsPage() {
     refetch: refetchJobs,
   } = useQuery(
     trpc.jobs.listSummary.queryOptions({
-      queueName: parsed?.name,
-      prefix: parsed?.prefix,
+      queueName,
+      prefix,
       status: statusFilter !== "all" ? statusFilter : undefined,
       search: q,
       sortField,
@@ -295,21 +219,9 @@ function JobsPage() {
     }
   }, [hasJobsResponse, navigate, page, totalPages]);
 
-  useEffect(() => {
-    if (
-      fetchingJobs ||
-      !hasJobsResponse ||
-      pendingPaginationScrollY.current === null
-    ) {
-      return;
-    }
+  const scrollTableToTop = () => tableScrollRef.current?.scrollTo({ top: 0 });
 
-    const scrollY = pendingPaginationScrollY.current;
-    pendingPaginationScrollY.current = null;
-    requestAnimationFrame(() => window.scrollTo({ top: scrollY }));
-  }, [fetchingJobs, hasJobsResponse]);
-
-  const handleSort = (field: SortField) => {
+  const handleSort = (field: JobSortField) => {
     if (sortField === field) {
       navigate({
         search: (prev) => ({
@@ -332,7 +244,7 @@ function JobsPage() {
 
   const navigateToPage = (nextPage: number) => {
     const boundedPage = Math.min(Math.max(nextPage, 1), totalPages);
-    pendingPaginationScrollY.current = window.scrollY;
+    scrollTableToTop();
     navigate({
       search: (prev) => ({
         ...prev,
@@ -341,7 +253,7 @@ function JobsPage() {
     });
   };
 
-  const SortIcon = ({ field }: { field: SortField }) => {
+  const SortIcon = ({ field }: { field: JobSortField }) => {
     if (sortField !== field) {
       return <ArrowUpDown className="size-3.5 text-zinc-600" />;
     }
@@ -370,84 +282,34 @@ function JobsPage() {
     return <span className="text-muted-foreground">—</span>;
   };
 
-  const navigateToJob = (jobId: string, job: JobDetailNavigationSource) => {
+  const navigateToJob = (job: JobSummary & { prefix?: string }) => {
     navigate({
       to: "/jobs/$jobId",
-      params: { jobId },
-      search: getJobDetailSearch(job),
+      params: { jobId: job.id },
+      search: getJobDetailSearch({
+        queueName,
+        prefix: job.prefix ?? prefix,
+        queueKey: queueKey(job.prefix ?? prefix ?? "", queueName),
+      }),
     });
   };
 
   return (
-    <div className="flex h-[calc(100dvh-3rem)] min-h-0 flex-col gap-6 overflow-hidden">
-      <Header title="Jobs" />
-
-      {/* Header Controls */}
+    <div className="flex h-full flex-col gap-4">
+      {/* Controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <Select
-            value={queueKeySearch || ALL_QUEUES_VALUE}
-            onValueChange={(value) =>
-              //setSelectedQueue(value === ALL_QUEUES_VALUE ? "" : value)
-              navigate({
-                search: (prev) => ({
-                  ...prev,
-                  queueKey: value === ALL_QUEUES_VALUE ? undefined : value,
-                  page: 1,
-                }),
-              })
-            }
-            disabled={loadingQueues}
-          >
-            <SelectTrigger className="w-[250px] bg-card">
-              <Layers className="size-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Select queue" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_QUEUES_VALUE}>All queues</SelectItem>
-              {loadingQueues ? (
-                <div className="p-2">
-                  <Skeleton className="h-8 w-full" />
-                </div>
-              ) : queues?.length === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  No queues found
-                </div>
-              ) : (
-                queues?.map((queue) => (
-                  <SelectItem
-                    key={queueKey(queue.prefix ?? "", queue.name)}
-                    value={queueKey(queue.prefix ?? "", queue.name)}
-                  >
-                    <span className="font-mono">
-                      {hasMultiplePrefixes && (
-                        <span className="text-muted-foreground mr-1">
-                          {queue.prefix}/
-                        </span>
-                      )}
-                      {queue.name}
-                    </span>
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => refetchJobs()}
+          disabled={fetchingJobs}
+          className="bg-card"
+        >
+          <RefreshCw
+            className={`size-4 ${fetchingJobs ? "animate-spin" : ""}`}
+          />
+        </Button>
 
-          {/* Refresh Button */}
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => refetchJobs()}
-            disabled={fetchingJobs}
-            className="bg-card"
-          >
-            <RefreshCw
-              className={`size-4 ${fetchingJobs ? "animate-spin" : ""}`}
-            />
-          </Button>
-        </div>
-
-        {/* Search */}
         <div className="relative w-full sm:w-[300px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
@@ -500,7 +362,7 @@ function JobsPage() {
           </div>
         </div>
       ) : jobs.length === 0 ? (
-        <div className="min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 items-center justify-center">
           <EmptyState
             icon={<Inbox className="size-12" />}
             title="No jobs found"
@@ -513,7 +375,7 @@ function JobsPage() {
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
-          <div className="min-h-0 flex-1 overflow-auto">
+          <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-auto">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -524,15 +386,6 @@ function JobsPage() {
                     <div className="flex items-center gap-2">
                       Job
                       <SortIcon field="name" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="sticky top-0 z-10 cursor-pointer bg-card hover:text-foreground transition-colors"
-                    onClick={() => handleSort("queueName")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Queue
-                      <SortIcon field="queueName" />
                     </div>
                   </TableHead>
                   <TableHead
@@ -569,7 +422,7 @@ function JobsPage() {
                   <TableRow
                     key={`${job.prefix ?? ""}-${job.queueName}-${job.id}`}
                     className="cursor-pointer hover:bg-muted/60 transition-colors"
-                    onClick={() => navigateToJob(job.id, job)}
+                    onClick={() => navigateToJob(job)}
                   >
                     <TableCell>
                       <div className="flex flex-col">
@@ -580,16 +433,6 @@ function JobsPage() {
                           {job.id}
                         </span>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-mono text-sm text-muted-foreground">
-                        {hasMultiplePrefixes && job.prefix && (
-                          <span className="text-muted-foreground mr-1">
-                            {job.prefix}/
-                          </span>
-                        )}
-                        {job.queueName}
-                      </span>
                     </TableCell>
                     <TableCell>
                       <JobStatusBadge
@@ -629,15 +472,16 @@ function JobsPage() {
                 <span>Rows</span>
                 <Select
                   value={String(pageSize)}
-                  onValueChange={(value) =>
+                  onValueChange={(value) => {
+                    scrollTableToTop();
                     navigate({
                       search: (prev) => ({
                         ...prev,
                         pageSize: Number(value),
                         page: 1,
                       }),
-                    })
-                  }
+                    });
+                  }}
                 >
                   <SelectTrigger className="h-8 w-[82px] bg-background">
                     <SelectValue />

@@ -1,34 +1,21 @@
-"use client";
-
 import { Button } from "@bullstudio/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { z } from "zod";
-import Header from "@/components/Header";
-import { QueueFilter } from "@/components/QueueFilter";
 import { WorkerSheet } from "@/components/workers/WorkerSheet";
 import { WorkersTable } from "@/components/workers/WorkersTable";
 import type { PrivateWorker } from "@/components/workers/types";
 import { useTRPC } from "@/integrations/trpc/react";
-import { parseQueueKey } from "@/lib/queue-key";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 
-const searchSchema = z.object({
-  queueKey: z.string().optional(),
+export const Route = createFileRoute("/queues/$queueName/workers")({
+  component: QueueWorkersPage,
 });
 
-export const Route = createFileRoute("/workers/")({
-  component: WorkersPage,
-  validateSearch: (search: Record<string, unknown>) =>
-    searchSchema.parse(search),
-});
-
-function WorkersPage() {
+function QueueWorkersPage() {
   const trpc = useTRPC();
-  const navigate = useNavigate({ from: Route.fullPath });
-  const { queueKey: queueKeySearch } = Route.useSearch();
+  const { queueName } = Route.useParams();
   const [selected, setSelected] = useState<PrivateWorker | null>(null);
 
   const { data: connectionInfo } = useQuery(
@@ -38,11 +25,11 @@ function WorkersPage() {
     ? getQueueSourceViewModel(connectionInfo.queueSource)
     : null;
   const hasMultiplePrefixes = (queueSource?.prefixes.length ?? 0) > 1;
-  const parsed = queueKeySearch ? parseQueueKey(queueKeySearch) : null;
 
-  const { data: queues, isLoading: loadingQueues } = useQuery(
-    trpc.queues.list.queryOptions(),
-  );
+  const { data: queues } = useQuery(trpc.queues.list.queryOptions());
+  const queue = queues?.find((item) => item.name === queueName);
+  const prefix = queue?.prefix;
+
   const {
     data: workers,
     isLoading,
@@ -50,27 +37,15 @@ function WorkersPage() {
     refetch,
   } = useQuery(
     trpc.workers.list.queryOptions({
-      queueName: parsed?.name,
-      prefix: parsed?.prefix,
+      queueName,
+      prefix,
       limit: 500,
     }),
   );
-  const selectedQueue = selected
-    ? queues?.find(
-        (queue) =>
-          (selected.queueKey &&
-            "key" in queue &&
-            queue.key === selected.queueKey) ||
-          (queue.name === selected.queueName &&
-            (selected.prefix === undefined ||
-              queue.prefix === selected.prefix)),
-      )
-    : undefined;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Header title="Workers" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-end">
         <Button
           variant="outline"
           size="sm"
@@ -85,21 +60,6 @@ function WorkersPage() {
         </Button>
       </div>
 
-      <QueueFilter
-        hasMultiplePrefixes={hasMultiplePrefixes}
-        isLoading={loadingQueues}
-        queues={queues}
-        selectedQueueKey={queueKeySearch}
-        onQueueKeyChange={(nextQueueKey) =>
-          navigate({
-            search: (prev) => ({
-              ...prev,
-              queueKey: nextQueueKey,
-            }),
-          })
-        }
-      />
-
       <WorkersTable
         hasMultiplePrefixes={hasMultiplePrefixes}
         isLoading={isLoading}
@@ -110,7 +70,7 @@ function WorkersPage() {
       <WorkerSheet
         open={Boolean(selected)}
         worker={selected}
-        queue={selectedQueue}
+        queue={queue}
         queueActions={{
           pause: queueSource?.features.queuePause.enabled ?? false,
           resume: queueSource?.features.queueResume.enabled ?? false,

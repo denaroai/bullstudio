@@ -221,7 +221,14 @@ export type JobRemoveResponse = {
   message: string;
 };
 
-export type FlowListInput = { limit?: number } | undefined;
+export type FlowListInput =
+  | {
+      queueKey?: string;
+      queueName?: string;
+      prefix?: string;
+      limit?: number;
+    }
+  | undefined;
 
 export type FlowTargetInput = {
   queueKey?: string;
@@ -402,6 +409,9 @@ const jobTargetSchema = z.object({
 
 const flowListSchema = z
   .object({
+    queueKey: z.string().optional(),
+    queueName: z.string().optional(),
+    prefix: z.string().optional(),
     limit: z.number().min(1).max(100).default(50),
   })
   .optional();

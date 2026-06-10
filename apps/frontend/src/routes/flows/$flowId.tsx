@@ -61,8 +61,8 @@ function FlowDetailPage() {
   );
 
   const goBack = useCallback(() => {
-    navigate({ to: "/flows" });
-  }, [navigate]);
+    navigate({ to: "/queues/$queueName/flows", params: { queueName } });
+  }, [navigate, queueName]);
 
   const handleNodeClick = useCallback(
     (jobId: string, jobQueueName: string) => {

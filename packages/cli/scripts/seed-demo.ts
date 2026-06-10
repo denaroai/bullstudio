@@ -417,7 +417,7 @@ function startWorkers(connection: ConnectionOptions): Worker[] {
       {
         connection,
         concurrency: spec.concurrency,
-        metrics: { maxDataPoints: MetricsTime.ONE_WEEK },
+        //metrics: { maxDataPoints: MetricsTime.ONE_WEEK },
       },
     );
     worker.on("failed", (job, err) =>

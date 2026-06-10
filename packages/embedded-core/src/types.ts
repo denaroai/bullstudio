@@ -171,7 +171,10 @@ export interface EmbeddedDashboardInstance {
   removeJob(queueKey: string, jobId: string): Promise<void>;
   getWorkerCount(queueKey: string): Promise<WorkerCount>;
   listWorkers(queueKey: string): Promise<Worker[]>;
-  listFlows(options?: { limit?: number }): Promise<FlowSummary[]>;
+  listFlows(options?: {
+    limit?: number;
+    queueKey?: string;
+  }): Promise<FlowSummary[]>;
   getFlow(queueKey: string, flowId: string): Promise<FlowTree | null>;
   listQueueSchedulers(
     queueKey: string,
