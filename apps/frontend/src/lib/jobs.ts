@@ -25,6 +25,8 @@ export type JobSortField =
 export const jobsSearchSchema = z.object({
   statusFilter: z.enum(FilterableStatus).default(FilterableStatus.All),
   q: z.string().optional(),
+  /** Job id whose inline detail row should be expanded (deep-link target). */
+  selected: z.string().optional(),
   page: z.coerce.number().int().min(1).catch(1),
   pageSize: z.coerce.number().int().min(10).max(1000).catch(50),
   sortField: z

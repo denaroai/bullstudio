@@ -1,33 +1,19 @@
-"use client";
-
 import type { FlowNode } from "@bullstudio/connect-types";
 import { Button } from "@bullstudio/ui/components/button";
 import { Skeleton } from "@bullstudio/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
-  ArrowLeft,
   CheckCircle,
   GitBranch,
   RefreshCw,
   XCircle,
 } from "lucide-react";
 import { useCallback } from "react";
-import { z } from "zod";
 import { FlowGraph } from "@/components/flows/FlowGraph";
+import { DEFAULT_JOBS_SEARCH } from "@/lib/jobs";
 import { useTRPC } from "@/integrations/trpc/react";
-
-const searchSchema = z.object({
-  queueKey: z.string().optional(),
-  queueName: z.string(),
-  prefix: z.string().optional(),
-});
-
-export const Route = createFileRoute("/flows/$flowId")({
-  component: FlowDetailPage,
-  validateSearch: searchSchema,
-});
 
 function checkHasActiveJobs(node: FlowNode): boolean {
   const activeStates = ["active", "waiting", "delayed", "waiting-children"];
@@ -36,11 +22,21 @@ function checkHasActiveJobs(node: FlowNode): boolean {
   return node.children.some(checkHasActiveJobs);
 }
 
-function FlowDetailPage() {
-  const { flowId } = Route.useParams();
-  const { queueName, prefix, queueKey } = Route.useSearch();
-  const navigate = useNavigate();
+interface FlowDetailProps {
+  flowId: string;
+  queueName: string;
+  prefix?: string;
+  queueKey?: string;
+}
+
+export function FlowDetail({
+  flowId,
+  queueName,
+  prefix,
+  queueKey,
+}: FlowDetailProps) {
   const trpc = useTRPC();
+  const navigate = useNavigate();
 
   const {
     data: flowTree,
@@ -60,82 +56,49 @@ function FlowDetailPage() {
     ),
   );
 
-  const goBack = useCallback(() => {
-    navigate({ to: "/queues/$queueName/flows", params: { queueName } });
-  }, [navigate, queueName]);
-
   const handleNodeClick = useCallback(
     (jobId: string, jobQueueName: string) => {
       navigate({
-        to: "/jobs/$jobId",
-        params: { jobId },
-        search: {
-          queueName: jobQueueName,
-          prefix,
-        },
+        to: "/queues/$queueName/jobs",
+        params: { queueName: jobQueueName },
+        search: { ...DEFAULT_JOBS_SEARCH, selected: jobId },
       });
     },
-    [navigate, prefix],
+    [navigate],
   );
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-20 w-full bg-zinc-800/50" />
-        <Skeleton className="h-16 w-full bg-zinc-800/50" />
-        <Skeleton className="h-[560px] w-full bg-zinc-800/50" />
+      <div className="space-y-4 p-4">
+        <Skeleton className="h-16 w-full bg-muted/50" />
+        <Skeleton className="h-[420px] w-full bg-muted/50" />
       </div>
     );
   }
 
   if (!flowTree) {
     return (
-      <div className="space-y-6">
-        <div className="text-center py-12">
-          <AlertTriangle className="size-12 text-zinc-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-zinc-300">Flow not found</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            The flow may have been removed or the ID is incorrect.
-          </p>
-          <Button variant="outline" className="mt-4" onClick={goBack}>
-            <ArrowLeft className="size-4 mr-2" />
-            Back to Flows
-          </Button>
-        </div>
+      <div className="flex flex-col items-center gap-2 py-10 text-center">
+        <AlertTriangle className="size-8 text-muted-foreground" />
+        <h3 className="text-sm font-medium text-foreground">Flow not found</h3>
+        <p className="text-xs text-muted-foreground">
+          The flow may have been removed or the ID is incorrect.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-col gap-4 border-b pb-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={goBack}
-            aria-label="Back to flows"
-            className="mt-0.5"
-          >
-            <ArrowLeft className="size-4" />
-          </Button>
-          <div className="min-w-0 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-xl font-semibold leading-tight text-foreground">
-                {flowTree.root.name}
-              </h1>
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/20 bg-cyan-500/10 px-2 py-1 font-mono text-[10px] font-medium uppercase text-cyan-400">
-                Flow
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <span className="font-mono">#{flowId}</span>
-              <span className="font-mono">{queueName}</span>
-              {prefix && <span className="font-mono">{prefix}</span>}
-            </div>
-          </div>
+    <div className="space-y-4 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="truncate text-sm font-semibold text-foreground">
+            {flowTree.root.name}
+          </span>
+          <span className="font-mono text-xs text-muted-foreground">
+            #{flowId}
+          </span>
         </div>
-
         <Button
           variant="outline"
           size="sm"
@@ -146,7 +109,7 @@ function FlowDetailPage() {
           <RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} />
           Refresh
         </Button>
-      </header>
+      </div>
 
       <div className="grid overflow-hidden rounded-lg border bg-card/80 sm:grid-cols-2 lg:grid-cols-4">
         <FlowMetric
@@ -169,7 +132,11 @@ function FlowDetailPage() {
         <FlowMetric label="Queue" value={queueName} mono />
       </div>
 
-      <FlowGraph root={flowTree.root} onNodeClick={handleNodeClick} />
+      <FlowGraph
+        root={flowTree.root}
+        onNodeClick={handleNodeClick}
+        heightClassName="h-[480px]"
+      />
     </div>
   );
 }

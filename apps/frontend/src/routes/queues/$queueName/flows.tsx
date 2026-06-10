@@ -1,4 +1,3 @@
-import type { FlowSummary } from "@bullstudio/connect-types";
 import dayjs from "@bullstudio/dayjs";
 import { Button } from "@bullstudio/ui/components/button";
 import { Skeleton } from "@bullstudio/ui/components/skeleton";
@@ -16,13 +15,19 @@ import {
   JobStatusBadge,
 } from "@bullstudio/ui/shared";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CheckCircle, Inbox, RefreshCw, Workflow, XCircle } from "lucide-react";
-import { getFlowDetailSearch } from "@/lib/flow-detail-navigation";
+import { createFileRoute } from "@tanstack/react-router";
+import {
+  CheckCircle,
+  ChevronDown,
+  Inbox,
+  RefreshCw,
+  Workflow,
+  XCircle,
+} from "lucide-react";
+import { Fragment, useState } from "react";
+import { FlowDetail } from "@/components/flows/FlowDetail";
 import { queueKey } from "@/lib/queue-key";
 import { useTRPC } from "@/integrations/trpc/react";
-
-type PrivateFlowSummary = FlowSummary & { queueKey?: string };
 
 const flowSkeletonRows = [
   "flow-skeleton-1",
@@ -38,8 +43,8 @@ export const Route = createFileRoute("/queues/$queueName/flows")({
 
 function QueueFlowsPage() {
   const trpc = useTRPC();
-  const navigate = useNavigate();
   const { queueName } = Route.useParams();
+  const [expandedFlowId, setExpandedFlowId] = useState<string | null>(null);
 
   const { data: queues } = useQuery(trpc.queues.list.queryOptions());
   const queue = queues?.find((item) => item.name === queueName);
@@ -66,16 +71,8 @@ function QueueFlowsPage() {
     ),
   );
 
-  const navigateToFlow = (flow: PrivateFlowSummary) => {
-    navigate({
-      to: "/flows/$flowId",
-      params: { flowId: flow.id },
-      search: getFlowDetailSearch({
-        queueName,
-        prefix: flow.prefix ?? prefix,
-        queueKey: queueKey(flow.prefix ?? prefix ?? "", queueName),
-      }),
-    });
+  const toggleFlow = (flowId: string) => {
+    setExpandedFlowId((current) => (current === flowId ? null : flowId));
   };
 
   return (
@@ -121,66 +118,97 @@ function QueueFlowsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {flows.map((flow) => (
-                <TableRow
-                  key={`${flow.prefix}-${flow.queueName}-${flow.id}`}
-                  className="cursor-pointer hover:bg-muted/60 transition-colors"
-                  onClick={() => navigateToFlow(flow)}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-                        <Workflow className="size-4 text-cyan-400" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-foreground">
-                          {flow.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground font-mono">
-                          {flow.id}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <JobStatusBadge
-                      status={flow.status as JobStatus}
-                      size="sm"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm text-foreground">
-                        {flow.totalJobs} total
-                      </span>
-                      <div className="flex items-center gap-3 text-xs">
-                        {flow.completedJobs > 0 && (
-                          <span className="flex items-center gap-1 text-emerald-400">
-                            <CheckCircle className="size-3" />
-                            {flow.completedJobs}
+              {flows.map((flow) => {
+                const isExpanded = expandedFlowId === flow.id;
+                return (
+                  <Fragment key={`${flow.prefix}-${flow.queueName}-${flow.id}`}>
+                    <TableRow
+                      className={`cursor-pointer transition-colors ${
+                        isExpanded
+                          ? "bg-muted/60 hover:bg-muted/60"
+                          : "hover:bg-muted/60"
+                      }`}
+                      onClick={() => toggleFlow(flow.id)}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <ChevronDown
+                            className={`size-4 shrink-0 text-muted-foreground transition-transform ${
+                              isExpanded ? "" : "-rotate-90"
+                            }`}
+                          />
+                          <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                            <Workflow className="size-4 text-cyan-400" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">
+                              {flow.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground font-mono">
+                              {flow.id}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <JobStatusBadge
+                          status={flow.status as JobStatus}
+                          size="sm"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm text-foreground">
+                            {flow.totalJobs} total
                           </span>
-                        )}
-                        {flow.failedJobs > 0 && (
-                          <span className="flex items-center gap-1 text-red-400">
-                            <XCircle className="size-3" />
-                            {flow.failedJobs}
+                          <div className="flex items-center gap-3 text-xs">
+                            {flow.completedJobs > 0 && (
+                              <span className="flex items-center gap-1 text-emerald-400">
+                                <CheckCircle className="size-3" />
+                                {flow.completedJobs}
+                              </span>
+                            )}
+                            {flow.failedJobs > 0 && (
+                              <span className="flex items-center gap-1 text-red-400">
+                                <XCircle className="size-3" />
+                                {flow.failedJobs}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="text-sm text-foreground">
+                            {dayjs(flow.timestamp).fromNow()}
                           </span>
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-sm text-foreground">
-                        {dayjs(flow.timestamp).fromNow()}
-                      </span>
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {dayjs(flow.timestamp).format("MMM D, HH:mm:ss")}
-                      </span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {dayjs(flow.timestamp).format("MMM D, HH:mm:ss")}
+                          </span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded && (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell
+                          colSpan={4}
+                          className="border-b bg-muted/20 p-0"
+                        >
+                          <FlowDetail
+                            flowId={flow.id}
+                            queueName={queueName}
+                            prefix={flow.prefix ?? prefix}
+                            queueKey={queueKey(
+                              flow.prefix ?? prefix ?? "",
+                              queueName,
+                            )}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
             </TableBody>
           </Table>
 

@@ -11,8 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
-import { Route as FlowsFlowIdRouteImport } from './routes/flows/$flowId'
 import { Route as QueuesQueueNameRouteRouteImport } from './routes/queues/$queueName/route'
 import { Route as QueuesQueueNameIndexRouteImport } from './routes/queues/$queueName/index'
 import { Route as QueuesQueueNameWorkersRouteImport } from './routes/queues/$queueName/workers'
@@ -28,16 +26,6 @@ const LoginRoute = LoginRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JobsJobIdRoute = JobsJobIdRouteImport.update({
-  id: '/jobs/$jobId',
-  path: '/jobs/$jobId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FlowsFlowIdRoute = FlowsFlowIdRouteImport.update({
-  id: '/flows/$flowId',
-  path: '/flows/$flowId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QueuesQueueNameRouteRoute = QueuesQueueNameRouteRouteImport.update({
@@ -76,8 +64,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/queues/$queueName': typeof QueuesQueueNameRouteRouteWithChildren
-  '/flows/$flowId': typeof FlowsFlowIdRoute
-  '/jobs/$jobId': typeof JobsJobIdRoute
   '/queues/$queueName/flows': typeof QueuesQueueNameFlowsRoute
   '/queues/$queueName/jobs': typeof QueuesQueueNameJobsRoute
   '/queues/$queueName/schedulers': typeof QueuesQueueNameSchedulersRoute
@@ -87,8 +73,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/flows/$flowId': typeof FlowsFlowIdRoute
-  '/jobs/$jobId': typeof JobsJobIdRoute
   '/queues/$queueName/flows': typeof QueuesQueueNameFlowsRoute
   '/queues/$queueName/jobs': typeof QueuesQueueNameJobsRoute
   '/queues/$queueName/schedulers': typeof QueuesQueueNameSchedulersRoute
@@ -100,8 +84,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/queues/$queueName': typeof QueuesQueueNameRouteRouteWithChildren
-  '/flows/$flowId': typeof FlowsFlowIdRoute
-  '/jobs/$jobId': typeof JobsJobIdRoute
   '/queues/$queueName/flows': typeof QueuesQueueNameFlowsRoute
   '/queues/$queueName/jobs': typeof QueuesQueueNameJobsRoute
   '/queues/$queueName/schedulers': typeof QueuesQueueNameSchedulersRoute
@@ -114,8 +96,6 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/queues/$queueName'
-    | '/flows/$flowId'
-    | '/jobs/$jobId'
     | '/queues/$queueName/flows'
     | '/queues/$queueName/jobs'
     | '/queues/$queueName/schedulers'
@@ -125,8 +105,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
-    | '/flows/$flowId'
-    | '/jobs/$jobId'
     | '/queues/$queueName/flows'
     | '/queues/$queueName/jobs'
     | '/queues/$queueName/schedulers'
@@ -137,8 +115,6 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/queues/$queueName'
-    | '/flows/$flowId'
-    | '/jobs/$jobId'
     | '/queues/$queueName/flows'
     | '/queues/$queueName/jobs'
     | '/queues/$queueName/schedulers'
@@ -150,8 +126,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   QueuesQueueNameRouteRoute: typeof QueuesQueueNameRouteRouteWithChildren
-  FlowsFlowIdRoute: typeof FlowsFlowIdRoute
-  JobsJobIdRoute: typeof JobsJobIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -168,20 +142,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/jobs/$jobId': {
-      id: '/jobs/$jobId'
-      path: '/jobs/$jobId'
-      fullPath: '/jobs/$jobId'
-      preLoaderRoute: typeof JobsJobIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/flows/$flowId': {
-      id: '/flows/$flowId'
-      path: '/flows/$flowId'
-      fullPath: '/flows/$flowId'
-      preLoaderRoute: typeof FlowsFlowIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/queues/$queueName': {
@@ -252,8 +212,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   QueuesQueueNameRouteRoute: QueuesQueueNameRouteRouteWithChildren,
-  FlowsFlowIdRoute: FlowsFlowIdRoute,
-  JobsJobIdRoute: JobsJobIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

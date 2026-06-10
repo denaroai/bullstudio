@@ -1,5 +1,3 @@
-"use client";
-
 import dayjs from "@bullstudio/dayjs";
 import { Button } from "@bullstudio/ui/components/button";
 import { Skeleton } from "@bullstudio/ui/components/skeleton";
@@ -15,35 +13,27 @@ import {
   JobStatusBadge,
 } from "@bullstudio/ui/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import {
-  AlertTriangle,
-  ArrowLeft,
-  RefreshCw,
-  RotateCcw,
-  Trash2,
-} from "lucide-react";
+import { AlertTriangle, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { z } from "zod";
 import { useTRPC } from "@/integrations/trpc/react";
-import { FilterableStatus } from "@/lib/jobs";
 
-const searchSchema = z.object({
-  queueName: z.string(),
-  prefix: z.string().optional(),
-  queueKey: z.string().optional(),
-});
+interface JobDetailProps {
+  jobId: string;
+  queueName: string;
+  prefix?: string;
+  queueKey?: string;
+  /** Called after the job has been removed, so the parent can collapse the row. */
+  onRemoved?: () => void;
+}
 
-export const Route = createFileRoute("/jobs/$jobId")({
-  component: JobDetailPage,
-  validateSearch: searchSchema,
-});
-
-function JobDetailPage() {
-  const { jobId } = Route.useParams();
-  const { queueName, prefix, queueKey } = Route.useSearch();
-  const navigate = useNavigate();
+export function JobDetail({
+  jobId,
+  queueName,
+  prefix,
+  queueKey,
+  onRemoved,
+}: JobDetailProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
@@ -100,17 +90,7 @@ function JobDetailPage() {
       onSuccess: (data) => {
         toast.success(data.message);
         queryClient.invalidateQueries({ queryKey: [["jobs"]] });
-        navigate({
-          to: "/queues/$queueName/jobs",
-          params: { queueName },
-          search: {
-            statusFilter: FilterableStatus.All,
-            page: 1,
-            pageSize: 50,
-            sortField: "timestamp",
-            sortOrder: "desc",
-          },
-        });
+        onRemoved?.();
       },
       onError: (error) => {
         toast.error("Failed to remove job", {
@@ -120,64 +100,33 @@ function JobDetailPage() {
     }),
   );
 
-  const goBack = () => {
-    navigate({
-      to: "/queues/$queueName/jobs",
-      params: { queueName },
-      search: {
-        statusFilter: FilterableStatus.All,
-        page: 1,
-        pageSize: 50,
-        sortField: "timestamp",
-        sortOrder: "desc",
-      },
-    });
-  };
-
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-20 w-full bg-zinc-800/50" />
-        <Skeleton className="h-24 w-full bg-zinc-800/50" />
-        <Skeleton className="h-[420px] w-full bg-zinc-800/50" />
+      <div className="space-y-4 p-4">
+        <Skeleton className="h-24 w-full bg-muted/50" />
+        <Skeleton className="h-[280px] w-full bg-muted/50" />
       </div>
     );
   }
 
   if (!job) {
     return (
-      <div className="space-y-6">
-        <div className="text-center py-12">
-          <AlertTriangle className="size-12 text-zinc-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-zinc-300">Job not found</h3>
-          <p className="text-sm text-zinc-500 mt-1">
-            The job may have been removed or the ID is incorrect.
-          </p>
-          <Button variant="outline" className="mt-4" onClick={goBack}>
-            <ArrowLeft className="size-4 mr-2" />
-            Back to Jobs
-          </Button>
-        </div>
+      <div className="flex flex-col items-center gap-2 py-10 text-center">
+        <AlertTriangle className="size-8 text-muted-foreground" />
+        <h3 className="text-sm font-medium text-foreground">Job not found</h3>
+        <p className="text-xs text-muted-foreground">
+          The job may have been removed or the ID is incorrect.
+        </p>
       </div>
     );
   }
 
   const handleRetry = () => {
-    retryMutation.mutate({
-      queueKey,
-      queueName,
-      jobId,
-      prefix,
-    });
+    retryMutation.mutate({ queueKey, queueName, jobId, prefix });
   };
 
   const handleRemove = () => {
-    removeMutation.mutate({
-      queueKey,
-      queueName,
-      jobId,
-      prefix,
-    });
+    removeMutation.mutate({ queueKey, queueName, jobId, prefix });
   };
 
   const createdAt = dayjs(job.timestamp);
@@ -189,34 +138,19 @@ function JobDetailPage() {
         : "Pending";
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-col gap-4 border-b pb-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={goBack}
-            aria-label="Back to jobs"
-            className="mt-0.5"
-          >
-            <ArrowLeft className="size-4" />
-          </Button>
-          <div className="min-w-0 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-xl font-semibold leading-tight text-foreground">
-                {job.name}
-              </h1>
-              <JobStatusBadge status={job.status as JobStatus} size="sm" />
-            </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <span className="font-mono">#{job.id}</span>
-              <span className="font-mono">{job.queueName}</span>
-              <span>{createdAt.fromNow()}</span>
-            </div>
-          </div>
+    <div className="space-y-4 p-4">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="truncate text-sm font-semibold text-foreground">
+            {job.name}
+          </span>
+          <JobStatusBadge status={job.status as JobStatus} size="sm" />
+          <span className="font-mono text-xs text-muted-foreground">
+            #{job.id}
+          </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -299,7 +233,7 @@ function JobDetailPage() {
         <TabsContent value="logs">
           <DetailPanel title="Job Logs">
             {logsData && logsData.logs.length > 0 ? (
-              <div className="overflow-x-auto overflow-y-auto rounded-md bg-muted/70 max-h-[min(620px,calc(100vh-300px))]">
+              <div className="overflow-x-auto overflow-y-auto rounded-md bg-muted/70 max-h-[420px]">
                 {logsData.logs.map((line) => (
                   <div
                     key={line}
@@ -436,7 +370,7 @@ const JsonViewer = memo(function JsonViewer({ data }: { data: unknown }) {
 
   return (
     <div>
-      <pre className="overflow-x-auto overflow-y-auto rounded-md bg-muted/70 p-4 font-mono text-sm text-foreground max-h-[min(620px,calc(100vh-300px))]">
+      <pre className="overflow-x-auto overflow-y-auto rounded-md bg-muted/70 p-4 font-mono text-sm text-foreground max-h-[420px]">
         {formatted}
         {isTruncated && (
           <span className="text-muted-foreground">{"\n\n... (truncated)"}</span>

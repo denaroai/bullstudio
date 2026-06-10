@@ -27,6 +27,8 @@ const NODE_HEIGHT = 92;
 interface FlowGraphProps {
   root: FlowNodeType;
   onNodeClick: (jobId: string, queueName: string) => void;
+  /** Tailwind height utility for the graph canvas. Defaults to the full-page height. */
+  heightClassName?: string;
 }
 
 function buildNodesAndEdges(root: FlowNodeType): {
@@ -127,7 +129,11 @@ function getLayoutedElements(
   return { nodes: layoutedNodes, edges };
 }
 
-export function FlowGraph({ root, onNodeClick }: FlowGraphProps) {
+export function FlowGraph({
+  root,
+  onNodeClick,
+  heightClassName = "h-[calc(100vh-260px)] min-h-[520px]",
+}: FlowGraphProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     const { nodes, edges } = buildNodesAndEdges(root);
     return getLayoutedElements(nodes, edges);
@@ -155,7 +161,9 @@ export function FlowGraph({ root, onNodeClick }: FlowGraphProps) {
   }, [root, setNodes, setEdges]);
 
   return (
-    <div className="h-[calc(100vh-260px)] min-h-[520px] overflow-hidden rounded-lg border bg-card/80">
+    <div
+      className={`${heightClassName} overflow-hidden rounded-lg border bg-card/80`}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}

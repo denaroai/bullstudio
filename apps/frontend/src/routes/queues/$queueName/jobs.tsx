@@ -35,6 +35,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -43,8 +44,8 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { getJobDetailSearch } from "@/lib/job-detail-navigation";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { JobDetail } from "@/components/jobs/JobDetail";
 import {
   FilterableStatus,
   type JobSortField,
@@ -90,9 +91,12 @@ function QueueJobsPage() {
   const { queueName } = Route.useParams();
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
-  const { statusFilter, q, page, pageSize, sortField, sortOrder } =
+  const { statusFilter, q, selected, page, pageSize, sortField, sortOrder } =
     Route.useSearch();
 
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(
+    selected ?? null,
+  );
   const [searchQuery, setSearchQuery] = useState(q ?? "");
   const debouncedSearchQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
 
@@ -191,6 +195,19 @@ function QueueJobsPage() {
     setSearchQuery(q ?? "");
   }, [q]);
 
+  // Consume the `selected` deep-link param: expand its row, then strip it from
+  // the URL so it no longer reopens on subsequent navigations.
+  useEffect(() => {
+    if (!selected) {
+      return;
+    }
+    setExpandedJobId(selected);
+    navigate({
+      search: (prev) => ({ ...prev, selected: undefined }),
+      replace: true,
+    });
+  }, [selected, navigate]);
+
   useEffect(() => {
     const nextQuery = debouncedSearchQuery.trim() || undefined;
     if (nextQuery === q) {
@@ -282,75 +299,69 @@ function QueueJobsPage() {
     return <span className="text-muted-foreground">—</span>;
   };
 
-  const navigateToJob = (job: JobSummary & { prefix?: string }) => {
-    navigate({
-      to: "/jobs/$jobId",
-      params: { jobId: job.id },
-      search: getJobDetailSearch({
-        queueName,
-        prefix: job.prefix ?? prefix,
-        queueKey: queueKey(job.prefix ?? prefix ?? "", queueName),
-      }),
-    });
+  const toggleJob = (jobId: string) => {
+    setExpandedJobId((current) => (current === jobId ? null : jobId));
   };
 
   return (
     <div className="flex h-full flex-col gap-4">
-      {/* Controls */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => refetchJobs()}
-          disabled={fetchingJobs}
-          className="bg-card"
+      {/* Controls: status tabs + search live on one row */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <Tabs
+          value={statusFilter}
+          onValueChange={(v) =>
+            navigate({
+              search: (prev) => ({
+                ...prev,
+                statusFilter: v as FilterableStatus,
+                page: 1,
+              }),
+            })
+          }
+          className="min-w-0 overflow-x-auto"
         >
-          <RefreshCw
-            className={`size-4 ${fetchingJobs ? "animate-spin" : ""}`}
-          />
-        </Button>
+          <TabsList className="border border-border">
+            {statusTabs.map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="group data-[state=active]:bg-background"
+              >
+                <span>{tab.label}</span>
+                {getStatusCount(tab.value) !== null && (
+                  <span className="ml-1.5 rounded-sm border border-border/70 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground tabular-nums group-data-[state=active]:border-border group-data-[state=active]:bg-background group-data-[state=active]:text-foreground">
+                    {getStatusCount(tab.value)?.toLocaleString()}
+                  </span>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
-        <div className="relative w-full sm:w-[300px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Search jobs..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-card"
-          />
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => refetchJobs()}
+            disabled={fetchingJobs}
+            className="bg-card shrink-0"
+          >
+            <RefreshCw
+              className={`size-4 ${fetchingJobs ? "animate-spin" : ""}`}
+            />
+          </Button>
+
+          <div className="relative w-full lg:w-[300px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              placeholder="Search jobs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-card"
+            />
+          </div>
         </div>
       </div>
-
-      {/* Status Tabs */}
-      <Tabs
-        value={statusFilter}
-        onValueChange={(v) =>
-          navigate({
-            search: (prev) => ({
-              ...prev,
-              statusFilter: v as FilterableStatus,
-              page: 1,
-            }),
-          })
-        }
-      >
-        <TabsList className="border border-border">
-          {statusTabs.map((tab) => (
-            <TabsTrigger
-              key={tab.value}
-              value={tab.value}
-              className="group data-[state=active]:bg-background"
-            >
-              <span>{tab.label}</span>
-              {getStatusCount(tab.value) !== null && (
-                <span className="ml-1.5 rounded-sm border border-border/70 bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground tabular-nums group-data-[state=active]:border-border group-data-[state=active]:bg-background group-data-[state=active]:text-foreground">
-                  {getStatusCount(tab.value)?.toLocaleString()}
-                </span>
-              )}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
 
       {/* Jobs Table */}
       {loadingJobs ? (
@@ -418,43 +429,76 @@ function QueueJobsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {jobs.map((job) => (
-                  <TableRow
-                    key={`${job.prefix ?? ""}-${job.queueName}-${job.id}`}
-                    className="cursor-pointer hover:bg-muted/60 transition-colors"
-                    onClick={() => navigateToJob(job)}
-                  >
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-foreground">
-                          {job.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground font-mono">
-                          {job.id}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <JobStatusBadge
-                        status={job.status as JobStatus}
-                        size="sm"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="text-sm text-foreground">
-                          {dayjs(job.timestamp).fromNow()}
-                        </span>
-                        <span className="text-xs text-muted-foreground font-mono">
-                          {dayjs(job.timestamp).format("MMM D, HH:mm:ss")}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
-                      {formatDuration(job)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {jobs.map((job) => {
+                  const isExpanded = expandedJobId === job.id;
+                  return (
+                    <Fragment
+                      key={`${job.prefix ?? ""}-${job.queueName}-${job.id}`}
+                    >
+                      <TableRow
+                        className={`cursor-pointer transition-colors ${
+                          isExpanded
+                            ? "bg-muted/60 hover:bg-muted/60"
+                            : "hover:bg-muted/60"
+                        }`}
+                        onClick={() => toggleJob(job.id)}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <ChevronDown
+                              className={`size-4 shrink-0 text-muted-foreground transition-transform ${
+                                isExpanded ? "" : "-rotate-90"
+                              }`}
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-medium text-foreground">
+                                {job.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground font-mono">
+                                {job.id}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <JobStatusBadge
+                            status={job.status as JobStatus}
+                            size="sm"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="text-sm text-foreground">
+                              {dayjs(job.timestamp).fromNow()}
+                            </span>
+                            <span className="text-xs text-muted-foreground font-mono">
+                              {dayjs(job.timestamp).format("MMM D, HH:mm:ss")}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {formatDuration(job)}
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={4} className="border-b bg-muted/20 p-0">
+                            <JobDetail
+                              jobId={job.id}
+                              queueName={queueName}
+                              prefix={job.prefix ?? prefix}
+                              queueKey={queueKey(
+                                job.prefix ?? prefix ?? "",
+                                queueName,
+                              )}
+                              onRemoved={() => setExpandedJobId(null)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

@@ -16,6 +16,7 @@ import {
 } from "@bullstudio/ui/components/table";
 import { formatDuration } from "@bullstudio/ui/shared";
 import { useNavigate } from "@tanstack/react-router";
+import { DEFAULT_JOBS_SEARCH } from "@/lib/jobs";
 
 type SlowJob = OverviewMetricsResponse["slowestJobs"][number];
 
@@ -28,9 +29,9 @@ export function SlowestJobsTable({ jobs }: SlowestJobsTableProps) {
 
   const handleJobClick = (job: SlowJob) => {
     navigate({
-      to: "/jobs/$jobId",
-      params: { jobId: job.id },
-      search: { queueName: job.queueName },
+      to: "/queues/$queueName/jobs",
+      params: { queueName: job.queueName },
+      search: { ...DEFAULT_JOBS_SEARCH, selected: job.id },
     });
   };
 
