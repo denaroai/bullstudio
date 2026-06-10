@@ -16,6 +16,7 @@ describe("discoverPrefixes", () => {
   });
 
   afterAll(async () => {
+    if (!redis) return;
     await redis.quit().catch(() => {});
   });
 

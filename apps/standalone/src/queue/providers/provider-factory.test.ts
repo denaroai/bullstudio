@@ -23,6 +23,7 @@ describe("createQueueProvider", () => {
   });
 
   afterAll(async () => {
+    if (!redis) return;
     await redis.quit().catch(() => {});
   });
 

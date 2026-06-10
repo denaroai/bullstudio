@@ -1,6 +1,11 @@
 import type { ServerResponse } from "node:http";
 import { resolve } from "node:path";
-import { normalizePath, type Connect, type Plugin, type ViteDevServer } from "vite";
+import {
+  type Connect,
+  normalizePath,
+  type Plugin,
+  type ViteDevServer,
+} from "vite";
 
 type StandaloneApp = {
   fetch(request: Request): Promise<Response> | Response;
@@ -59,7 +64,7 @@ async function loadStandaloneModule(
 }
 
 export function toViteFsModuleId(filePath: string): string {
-  return `/@fs/${normalizePath(filePath).replace(/^\/+/, "")}`;
+  return `/@fs/${normalizePath(filePath).replaceAll("\\", "/").replace(/^\/+/, "")}`;
 }
 
 function shouldHandleRequest(url: string): boolean {

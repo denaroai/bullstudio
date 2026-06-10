@@ -24,6 +24,7 @@ describe("BullMqProvider (multi-prefix)", () => {
   });
 
   afterAll(async () => {
+    if (!redis) return;
     await redis.quit().catch(() => {});
   });
 
