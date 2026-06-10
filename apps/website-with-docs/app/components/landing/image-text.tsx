@@ -84,6 +84,7 @@ export function ImagePlaceholder({ className }: { className?: string }) {
     >
       <div className="flex flex-col items-center gap-2 text-muted-foreground/60">
         <svg
+          aria-hidden="true"
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
           fill="none"
