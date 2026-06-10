@@ -287,7 +287,10 @@ function QueuePage() {
             Jobs distribution
           </h2>
           {queue?.jobCounts ? (
-            <JobStateCards counts={queue.jobCounts} />
+            <JobStateCards
+              counts={queue.jobCounts}
+              queueKey={queueKey(queue.prefix ?? "", queueName)}
+            />
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               {JOB_STATE_SKELETON_KEYS.map((key) => (

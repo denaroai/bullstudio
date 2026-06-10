@@ -31,6 +31,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { JobDistributionPie } from "@/components/overview/JobDistributionPie";
 import { type Theme, useTheme } from "@/components/ThemeProvider";
 import { VERSION } from "@/const";
 import { useTRPC } from "@/integrations/trpc/react";
@@ -200,6 +201,12 @@ export function AppSidebar() {
                           "bg-sidebar-accent/50",
                       )}
                     >
+                      {queue.jobCounts && (
+                        <JobDistributionPie
+                          counts={queue.jobCounts}
+                          className="group-data-[collapsible=icon]:hidden"
+                        />
+                      )}
                       <span className="font-mono text-sm">{queue.name}</span>
                     </Link>
                   </SidebarMenuButton>

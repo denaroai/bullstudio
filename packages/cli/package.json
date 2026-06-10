@@ -47,7 +47,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome lint",
     "prepublishOnly": "pnpm build",
-    "generate:bull-jobs": "tsx scripts/generate-bull-jobs.ts"
+    "generate:bull-jobs": "tsx scripts/generate-bull-jobs.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {
     "bull": "^4.16.4",
