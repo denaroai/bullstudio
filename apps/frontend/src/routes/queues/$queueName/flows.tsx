@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { Fragment, useState } from "react";
 import { FlowDetail } from "@/components/flows/FlowDetail";
-import { queueKey } from "@/lib/queue-key";
 import { useTRPC } from "@/integrations/trpc/react";
 
 const flowSkeletonRows = [
@@ -198,10 +197,7 @@ function QueueFlowsPage() {
                             flowId={flow.id}
                             queueName={flow.queueName}
                             prefix={flow.prefix ?? prefix}
-                            queueKey={queueKey(
-                              flow.prefix ?? prefix ?? "",
-                              flow.queueName,
-                            )}
+                            queueKey={queue?.key}
                           />
                         </TableCell>
                       </TableRow>

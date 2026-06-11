@@ -46,14 +46,13 @@ import {
 } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { JobDetail } from "@/components/jobs/JobDetail";
+import { useTRPC } from "@/integrations/trpc/react";
 import {
   FilterableStatus,
   type JobSortField,
   jobsSearchSchema,
 } from "@/lib/jobs";
-import { queueKey } from "@/lib/queue-key";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
-import { useTRPC } from "@/integrations/trpc/react";
 
 export const Route = createFileRoute("/queues/$queueName/jobs")({
   component: QueueJobsPage,
@@ -490,10 +489,7 @@ function QueueJobsPage() {
                               jobId={job.id}
                               queueName={queueName}
                               prefix={job.prefix ?? prefix}
-                              queueKey={queueKey(
-                                job.prefix ?? prefix ?? "",
-                                queueName,
-                              )}
+                              queueKey={queue?.key}
                               onRemoved={() => setExpandedJobId(null)}
                             />
                           </TableCell>
