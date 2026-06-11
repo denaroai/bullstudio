@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useCallback } from "react";
 import { FlowGraph } from "@/components/flows/FlowGraph";
+import { usePolling } from "@/components/PollingProvider";
 import { useTRPC } from "@/integrations/trpc/react";
 import { DEFAULT_JOBS_SEARCH } from "@/lib/jobs";
 import { queueKey as buildQueueKey } from "@/lib/queue-key";
@@ -38,6 +39,7 @@ export function FlowDetail({
 }: FlowDetailProps) {
   const trpc = useTRPC();
   const navigate = useNavigate();
+  const { enabled: pollEnabled, interval: pollInterval } = usePolling();
 
   const {
     data: flowTree,
@@ -49,9 +51,10 @@ export function FlowDetail({
       { queueKey, queueName, flowId, prefix },
       {
         refetchInterval(query) {
+          if (!pollEnabled) return false;
           const data = query.state.data;
           if (!data) return false;
-          return checkHasActiveJobs(data.root) ? 2000 : false;
+          return checkHasActiveJobs(data.root) ? pollInterval : false;
         },
       },
     ),

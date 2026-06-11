@@ -3,6 +3,7 @@ import type {
   DashboardIdentity,
   DashboardProtection,
   DocumentIdentity,
+  ResolvedPollingConfig,
 } from "./types";
 
 export const defaultCapabilities: AdapterCapabilities = {
@@ -29,4 +30,10 @@ export const defaultDashboardIdentity: DashboardIdentity = {
 
 export const defaultDocumentIdentity: DocumentIdentity = {
   title: "Bullstudio",
+};
+
+export const defaultPollingConfig: ResolvedPollingConfig = {
+  enabled: true,
+  interval: 2000,
+  allowUserOverride: true,
 };

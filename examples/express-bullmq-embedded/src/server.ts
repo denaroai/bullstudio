@@ -36,6 +36,11 @@ host.use(
       title: "Queue Ops Test",
       favicon: "/favicon.ico",
     },
+    // Poll Redis every 5s instead of the 2s default to ease load on
+    // pay-per-command Redis. Operators can change this from the sidebar.
+    polling: {
+      interval: 5000,
+    },
   }),
 );
 

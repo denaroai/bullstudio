@@ -1,3 +1,10 @@
+export interface RuntimePollingConfig {
+  enabled?: boolean;
+  interval?: number;
+  minInterval?: number;
+  allowUserOverride?: boolean;
+}
+
 interface BullstudioRuntimeConfig {
   mode?: "embedded";
   basePath?: string;
@@ -12,6 +19,7 @@ interface BullstudioRuntimeConfig {
     title: string;
     favicon?: string;
   };
+  polling?: RuntimePollingConfig;
 }
 
 declare global {
@@ -68,6 +76,14 @@ export function getDocumentIdentity() {
   }
 
   return window.__BULLSTUDIO__?.documentIdentity;
+}
+
+export function getPollingConfig(): RuntimePollingConfig | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  return window.__BULLSTUDIO__?.polling;
 }
 
 function normalizeBasePath(basePath: string | undefined): string {

@@ -30,6 +30,12 @@ bullstudio({
     title: "Queue Ops",
     favicon: "/favicon.ico",
   },
+  polling: {
+    enabled: true,
+    interval: 5000,
+    minInterval: 2000,
+    allowUserOverride: true,
+  },
 });
 ```
 
@@ -103,6 +109,28 @@ documentIdentity: {
   favicon: "/favicon.ico",
 }
 ```
+
+## Polling
+
+Live views poll Redis to stay current. On pay-per-command or shared Redis this can get expensive, so you can control how often Bullstudio polls — or turn it off entirely. The setting applies globally to every live view (connection status, job and flow detail, and flow lists).
+
+```ts
+polling: {
+  enabled: true,
+  interval: 5000,
+  minInterval: 2000,
+  allowUserOverride: true,
+}
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `enabled` | `true` | Master switch. When `false`, Bullstudio never polls and operators cannot turn polling on. |
+| `interval` | `2000` | Default poll interval in milliseconds applied to every live view. |
+| `minInterval` | — | Floor in milliseconds that operators cannot poll faster than. Caps load without disabling overrides entirely. |
+| `allowUserOverride` | `true` | Whether operators can change the interval or turn polling off from the dashboard. When `false`, your `interval` is pinned and the control is hidden. |
+
+Operators choose the interval (or **Off**) from the sidebar, and the choice is stored per browser within the bounds you set. When polling is off, each live view still has a manual refresh button.
 
 ## Where the dashboard lives
 

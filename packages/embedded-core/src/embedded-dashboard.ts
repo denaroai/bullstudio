@@ -4,6 +4,7 @@ import {
   defaultCapabilities,
   defaultDashboardIdentity,
   defaultDocumentIdentity,
+  defaultPollingConfig,
   defaultProtection,
 } from "./defaults";
 import { withMutationAccess } from "./mutation";
@@ -238,6 +239,19 @@ function resolveDashboardConfig(
     dashboardIdentity: config.dashboardIdentity ?? defaultDashboardIdentity,
     documentIdentity: config.documentIdentity ?? defaultDocumentIdentity,
     basePath: normalizeBasePath(config.basePath),
+    polling: resolvePollingConfig(config.polling),
+  };
+}
+
+function resolvePollingConfig(
+  polling: DashboardConfig["polling"],
+): ResolvedDashboardConfig["polling"] {
+  return {
+    enabled: polling?.enabled ?? defaultPollingConfig.enabled,
+    interval: polling?.interval ?? defaultPollingConfig.interval,
+    minInterval: polling?.minInterval,
+    allowUserOverride:
+      polling?.allowUserOverride ?? defaultPollingConfig.allowUserOverride,
   };
 }
 

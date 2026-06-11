@@ -179,6 +179,56 @@ describe("standalone dashboard parity", () => {
     });
   });
 
+  it("injects polling config from env vars into served HTML", async () => {
+    const { createStandaloneApp } = await import("../server/standalone");
+    const clientDir = join(
+      tmpdir(),
+      "bullstudio",
+      `standalone-${Date.now().toString()}-poll`,
+    );
+    await mkdir(clientDir, { recursive: true });
+    await writeFile(
+      join(clientDir, "index.html"),
+      "<html><head></head><body>Bullstudio</body></html>",
+    );
+
+    const app = createStandaloneApp({
+      clientDir,
+      env: {
+        BULLSTUDIO_POLL_ENABLED: "false",
+        BULLSTUDIO_POLL_INTERVAL: "5000",
+      },
+    });
+
+    const response = await app.request("/");
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain("window.__BULLSTUDIO__");
+    expect(body).toContain('"polling":{"enabled":false,"interval":5000}');
+  });
+
+  it("does not inject runtime config when no polling env vars are set", async () => {
+    const { createStandaloneApp } = await import("../server/standalone");
+    const clientDir = join(
+      tmpdir(),
+      "bullstudio",
+      `standalone-${Date.now().toString()}-nopoll`,
+    );
+    await mkdir(clientDir, { recursive: true });
+    await writeFile(
+      join(clientDir, "index.html"),
+      "<html><head></head><body>Bullstudio</body></html>",
+    );
+
+    const app = createStandaloneApp({ clientDir, env: {} });
+
+    const response = await app.request("/");
+    expect(response.status).toBe(200);
+    await expect(response.text()).resolves.not.toContain(
+      "window.__BULLSTUDIO__",
+    );
+  });
+
   it("reports standalone Redis connection information as a mode-aware queue source", async () => {
     vi.stubEnv("REDIS_URL", "redis://:secret@cache.internal:6380/2");
     vi.doMock("./connection", async (importOriginal) => {

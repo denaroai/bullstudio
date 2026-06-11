@@ -19,6 +19,7 @@ import { AlertTriangle, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { FlowGraph } from "@/components/flows/FlowGraph";
+import { usePolling } from "@/components/PollingProvider";
 import { useTRPC } from "@/integrations/trpc/react";
 import { DEFAULT_JOBS_SEARCH } from "@/lib/jobs";
 import { queueKey as buildQueueKey } from "@/lib/queue-key";
@@ -48,6 +49,7 @@ export function JobDetail({
 }: JobDetailProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const { enabled: pollEnabled, interval: pollInterval } = usePolling();
 
   const {
     data: job,
@@ -64,10 +66,11 @@ export function JobDetail({
       },
       {
         refetchInterval(query) {
+          if (!pollEnabled) return false;
           const jobStatus = query.state.data?.status;
           const isTerminal =
             jobStatus === "completed" || jobStatus === "failed";
-          return isTerminal ? false : 2000;
+          return isTerminal ? false : pollInterval;
         },
       },
     ),
@@ -88,9 +91,10 @@ export function JobDetail({
       {
         enabled: !!job,
         refetchInterval(query) {
+          if (!pollEnabled) return false;
           const data = query.state.data;
           if (!data) return false;
-          return flowHasActiveJobs(data.root) ? 2000 : false;
+          return flowHasActiveJobs(data.root) ? pollInterval : false;
         },
       },
     ),

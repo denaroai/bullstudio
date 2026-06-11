@@ -16,18 +16,11 @@ import {
 import { cn } from "@bullstudio/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
-import {
-  Database,
-  Github,
-  LogOut,
-  Monitor,
-  Moon,
-  Sun,
-  Twitter,
-} from "lucide-react";
+import { Database, Github, LogOut, Twitter } from "lucide-react";
 import { useEffect, useState } from "react";
 import { JobDistributionPie } from "@/components/overview/JobDistributionPie";
-import { type Theme, useTheme } from "@/components/ThemeProvider";
+import { usePolling } from "@/components/PollingProvider";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import { VERSION } from "@/const";
 import { useTRPC } from "@/integrations/trpc/react";
 import { queueRouteParam } from "@/lib/queue-key";
@@ -50,11 +43,15 @@ export function AppSidebar() {
   const dashboardIdentity = getDashboardIdentity();
   const dashboardLogo = dashboardIdentity?.logo;
   const dashboardTitle = dashboardIdentity?.title ?? "bullstudio";
+  const { enabled: pollEnabled, interval: pollInterval } = usePolling();
 
   const { data: connectionInfo, isError: connectionError } = useQuery(
     // Poll so the connection indicator reflects Redis going down/recovering
-    // instead of staying frozen on the last successful fetch.
-    trpc.connection.info.queryOptions(undefined, { refetchInterval: 5000 }),
+    // instead of staying frozen on the last successful fetch. Honors the
+    // user's polling preference so we don't keep hitting Redis when disabled.
+    trpc.connection.info.queryOptions(undefined, {
+      refetchInterval: pollEnabled ? pollInterval : false,
+    }),
   );
   const queueSource = connectionInfo?.queueSource
     ? getQueueSourceViewModel(connectionInfo.queueSource)
@@ -221,7 +218,7 @@ export function AppSidebar() {
 
       {/* Footer */}
       <SidebarFooter className="gap-3 border-t border-sidebar-border p-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:p-2">
-        <ThemeSwitcher />
+        <SettingsDialog />
         <LogoutButton />
         <div className="flex items-center justify-between text-xs text-sidebar-foreground/55 group-data-[collapsible=icon]:justify-center">
           <span className="group-data-[collapsible=icon]:hidden">
@@ -299,76 +296,5 @@ function LogoutButton() {
       <LogOut className="size-4" />
       <span className="group-data-[collapsible=icon]:hidden">Log out</span>
     </button>
-  );
-}
-
-const themeOptions: Array<{
-  icon: typeof Moon;
-  label: string;
-  value: Theme;
-}> = [
-  {
-    icon: Moon,
-    label: "Dark",
-    value: "dark",
-  },
-  {
-    icon: Sun,
-    label: "Light",
-    value: "light",
-  },
-  {
-    icon: Monitor,
-    label: "System",
-    value: "system",
-  },
-];
-
-function ThemeSwitcher() {
-  const { theme, setTheme } = useTheme();
-  const activeTheme =
-    themeOptions.find((option) => option.value === theme) ?? themeOptions[0];
-  const ActiveIcon = activeTheme.icon;
-
-  const cycleTheme = () => {
-    const index = themeOptions.findIndex((option) => option.value === theme);
-    const next = themeOptions[(index + 1) % themeOptions.length];
-    setTheme(next.value);
-  };
-
-  return (
-    <div className="w-full group-data-[collapsible=icon]:w-auto">
-      <div className="grid grid-cols-3 gap-1 rounded-md border border-sidebar-border bg-sidebar-accent/45 p-1 group-data-[collapsible=icon]:hidden">
-        {themeOptions.map((option) => {
-          const Icon = option.icon;
-          const active = option.value === theme;
-
-          return (
-            <button
-              key={option.value}
-              type="button"
-              aria-label={`Use ${option.label.toLowerCase()} theme`}
-              aria-pressed={active}
-              onClick={() => setTheme(option.value)}
-              className={cn(
-                "flex h-7 items-center justify-center rounded text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50",
-                active && "bg-sidebar text-sidebar-foreground shadow-sm",
-              )}
-            >
-              <Icon className="size-3.5" />
-            </button>
-          );
-        })}
-      </div>
-      <button
-        type="button"
-        aria-label={`Theme: ${activeTheme.label}. Click to change theme.`}
-        title={`Theme: ${activeTheme.label}`}
-        onClick={cycleTheme}
-        className="hidden size-8 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 group-data-[collapsible=icon]:flex"
-      >
-        <ActiveIcon className="size-4" />
-      </button>
-    </div>
   );
 }
