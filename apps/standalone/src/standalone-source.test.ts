@@ -26,6 +26,7 @@ describe("standalone private dashboard queue source", () => {
           ],
         }),
         getPrefixes: async () => ["bull", "mail"],
+        isConnected: () => true,
       }),
     }));
 

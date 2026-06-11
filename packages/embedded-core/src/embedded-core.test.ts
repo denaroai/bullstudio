@@ -582,7 +582,7 @@ describe("embedded private dashboard API overview metrics", () => {
         },
       ],
     });
-    expect(response.json.timeSeries).toHaveLength(2);
+    expect(response.json.timeSeries).toHaveLength(4);
     expect(
       response.json.timeSeries.reduce(
         (total: number, point: { completed: number; failed: number }) =>

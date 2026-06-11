@@ -202,6 +202,7 @@ describe("standalone dashboard parity", () => {
             ],
           }),
           getPrefixes: async () => ["bull", "mail"],
+          isConnected: () => true,
         }),
       };
     });
