@@ -20,8 +20,9 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { Pause, Play, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import Header from "@/components/Header";
+import { QueueTabs } from "@/components/QueueTabs";
 import { useTRPC } from "@/integrations/trpc/react";
+import { queueNameFromParam, resolveQueueFromParam } from "@/lib/queue-key";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 
 export const Route = createFileRoute("/queues/$queueName")({
@@ -31,14 +32,18 @@ export const Route = createFileRoute("/queues/$queueName")({
 function QueueLayout() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const { queueName } = Route.useParams();
+  const { queueName: queueParam } = Route.useParams();
   const [drainDialogOpen, setDrainDialogOpen] = useState(false);
 
   const isFetching = useIsFetching() > 0;
   const refreshAll = () => queryClient.invalidateQueries();
 
   const { data: queues } = useQuery(trpc.queues.list.queryOptions());
-  const queue = queues?.find((item) => item.name === queueName);
+  const queue = resolveQueueFromParam(queueParam, queues);
+  // Display + backend identity use the bare queue name; the route param itself
+  // is a prefix-qualified composite key (see queueRouteParam).
+  const queueName = queue?.name ?? queueNameFromParam(queueParam);
+  const prefix = queue?.prefix;
 
   const { data: connectionInfo } = useQuery(
     trpc.connection.info.queryOptions(),
@@ -46,6 +51,14 @@ function QueueLayout() {
   const queueSource = connectionInfo?.queueSource
     ? getQueueSourceViewModel(connectionInfo.queueSource)
     : null;
+
+  // Only surface the prefix in the title when names can collide across them.
+  const hasMultiplePrefixes = (queueSource?.prefixes.length ?? 0) > 1;
+  const tabFeatures = {
+    flows: queueSource?.features.flows.visible ?? false,
+    schedulers: queueSource?.features.schedulers.visible ?? false,
+    workers: queueSource?.features.workers.visible ?? false,
+  };
 
   const isPaused = queue?.isPaused ?? false;
   const canPause = queueSource?.features.queuePause.enabled ?? false;
@@ -113,9 +126,19 @@ function QueueLayout() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-6">
-      <Header title={`${queueName}`}>
-        <div className="flex items-center gap-3 h-5">
+    <div className="flex h-full flex-col">
+      <header className="flex h-14 shrink-0 items-center gap-2">
+        <div className="flex items-baseline gap-2 min-w-0">
+          {hasMultiplePrefixes && prefix && (
+            <span className="truncate font-mono text-sm text-muted-foreground">
+              {prefix} /
+            </span>
+          )}
+          <h1 className="truncate text-lg font-semibold text-foreground">
+            {queueName}
+          </h1>
+        </div>
+        <div className="ml-auto flex items-center gap-3 h-5">
           <Button
             variant="outline"
             size="sm"
@@ -154,7 +177,9 @@ function QueueLayout() {
             Refresh page
           </Button>
         </div>
-      </Header>
+      </header>
+
+      <QueueTabs queueParam={queueParam} features={tabFeatures} />
 
       <AlertDialog open={drainDialogOpen} onOpenChange={setDrainDialogOpen}>
         <AlertDialogContent>
@@ -172,7 +197,7 @@ function QueueLayout() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto pt-6">
         <Outlet />
       </div>
     </div>

@@ -27,6 +27,7 @@ import {
 import { Fragment, useState } from "react";
 import { FlowDetail } from "@/components/flows/FlowDetail";
 import { useTRPC } from "@/integrations/trpc/react";
+import { queueNameFromParam, resolveQueueFromParam } from "@/lib/queue-key";
 
 const flowSkeletonRows = [
   "flow-skeleton-1",
@@ -42,11 +43,12 @@ export const Route = createFileRoute("/queues/$queueName/flows")({
 
 function QueueFlowsPage() {
   const trpc = useTRPC();
-  const { queueName } = Route.useParams();
+  const { queueName: queueParam } = Route.useParams();
   const [expandedFlowId, setExpandedFlowId] = useState<string | null>(null);
 
   const { data: queues } = useQuery(trpc.queues.list.queryOptions());
-  const queue = queues?.find((item) => item.name === queueName);
+  const queue = resolveQueueFromParam(queueParam, queues);
+  const queueName = queue?.name ?? queueNameFromParam(queueParam);
   const prefix = queue?.prefix;
 
   const {

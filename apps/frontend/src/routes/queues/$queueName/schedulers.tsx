@@ -7,6 +7,7 @@ import { SchedulerSheet } from "@/components/schedulers/SchedulerSheet";
 import { SchedulersTable } from "@/components/schedulers/SchedulersTable";
 import type { PrivateScheduler } from "@/components/schedulers/types";
 import { useTRPC } from "@/integrations/trpc/react";
+import { queueNameFromParam, resolveQueueFromParam } from "@/lib/queue-key";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 
 export const Route = createFileRoute("/queues/$queueName/schedulers")({
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/queues/$queueName/schedulers")({
 
 function QueueSchedulersPage() {
   const trpc = useTRPC();
-  const { queueName } = Route.useParams();
+  const { queueName: queueParam } = Route.useParams();
 
   const [selected, setSelected] = useState<PrivateScheduler | null>(null);
   const [creating, setCreating] = useState(false);
@@ -30,7 +31,8 @@ function QueueSchedulersPage() {
   const hasMultiplePrefixes = (queueSource?.prefixes.length ?? 0) > 1;
 
   const { data: queues } = useQuery(trpc.queues.list.queryOptions());
-  const queue = queues?.find((item) => item.name === queueName);
+  const queue = resolveQueueFromParam(queueParam, queues);
+  const queueName = queue?.name ?? queueNameFromParam(queueParam);
   const prefix = queue?.prefix;
 
   const {

@@ -52,6 +52,7 @@ import {
   type JobSortField,
   jobsSearchSchema,
 } from "@/lib/jobs";
+import { queueNameFromParam, resolveQueueFromParam } from "@/lib/queue-key";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 
 export const Route = createFileRoute("/queues/$queueName/jobs")({
@@ -87,7 +88,7 @@ function useDebounce<T>(value: T, delay: number): T {
 function QueueJobsPage() {
   const trpc = useTRPC();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { queueName } = Route.useParams();
+  const { queueName: queueParam } = Route.useParams();
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
   const { statusFilter, q, selected, page, pageSize, sortField, sortOrder } =
@@ -107,7 +108,8 @@ function QueueJobsPage() {
     : null;
 
   const { data: queues } = useQuery(trpc.queues.list.queryOptions());
-  const queue = queues?.find((item) => item.name === queueName);
+  const queue = resolveQueueFromParam(queueParam, queues);
+  const queueName = queue?.name ?? queueNameFromParam(queueParam);
   const prefix = queue?.prefix;
 
   const statusCounts = {

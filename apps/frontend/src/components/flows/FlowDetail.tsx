@@ -12,8 +12,9 @@ import {
 } from "lucide-react";
 import { useCallback } from "react";
 import { FlowGraph } from "@/components/flows/FlowGraph";
-import { DEFAULT_JOBS_SEARCH } from "@/lib/jobs";
 import { useTRPC } from "@/integrations/trpc/react";
+import { DEFAULT_JOBS_SEARCH } from "@/lib/jobs";
+import { queueKey as buildQueueKey } from "@/lib/queue-key";
 
 function checkHasActiveJobs(node: FlowNode): boolean {
   const activeStates = ["active", "waiting", "delayed", "waiting-children"];
@@ -60,11 +61,11 @@ export function FlowDetail({
     (jobId: string, jobQueueName: string) => {
       navigate({
         to: "/queues/$queueName/jobs",
-        params: { queueName: jobQueueName },
+        params: { queueName: buildQueueKey(prefix ?? "", jobQueueName) },
         search: { ...DEFAULT_JOBS_SEARCH, selected: jobId },
       });
     },
-    [navigate],
+    [navigate, prefix],
   );
 
   if (isLoading) {

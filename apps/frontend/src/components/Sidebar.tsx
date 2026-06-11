@@ -11,33 +11,26 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarRail,
 } from "@bullstudio/ui/components/sidebar";
 import { cn } from "@bullstudio/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
-  CalendarClock,
-  Cpu,
   Database,
   Github,
-  LayoutDashboard,
-  ListTodo,
   LogOut,
   Monitor,
   Moon,
   Sun,
   Twitter,
-  Workflow,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { JobDistributionPie } from "@/components/overview/JobDistributionPie";
 import { type Theme, useTheme } from "@/components/ThemeProvider";
 import { VERSION } from "@/const";
 import { useTRPC } from "@/integrations/trpc/react";
+import { queueRouteParam } from "@/lib/queue-key";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 import {
   getAssetUrl,
@@ -66,6 +59,10 @@ export function AppSidebar() {
   const queueSource = connectionInfo?.queueSource
     ? getQueueSourceViewModel(connectionInfo.queueSource)
     : null;
+
+  const hasMultiplePrefixes =
+    queueSource?.prefixes && queueSource.prefixes.length > 1;
+
   // If the status query itself fails the API is unreachable; treat that as the
   // worst case so the indicator never shows a stale "connected" state.
   const connectionStatus = connectionError
@@ -79,64 +76,52 @@ export function AppSidebar() {
     return pathname === base || pathname.startsWith(`${base}/`);
   };
 
-  // A sub-route is active when the pathname matches it exactly. The queue
-  // "Overview" sub-item maps to the bare base path (no trailing segment).
-  const isQueueSubActive = (queueName: string, segment: string) =>
-    pathname === `${queueBasePath(queueName)}${segment}`;
-
   const queues = useQuery(trpc.queues.list.queryOptions());
 
-  // Per-queue sub-navigation, gated by provider capabilities. Rendered beneath
-  // the active queue. `to`/`label` map to the queue sub-routes.
-  const queueSubNav: {
-    title: string;
-    to:
-      | "/queues/$queueName"
-      | "/queues/$queueName/jobs"
-      | "/queues/$queueName/flows"
-      | "/queues/$queueName/schedulers"
-      | "/queues/$queueName/workers";
-    segment: string;
-    icon: typeof LayoutDashboard;
-  }[] = [
-    {
-      title: "Overview",
-      to: "/queues/$queueName",
-      segment: "",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "Jobs",
-      to: "/queues/$queueName/jobs",
-      segment: "/jobs",
-      icon: ListTodo,
-    },
-  ];
+  const queueList = queues.data ?? [];
 
-  if (queueSource?.features.flows.visible) {
-    queueSubNav.push({
-      title: "Flows",
-      to: "/queues/$queueName/flows",
-      segment: "/flows",
-      icon: Workflow,
-    });
+  // Bucket queues by prefix so each Redis prefix can render as its own labelled
+  // subsection. Insertion order is preserved (the backend already returns
+  // queues grouped by prefix), and queue names are unique within a prefix.
+  const queuesByPrefix = new Map<string, typeof queueList>();
+  for (const queue of queueList) {
+    const bucket = queuesByPrefix.get(queue.prefix ?? "");
+    if (bucket) {
+      bucket.push(queue);
+    } else {
+      queuesByPrefix.set(queue.prefix ?? "", [queue]);
+    }
   }
-  if (queueSource?.features.schedulers.visible) {
-    queueSubNav.push({
-      title: "Schedulers",
-      to: "/queues/$queueName/schedulers",
-      segment: "/schedulers",
-      icon: CalendarClock,
-    });
-  }
-  if (queueSource?.features.workers.visible) {
-    queueSubNav.push({
-      title: "Workers",
-      to: "/queues/$queueName/workers",
-      segment: "/workers",
-      icon: Cpu,
-    });
-  }
+
+  const renderQueueItem = (queue: (typeof queueList)[number]) => {
+    const routeParam = queueRouteParam(queue);
+    const queueActive = isQueueActive(routeParam);
+
+    return (
+      <SidebarMenuItem key={routeParam}>
+        <SidebarMenuButton
+          asChild
+          isActive={queueActive}
+          tooltip={queue.name}
+          className="h-9"
+        >
+          <Link
+            to="/queues/$queueName"
+            params={{ queueName: routeParam }}
+            className="h-9"
+          >
+            {queue.jobCounts && (
+              <JobDistributionPie
+                counts={queue.jobCounts}
+                className="group-data-[collapsible=icon]:hidden"
+              />
+            )}
+            <span className="font-mono text-sm">{queue.name}</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -160,65 +145,25 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Queues</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {queues.data?.map((queue) => {
-                const queueActive = isQueueActive(queue.name);
-
-                return (
-                  <SidebarMenuItem key={queue.name}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={queueActive}
-                      tooltip={queue.name}
-                      className="h-9"
-                    >
-                      <Link
-                        to="/queues/$queueName"
-                        params={{ queueName: queue.name }}
-                        className="h-9"
-                      >
-                        {queue.jobCounts && (
-                          <JobDistributionPie
-                            counts={queue.jobCounts}
-                            className="group-data-[collapsible=icon]:hidden"
-                          />
-                        )}
-                        <span className="font-mono text-sm">{queue.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-
-                    {queueActive && (
-                      <SidebarMenuSub className="group-data-[collapsible=icon]:hidden">
-                        {queueSubNav.map((item) => (
-                          <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={isQueueSubActive(
-                                queue.name,
-                                item.segment,
-                              )}
-                            >
-                              <Link
-                                to={item.to}
-                                params={{ queueName: queue.name }}
-                              >
-                                <item.icon className="size-4" />
-                                <span>{item.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    )}
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {hasMultiplePrefixes ? (
+          Array.from(queuesByPrefix, ([prefix, prefixQueues]) => (
+            <SidebarGroup key={prefix}>
+              <SidebarGroupLabel className="font-mono">
+                {prefix}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>{prefixQueues.map(renderQueueItem)}</SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))
+        ) : (
+          <SidebarGroup>
+            <SidebarGroupLabel>Queues</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>{queueList.map(renderQueueItem)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Redis Connection Info */}
         <SidebarGroup className="mt-auto">

@@ -1,3 +1,4 @@
+import type { DashboardQueue } from "@bullstudio/private-router";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,9 +23,9 @@ import { Link } from "@tanstack/react-router";
 import { BriefcaseBusiness, Pause, Play, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { DashboardQueue } from "@bullstudio/private-router";
 import { useTRPC } from "@/integrations/trpc/react";
 import { FilterableStatus } from "@/lib/jobs";
+import { queueKey } from "@/lib/queue-key";
 import type { PrivateWorker, QueueActionState } from "./types";
 
 interface WorkerSheetProps {
@@ -166,7 +167,9 @@ function WorkerSheetBody({
             <Button asChild variant="outline" className="justify-start">
               <Link
                 to="/queues/$queueName/jobs"
-                params={{ queueName: worker.queueName }}
+                params={{
+                  queueName: queueKey(worker.prefix ?? "", worker.queueName),
+                }}
                 search={{
                   statusFilter: FilterableStatus.All,
                   page: 1,

@@ -15,8 +15,11 @@ import { FilterableStatus } from "@/lib/jobs";
 
 type JobStateCardsProps = {
   counts: JobCounts;
-  /** When provided, each card links to this queue's jobs view filtered to the card's state. */
-  queueName?: string;
+  /**
+   * Prefix-qualified queue route param (see queueRouteParam). When provided,
+   * each card links to this queue's jobs view filtered to the card's state.
+   */
+  queueParam?: string;
 };
 
 const JOB_STATES = [
@@ -71,14 +74,14 @@ const JOB_STATES = [
   filter: FilterableStatus;
 }>;
 
-export function JobStateCards({ counts, queueName }: JobStateCardsProps) {
+export function JobStateCards({ counts, queueParam }: JobStateCardsProps) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       {JOB_STATES.map((state) => {
         const card = (
           <Card
             className={`bg-card p-4${
-              queueName
+              queueParam
                 ? " h-full transition-colors hover:border-ring/40 hover:bg-accent/40"
                 : ""
             }`}
@@ -93,7 +96,7 @@ export function JobStateCards({ counts, queueName }: JobStateCardsProps) {
           </Card>
         );
 
-        if (!queueName) {
+        if (!queueParam) {
           return <div key={state.key}>{card}</div>;
         }
 
@@ -101,7 +104,7 @@ export function JobStateCards({ counts, queueName }: JobStateCardsProps) {
           <Link
             key={state.key}
             to="/queues/$queueName/jobs"
-            params={{ queueName }}
+            params={{ queueName: queueParam }}
             search={{
               statusFilter: state.filter,
               page: 1,

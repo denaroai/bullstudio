@@ -19,6 +19,7 @@ import { ProcessingTimeChart } from "@/components/overview/ProcessingTimeChart";
 import { SlowestJobsTable } from "@/components/overview/SlowestJobsTable";
 import { ThroughputChart } from "@/components/overview/ThroughputChart";
 import { useTRPC } from "@/integrations/trpc/react";
+import { queueNameFromParam, resolveQueueFromParam } from "@/lib/queue-key";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 import { TIME_RANGES } from "@/lib/time-ranges";
 
@@ -44,13 +45,15 @@ const JOB_STATE_SKELETON_KEYS = [
 
 function QueueOverview() {
   const trpc = useTRPC();
-  const { queueName } = Route.useParams();
+  const { queueName: queueParam } = Route.useParams();
   const [timeRange, setTimeRange] = useState<number>(5 / 60);
 
   const { data: queues, isLoading: loadingQueues } = useQuery(
     trpc.queues.list.queryOptions(),
   );
-  const queue = queues?.find((item) => item.name === queueName);
+  const queue = resolveQueueFromParam(queueParam, queues);
+  const queueName = queue?.name ?? queueNameFromParam(queueParam);
+  const prefix = queue?.prefix;
 
   const { data: connectionInfo } = useQuery(
     trpc.connection.info.queryOptions(),
@@ -63,6 +66,7 @@ function QueueOverview() {
     trpc.overview.metrics.queryOptions({
       timeRangeHours: timeRange,
       queueName,
+      prefix,
     }),
   );
 
@@ -75,7 +79,7 @@ function QueueOverview() {
             Jobs distribution
           </h2>
           {queue?.jobCounts ? (
-            <JobStateCards counts={queue.jobCounts} queueName={queueName} />
+            <JobStateCards counts={queue.jobCounts} queueParam={queueParam} />
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               {JOB_STATE_SKELETON_KEYS.map((key) => (
@@ -147,7 +151,10 @@ function QueueOverview() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <SlowestJobsTable jobs={metrics.slowestJobs} />
+            <SlowestJobsTable
+              jobs={metrics.slowestJobs}
+              queueParam={queueParam}
+            />
             <FailingJobTypesTable jobTypes={metrics.failingJobTypes} />
           </div>
         </>

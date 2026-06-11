@@ -3,10 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
+import type { PrivateWorker } from "@/components/workers/types";
 import { WorkerSheet } from "@/components/workers/WorkerSheet";
 import { WorkersTable } from "@/components/workers/WorkersTable";
-import type { PrivateWorker } from "@/components/workers/types";
 import { useTRPC } from "@/integrations/trpc/react";
+import { queueNameFromParam, resolveQueueFromParam } from "@/lib/queue-key";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 
 export const Route = createFileRoute("/queues/$queueName/workers")({
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/queues/$queueName/workers")({
 
 function QueueWorkersPage() {
   const trpc = useTRPC();
-  const { queueName } = Route.useParams();
+  const { queueName: queueParam } = Route.useParams();
   const [selected, setSelected] = useState<PrivateWorker | null>(null);
 
   const { data: connectionInfo } = useQuery(
@@ -27,7 +28,8 @@ function QueueWorkersPage() {
   const hasMultiplePrefixes = (queueSource?.prefixes.length ?? 0) > 1;
 
   const { data: queues } = useQuery(trpc.queues.list.queryOptions());
-  const queue = queues?.find((item) => item.name === queueName);
+  const queue = resolveQueueFromParam(queueParam, queues);
+  const queueName = queue?.name ?? queueNameFromParam(queueParam);
   const prefix = queue?.prefix;
 
   const {

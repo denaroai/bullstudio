@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { FlowGraph } from "@/components/flows/FlowGraph";
 import { useTRPC } from "@/integrations/trpc/react";
 import { DEFAULT_JOBS_SEARCH } from "@/lib/jobs";
+import { queueKey as buildQueueKey } from "@/lib/queue-key";
 
 function flowHasActiveJobs(node: FlowNode): boolean {
   const activeStates = ["active", "waiting", "delayed", "waiting-children"];
@@ -101,11 +102,11 @@ export function JobDetail({
     (clickedJobId: string, jobQueueName: string) => {
       navigate({
         to: "/queues/$queueName/jobs",
-        params: { queueName: jobQueueName },
+        params: { queueName: buildQueueKey(prefix ?? "", jobQueueName) },
         search: { ...DEFAULT_JOBS_SEARCH, selected: clickedJobId },
       });
     },
-    [navigate],
+    [navigate, prefix],
   );
 
   const retryMutation = useMutation(

@@ -14,6 +14,11 @@ export const getRouter = () => {
     basepath: getBasePath(),
     context: { ...rqContext },
     defaultPreload: "intent",
+    // The `$queueName` param carries a prefix-qualified composite key
+    // (`prefix::name`, see queueRouteParam). Allow ":" through unencoded so the
+    // URL stays readable and string-based active-route checks in the sidebar
+    // match the live pathname instead of a percent-encoded "%3A%3A".
+    pathParamsAllowedCharacters: [":"],
     Wrap: (props: { children: React.ReactNode }) => {
       return (
         <TanstackQuery.Provider {...rqContext}>

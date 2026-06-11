@@ -2,9 +2,12 @@
  * Seeds a realistic, production-ish BullMQ setup into Redis so every bullstudio
  * screen (queues, jobs, schedulers, flows, workers) has convincing demo data.
  *
- * Creates ~7 queues with mixed job states (waiting / active / completed /
- * failed / delayed / paused), several job schedulers (cron + fixed interval),
- * and a batch of multi-level parent/child flows.
+ * Creates 8 queues spread across 3 Redis prefixes (prod / staging / dev) — with
+ * one queue name ("email") deliberately reused under two prefixes to exercise
+ * bullstudio's multi-prefix handling and prefix-qualified routing — each with
+ * mixed job states (waiting / active / completed / failed / delayed / paused),
+ * several job schedulers (cron + fixed interval), and a batch of multi-level
+ * parent/child flows.
  *
  * The backlog is dripped in gradually over ~30 minutes (SEED_SPREAD_MINUTES)
  * while workers run, so completed/failed timestamps and throughput metrics span
@@ -61,6 +64,12 @@ interface JobType {
 
 interface QueueSpec {
   name: string;
+  /**
+   * Redis key prefix the queue lives under. Queues are spread across several
+   * prefixes, and one name ("email") is intentionally reused under two of them
+   * so the (prefix, name) pair — not the name alone — identifies a queue.
+   */
+  prefix: string;
   jobTypes: JobType[];
   /** Rough backlog size to enqueue. */
   backlog: number;
@@ -68,20 +77,23 @@ interface QueueSpec {
   concurrency: number;
 }
 
+/**
+ * The three prefixes the demo spreads queues over. `FLOW_PREFIX` (below) must
+ * match the prefix of every queue that participates in a flow, since a single
+ * FlowProducer writes the whole tree under one prefix.
+ */
+const PREFIXES = {
+  prod: "prod",
+  staging: "staging",
+  dev: "dev",
+} as const;
+
 const QUEUES: QueueSpec[] = [
-  {
-    name: "email",
-    backlog: 320,
-    concurrency: 5,
-    jobTypes: [
-      { name: "send-welcome" },
-      { name: "send-password-reset" },
-      { name: "send-receipt", failRate: 0.05 },
-      { name: "send-digest" },
-    ],
-  },
+  // prod — the flow trio (media-processing + payments + notifications) lives
+  // here together so flows can span them under a single prefix.
   {
     name: "payments",
+    prefix: PREFIXES.prod,
     backlog: 220,
     concurrency: 4,
     jobTypes: [
@@ -92,6 +104,7 @@ const QUEUES: QueueSpec[] = [
   },
   {
     name: "notifications",
+    prefix: PREFIXES.prod,
     backlog: 400,
     concurrency: 6,
     jobTypes: [
@@ -102,6 +115,7 @@ const QUEUES: QueueSpec[] = [
   },
   {
     name: "media-processing",
+    prefix: PREFIXES.prod,
     backlog: 160,
     concurrency: 3,
     jobTypes: [
@@ -110,8 +124,22 @@ const QUEUES: QueueSpec[] = [
       { name: "compress-image" },
     ],
   },
+  // staging
+  {
+    name: "email",
+    prefix: PREFIXES.staging,
+    backlog: 320,
+    concurrency: 5,
+    jobTypes: [
+      { name: "send-welcome" },
+      { name: "send-password-reset" },
+      { name: "send-receipt", failRate: 0.05 },
+      { name: "send-digest" },
+    ],
+  },
   {
     name: "data-sync",
+    prefix: PREFIXES.staging,
     backlog: 180,
     concurrency: 4,
     jobTypes: [
@@ -122,6 +150,7 @@ const QUEUES: QueueSpec[] = [
   },
   {
     name: "reports",
+    prefix: PREFIXES.staging,
     backlog: 90,
     concurrency: 2,
     jobTypes: [
@@ -129,8 +158,22 @@ const QUEUES: QueueSpec[] = [
       { name: "export-analytics", failRate: 0.07 },
     ],
   },
+  // dev — note "email" reappears here under a different prefix (a deliberate
+  // name collision with staging/email), with a smaller backlog so the two are
+  // easy to tell apart in the dashboard.
+  {
+    name: "email",
+    prefix: PREFIXES.dev,
+    backlog: 120,
+    concurrency: 3,
+    jobTypes: [
+      { name: "send-welcome" },
+      { name: "send-test-blast", failRate: 0.15 },
+    ],
+  },
   {
     name: "webhooks",
+    prefix: PREFIXES.dev,
     backlog: 280,
     concurrency: 6,
     jobTypes: [
@@ -140,7 +183,17 @@ const QUEUES: QueueSpec[] = [
   },
 ];
 
+/** Composite map key — queue names are only unique within a prefix. */
+function queueKeyOf(prefix: string, name: string): string {
+  return `${prefix}:${name}`;
+}
+
+function specKey(spec: { prefix: string; name: string }): string {
+  return queueKeyOf(spec.prefix, spec.name);
+}
+
 interface SchedulerSpec {
+  prefix: string;
   queueName: string;
   schedulerId: string;
   jobName: string;
@@ -151,6 +204,7 @@ interface SchedulerSpec {
 
 const SCHEDULERS: SchedulerSpec[] = [
   {
+    prefix: PREFIXES.staging,
     queueName: "reports",
     schedulerId: "daily-report",
     jobName: "build-report",
@@ -158,6 +212,7 @@ const SCHEDULERS: SchedulerSpec[] = [
     data: { kind: "daily", format: "pdf" },
   },
   {
+    prefix: PREFIXES.prod,
     queueName: "notifications",
     schedulerId: "email-digest",
     jobName: "send-digest",
@@ -165,6 +220,7 @@ const SCHEDULERS: SchedulerSpec[] = [
     data: { channel: "email", segment: "weekly-active" },
   },
   {
+    prefix: PREFIXES.staging,
     queueName: "data-sync",
     schedulerId: "crm-sync",
     jobName: "sync-crm",
@@ -172,6 +228,7 @@ const SCHEDULERS: SchedulerSpec[] = [
     data: { provider: "salesforce", mode: "incremental" },
   },
   {
+    prefix: PREFIXES.dev,
     queueName: "webhooks",
     schedulerId: "heartbeat",
     jobName: "deliver-webhook",
@@ -180,8 +237,13 @@ const SCHEDULERS: SchedulerSpec[] = [
   },
 ];
 
-/** The queue used as the host for flow children. */
+/**
+ * Flows are hosted on media-processing with children on payments and
+ * notifications — all three share FLOW_PREFIX so a single FlowProducer can
+ * write the whole tree (FlowProducer takes one prefix per flow).
+ */
 const FLOW_QUEUE = "media-processing";
+const FLOW_PREFIX = PREFIXES.prod;
 const FLOW_COUNT = 12;
 
 // ---------------------------------------------------------------------------
@@ -266,10 +328,14 @@ async function simulateWork(): Promise<void> {
 // Seeding steps
 // ---------------------------------------------------------------------------
 
+/** Keyed by `${prefix}:${name}` since names are only unique within a prefix. */
 function buildQueues(connection: ConnectionOptions): Map<string, Queue> {
   const queues = new Map<string, Queue>();
   for (const spec of QUEUES) {
-    queues.set(spec.name, new Queue(spec.name, { connection }));
+    queues.set(
+      specKey(spec),
+      new Queue(spec.name, { connection, prefix: spec.prefix }),
+    );
   }
   return queues;
 }
@@ -318,7 +384,7 @@ async function dripBacklog(queues: Map<string, Queue>): Promise<void> {
       if (!batch || batch.length === 0) {
         continue;
       }
-      await queues.get(spec.name)?.addBulk(batch);
+      await queues.get(specKey(spec))?.addBulk(batch);
       enqueued += batch.length;
     }
     if (tick % 10 === 0 || tick === ticks - 1) {
@@ -332,7 +398,7 @@ async function dripBacklog(queues: Map<string, Queue>): Promise<void> {
 
 async function seedSchedulers(queues: Map<string, Queue>): Promise<void> {
   for (const spec of SCHEDULERS) {
-    const queue = queues.get(spec.queueName);
+    const queue = queues.get(queueKeyOf(spec.prefix, spec.queueName));
     if (!queue) {
       continue;
     }
@@ -344,12 +410,14 @@ async function seedSchedulers(queues: Map<string, Queue>): Promise<void> {
     const cadence = spec.pattern
       ? `cron "${spec.pattern}"`
       : `every ${spec.every}ms`;
-    console.log(`  ✓ ${spec.queueName} → ${spec.schedulerId} (${cadence})`);
+    console.log(
+      `  ✓ ${spec.prefix}/${spec.queueName} → ${spec.schedulerId} (${cadence})`,
+    );
   }
 }
 
 async function seedFlows(connection: ConnectionOptions): Promise<void> {
-  const flowProducer = new FlowProducer({ connection });
+  const flowProducer = new FlowProducer({ connection, prefix: FLOW_PREFIX });
   const flowOpts: JobsOptions = {
     attempts: 3,
     backoff: { type: "exponential", delay: 1000 },
@@ -418,10 +486,13 @@ function startWorkers(connection: ConnectionOptions): Worker[] {
         connection,
         concurrency: spec.concurrency,
         metrics: { maxDataPoints: MetricsTime.ONE_WEEK },
+        prefix: spec.prefix,
       },
     );
     worker.on("failed", (job, err) =>
-      console.log(`[${ts()}] ✗ ${spec.name}/${job?.name}: ${err.message}`),
+      console.log(
+        `[${ts()}] ✗ ${spec.prefix}/${spec.name}/${job?.name}: ${err.message}`,
+      ),
     );
     return worker;
   });
@@ -429,11 +500,11 @@ function startWorkers(connection: ConnectionOptions): Worker[] {
 
 async function printSummary(queues: Map<string, Queue>): Promise<void> {
   console.log("\n=== Summary ===");
-  for (const [name, queue] of queues) {
+  for (const [key, queue] of queues) {
     const c = await queue.getJobCounts();
     const paused = (await queue.isPaused()) ? " (paused)" : "";
     console.log(
-      `${name}${paused}: waiting ${c.waiting ?? 0}, active ${c.active ?? 0}, ` +
+      `${key}${paused}: waiting ${c.waiting ?? 0}, active ${c.active ?? 0}, ` +
         `completed ${c.completed ?? 0}, failed ${c.failed ?? 0}, ` +
         `delayed ${c.delayed ?? 0}, waiting-children ${c["waiting-children"] ?? 0}`,
     );
@@ -452,7 +523,10 @@ async function main(): Promise<void> {
 
   const queues = buildQueues(connection);
 
-  console.log(`Registed ${queues.size} queues`);
+  const prefixList = [...new Set(QUEUES.map((spec) => spec.prefix))].join(", ");
+  console.log(
+    `Registered ${queues.size} queues across prefixes: ${prefixList}`,
+  );
 
   console.log("Registering schedulers:");
   await seedSchedulers(queues);
@@ -465,7 +539,7 @@ async function main(): Promise<void> {
   await dripBacklog(queues);
 
   // Leave one queue paused so the dashboard shows a paused state.
-  await queues.get("webhooks")?.pause();
+  await queues.get(queueKeyOf(PREFIXES.dev, "webhooks"))?.pause();
 
   await printSummary(queues);
 
@@ -484,7 +558,7 @@ async function main(): Promise<void> {
       if (CLEAN_ON_EXIT) {
         for (const spec of SCHEDULERS) {
           await queues
-            .get(spec.queueName)
+            .get(queueKeyOf(spec.prefix, spec.queueName))
             ?.removeJobScheduler(spec.schedulerId)
             .catch(() => {});
         }

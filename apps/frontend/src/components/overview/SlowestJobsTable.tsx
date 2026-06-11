@@ -22,15 +22,21 @@ type SlowJob = OverviewMetricsResponse["slowestJobs"][number];
 
 type SlowestJobsTableProps = {
   jobs: SlowJob[];
+  /**
+   * Prefix-qualified route param for the queue these jobs belong to (the
+   * overview is scoped to a single queue), so clicking through disambiguates
+   * queues that share a name across prefixes.
+   */
+  queueParam: string;
 };
 
-export function SlowestJobsTable({ jobs }: SlowestJobsTableProps) {
+export function SlowestJobsTable({ jobs, queueParam }: SlowestJobsTableProps) {
   const navigate = useNavigate();
 
   const handleJobClick = (job: SlowJob) => {
     navigate({
       to: "/queues/$queueName/jobs",
-      params: { queueName: job.queueName },
+      params: { queueName: queueParam },
       search: { ...DEFAULT_JOBS_SEARCH, selected: job.id },
     });
   };
