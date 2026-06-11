@@ -460,7 +460,7 @@ const JsonViewer = memo(function JsonViewer({ data }: { data: unknown }) {
 
   return (
     <div>
-      <pre className="overflow-x-auto overflow-y-auto rounded-md bg-muted/70 p-4 font-mono text-sm text-foreground max-h-[420px]">
+      <pre className="overflow-y-auto whitespace-pre-wrap break-all rounded-md bg-muted/70 p-4 font-mono text-sm text-foreground max-h-[420px]">
         {formatted}
         {isTruncated && (
           <span className="text-muted-foreground">{"\n\n... (truncated)"}</span>

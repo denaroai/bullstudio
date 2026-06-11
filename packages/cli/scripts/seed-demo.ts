@@ -417,7 +417,7 @@ function startWorkers(connection: ConnectionOptions): Worker[] {
       {
         connection,
         concurrency: spec.concurrency,
-        //metrics: { maxDataPoints: MetricsTime.ONE_WEEK },
+        metrics: { maxDataPoints: MetricsTime.ONE_WEEK },
       },
     );
     worker.on("failed", (job, err) =>
@@ -451,6 +451,8 @@ async function main(): Promise<void> {
   console.log(`Redis: ${REDIS_URL}\n`);
 
   const queues = buildQueues(connection);
+
+  console.log(`Registed ${queues.size} queues`);
 
   console.log("Registering schedulers:");
   await seedSchedulers(queues);

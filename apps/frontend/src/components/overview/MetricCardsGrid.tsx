@@ -103,7 +103,7 @@ export function MetricCardsGrid({
         <MetricCard
           title="Processing Time"
           value={formatDuration(summary.avgProcessingTimeMs)}
-          subtitle="avg per job"
+          subtitle={`avg · min ${formatDuration(summary.minProcessingTimeMs)} · max ${formatDuration(summary.maxProcessingTimeMs)}`}
           icon={<Clock className="size-4" />}
           sparklineData={processingTimeSparkline}
           sparklineColor="hsl(217, 91%, 60%)"
@@ -116,7 +116,7 @@ export function MetricCardsGrid({
         <MetricCard
           title="Queue Delay"
           value={formatDuration(summary.avgDelayMs)}
-          subtitle="avg wait time"
+          subtitle={`avg · min ${formatDuration(summary.minDelayMs)} · max ${formatDuration(summary.maxDelayMs)}`}
           icon={<TimerIcon className="size-4" />}
           sparklineData={delaySparkline}
           sparklineColor="hsl(45, 93%, 47%)"

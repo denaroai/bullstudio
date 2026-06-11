@@ -8,7 +8,7 @@ import { Container } from "./section";
 
 // Drop a real dashboard screenshot at /public/screenshots/hero.png and set this
 // to "/screenshots/hero.png" to replace the placeholder.
-const HERO_SCREENSHOT: string | undefined = undefined;
+const HERO_SCREENSHOT: string | undefined = "/bullstudio-dashboard-demo.png"
 
 export function Hero() {
   return (
@@ -56,9 +56,7 @@ export function Hero() {
             className="bs-rise mt-6 max-w-xl text-balance text-lg leading-relaxed text-muted-foreground"
             style={{ animationDelay: "140ms" }}
           >
-            A precise, production-grade dashboard for Bull and BullMQ. Inspect
-            jobs, trace flows, and unstick backlogs — standalone from your
-            laptop, or embedded inside the app you already run.
+            A modern, performant dashboard for Bull and BullMQ. Inspect and manage queues, jobs and flows directly from your app. Proudly open-source.
           </p>
 
           <div

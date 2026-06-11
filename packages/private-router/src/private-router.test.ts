@@ -736,6 +736,8 @@ describe("createPrivateDashboardRouter", () => {
       avgThroughputPerHour: 1,
       failureRate: 50,
       avgProcessingTimeMs: 150,
+      minProcessingTimeMs: 100,
+      maxProcessingTimeMs: 200,
     });
   });
 

@@ -28,6 +28,7 @@ const FEATURES = [
       "Visualise BullMQ parent/child flows as a live dependency graph, color-coded by state, so you can trace exactly where a flow stalled.",
     // imageSrc: "/screenshots/flows.png",
     imageAlt: "Bullstudio flow dependency graph",
+    imageSrc: "/flows-demo.png"
   },
 ] as const;
 
@@ -48,6 +49,7 @@ export function Features() {
               title={f.title}
               description={f.description}
               imageAlt={f.imageAlt}
+              imageSrc={f.imageSrc}
               // alternate: even rows show text first, odd rows show image first
               layout={i % 2 === 0 ? "text" : "image"}
             />

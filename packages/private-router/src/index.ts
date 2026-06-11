@@ -134,7 +134,11 @@ export type OverviewMetricsResponse = {
     avgThroughputPerHour: number;
     failureRate: number;
     avgProcessingTimeMs: number;
+    minProcessingTimeMs: number;
+    maxProcessingTimeMs: number;
     avgDelayMs: number;
+    minDelayMs: number;
+    maxDelayMs: number;
   };
   timeSeries: Array<{
     timestamp: number;
@@ -799,6 +803,13 @@ export function aggregateOverviewMetrics(
   const jobsWithDelay = jobs.filter((job) => job.processedOn && job.timestamp);
   const failedJobs = jobs.filter((job) => job.status === "failed");
 
+  const processingTimeRange = minMax(
+    jobsWithProcessingTime.map(processingTimeOf),
+  );
+  const delayRange = minMax(
+    jobsWithDelay.map((job) => Math.max(0, delayOf(job))),
+  );
+
   return {
     summary: {
       totalCompleted,
@@ -806,7 +817,11 @@ export function aggregateOverviewMetrics(
       avgThroughputPerHour: totalJobs / timeRangeHours,
       failureRate: totalJobs > 0 ? (totalFailed / totalJobs) * 100 : 0,
       avgProcessingTimeMs: averageProcessingTime(jobsWithProcessingTime),
+      minProcessingTimeMs: processingTimeRange.min,
+      maxProcessingTimeMs: processingTimeRange.max,
       avgDelayMs: Math.max(0, averageDelay(jobsWithDelay)),
+      minDelayMs: delayRange.min,
+      maxDelayMs: delayRange.max,
     },
     timeSeries: buildOverviewTimeSeries(
       jobs,
@@ -1179,19 +1194,20 @@ function assertQueueCapability(
   }
 }
 
+function processingTimeOf(job: JobSummary): number {
+  return (job.finishedOn ?? job.processedOn ?? 0) - (job.processedOn ?? 0);
+}
+
+function delayOf(job: JobSummary): number {
+  return (job.processedOn ?? job.timestamp) - job.timestamp - (job.delay || 0);
+}
+
 function averageProcessingTime(jobs: JobSummary[]): number {
   if (jobs.length === 0) {
     return 0;
   }
 
-  return (
-    jobs.reduce(
-      (sum, job) =>
-        sum +
-        ((job.finishedOn ?? job.processedOn ?? 0) - (job.processedOn ?? 0)),
-      0,
-    ) / jobs.length
-  );
+  return jobs.reduce((sum, job) => sum + processingTimeOf(job), 0) / jobs.length;
 }
 
 function averageDelay(jobs: JobSummary[]): number {
@@ -1199,14 +1215,21 @@ function averageDelay(jobs: JobSummary[]): number {
     return 0;
   }
 
-  return (
-    jobs.reduce(
-      (sum, job) =>
-        sum +
-        ((job.processedOn ?? job.timestamp) - job.timestamp - (job.delay || 0)),
-      0,
-    ) / jobs.length
-  );
+  return jobs.reduce((sum, job) => sum + delayOf(job), 0) / jobs.length;
+}
+
+function minMax(values: number[]): { min: number; max: number } {
+  if (values.length === 0) {
+    return { min: 0, max: 0 };
+  }
+
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const value of values) {
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  return { min, max };
 }
 
 type TimeSeriesBucket = {
