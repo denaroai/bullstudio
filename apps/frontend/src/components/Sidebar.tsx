@@ -58,12 +58,19 @@ export function AppSidebar() {
   const dashboardLogo = dashboardIdentity?.logo;
   const dashboardTitle = dashboardIdentity?.title ?? "bullstudio";
 
-  const { data: connectionInfo } = useQuery(
-    trpc.connection.info.queryOptions(),
+  const { data: connectionInfo, isError: connectionError } = useQuery(
+    // Poll so the connection indicator reflects Redis going down/recovering
+    // instead of staying frozen on the last successful fetch.
+    trpc.connection.info.queryOptions(undefined, { refetchInterval: 5000 }),
   );
   const queueSource = connectionInfo?.queueSource
     ? getQueueSourceViewModel(connectionInfo.queueSource)
     : null;
+  // If the status query itself fails the API is unreachable; treat that as the
+  // worst case so the indicator never shows a stale "connected" state.
+  const connectionStatus = connectionError
+    ? "unavailable"
+    : (queueSource?.status ?? null);
 
   const queueBasePath = (queueName: string) => `/queues/${queueName}`;
 
@@ -221,9 +228,11 @@ export function AppSidebar() {
                 <Database
                   className={cn(
                     "size-3.5 shrink-0",
-                    queueSource?.status === "healthy"
+                    connectionStatus === "healthy"
                       ? "text-emerald-500"
-                      : "text-destructive",
+                      : connectionStatus === "degraded"
+                        ? "text-amber-500"
+                        : "text-destructive",
                   )}
                 />
                 <div className="flex flex-col group-data-[collapsible=icon]:hidden">
@@ -237,8 +246,21 @@ export function AppSidebar() {
                       </span>
                     )}
                   </div>
-                  <span className="text-sidebar-foreground/60 font-mono text-[11px]">
-                    {queueSource?.detail || "connecting..."}
+                  <span
+                    className={cn(
+                      "font-mono text-[11px]",
+                      connectionStatus === "degraded"
+                        ? "text-amber-500"
+                        : connectionStatus === "unavailable"
+                          ? "text-destructive"
+                          : "text-sidebar-foreground/60",
+                    )}
+                  >
+                    {connectionStatus === "degraded"
+                      ? "reconnecting…"
+                      : connectionStatus === "unavailable"
+                        ? "disconnected"
+                        : queueSource?.detail || "connecting…"}
                   </span>
                   {queueSource?.prefixes && queueSource.prefixes.length > 1 && (
                     <span className="text-sidebar-foreground/45 font-mono text-[10px] mt-0.5">

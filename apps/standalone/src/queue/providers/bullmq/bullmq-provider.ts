@@ -26,6 +26,7 @@ import type {
   QueueServiceEventCallbacks,
 } from "../../types";
 import { getProviderCapabilities } from "../../types";
+import { redisReconnectStrategy } from "../../utils";
 
 const DEFAULT_PREFIX = "bull";
 
@@ -97,8 +98,13 @@ export class BullMqProvider implements QueueService {
       maxRetriesPerRequest: null,
       enableReadyCheck: true,
       lazyConnect: true,
-      // Disable ioredis built-in retry - we handle it ourselves
-      retryStrategy: () => null,
+      // Auto-reconnect with backoff so a dropped connection self-heals once
+      // Redis comes back. The initial connect still fails fast (ioredis only
+      // consults retryStrategy after an established connection drops).
+      retryStrategy: redisReconnectStrategy,
+      // Bound reads so a request issued while Redis is down fails fast instead
+      // of hanging on the offline queue forever. These are non-blocking reads.
+      commandTimeout: 10000,
     });
 
     this.setupEventListeners();
@@ -360,6 +366,13 @@ export class BullMqProvider implements QueueService {
       queue = new Queue(name, {
         connection: this.connection,
         prefix,
+      });
+      // bullmq's Queue re-emits Redis connection errors on itself. Without a
+      // listener Node treats an emitted "error" as fatal and crashes the
+      // process, so swallow it here — connection state is tracked on the
+      // shared connection's own listeners.
+      queue.on("error", (error) => {
+        console.error(`[BullMqProvider] Queue "${name}" error:`, error.message);
       });
       this.queues.set(key, queue);
     }

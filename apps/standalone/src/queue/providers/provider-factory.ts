@@ -22,6 +22,11 @@ export async function createQueueProvider(
     retryStrategy: () => null,
   });
 
+  // This short-lived detection client is closed in `finally`. Attach an error
+  // listener so a connection drop during detection is swallowed rather than
+  // surfacing as an unhandled "error" event that crashes the process.
+  redis.on("error", () => {});
+
   let finalConfig: QueueServiceConfig = {
     ...config,
   };

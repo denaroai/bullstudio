@@ -195,26 +195,51 @@ export function createStandaloneQueueSource(): PrivateDashboardQueueSource {
 }
 
 async function getStandaloneQueueSourceStatus(): Promise<QueueSourceStatus> {
-  const provider = await getQueueProvider();
-  const capabilities = provider.getCapabilities();
-  const prefixes = await provider.getPrefixes();
   const connection = getRedisConnectionInfo();
 
-  return {
-    mode: "standalone",
-    source: "redis",
-    status: "healthy",
-    connection,
-    providers: [capabilities.providerType],
-    prefixes,
-    capabilities: {
-      flows: capabilities.supportsFlows,
-      schedulers: capabilities.supportsSchedulers,
-      workers: true,
-      supportedStatuses: capabilities.supportedJobStates,
-      mutationsAllowed: true,
-    },
-  };
+  try {
+    const provider = await getQueueProvider();
+    const capabilities = provider.getCapabilities();
+    const prefixes = await provider.getPrefixes();
+
+    return {
+      mode: "standalone",
+      source: "redis",
+      // Reflect the live connection state instead of always reporting healthy.
+      // The provider auto-reconnects, so a dropped connection shows as degraded
+      // until it recovers rather than falsely reporting connected.
+      status: provider.isConnected() ? "healthy" : "degraded",
+      connection,
+      providers: [capabilities.providerType],
+      prefixes,
+      capabilities: {
+        flows: capabilities.supportsFlows,
+        schedulers: capabilities.supportsSchedulers,
+        workers: true,
+        supportedStatuses: capabilities.supportedJobStates,
+        mutationsAllowed: true,
+      },
+    };
+  } catch {
+    // Redis is unreachable (e.g. down at startup). Report unavailable rather
+    // than letting the status query throw, so the sidebar can surface the
+    // outage. The status query keeps polling and recovers once Redis is back.
+    return {
+      mode: "standalone",
+      source: "redis",
+      status: "unavailable",
+      connection,
+      providers: [],
+      prefixes: [],
+      capabilities: {
+        flows: false,
+        schedulers: false,
+        workers: false,
+        supportedStatuses: [],
+        mutationsAllowed: false,
+      },
+    };
+  }
 }
 
 function getRedisConnectionInfo() {
@@ -639,7 +664,14 @@ function parseFlowJobKey(
 async function getFlowProducer(): Promise<FlowProducer> {
   if (!flowProducer) {
     const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
-    flowProducer = new FlowProducer({ connection: { url: redisUrl } });
+    const producer = new FlowProducer({ connection: { url: redisUrl } });
+    // FlowProducer re-emits Redis connection errors on itself. Without a
+    // listener Node treats an emitted "error" as fatal and crashes the
+    // process when the connection drops, so swallow it here.
+    producer.on("error", (error) => {
+      console.error("[Standalone] FlowProducer error:", error.message);
+    });
+    flowProducer = producer;
   }
 
   return flowProducer;
