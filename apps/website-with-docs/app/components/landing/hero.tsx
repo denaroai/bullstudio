@@ -1,14 +1,15 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 import { gitConfig } from "@/lib/shared";
+import { BrowserFrame } from "./browser-frame";
 import { CommandBlock } from "./copy";
 import { GithubGlyph } from "./dashboard-preview";
 import { ImagePlaceholder } from "./image-text";
 import { Container } from "./section";
 
-// Drop a real dashboard screenshot at /public/screenshots/hero.png and set this
-// to "/screenshots/hero.png" to replace the placeholder.
-const HERO_SCREENSHOT: string | undefined = "/bullstudio-dashboard-demo.png";
+// Base path of the hero screenshot (no theme suffix / extension). BrowserFrame
+// loads the matching `-light.png` / `-dark.png` for the active theme.
+const HERO_SCREENSHOT: string | undefined = "/demo/bullstudio-dashboard-demo";
 
 export function Hero() {
   return (
@@ -93,10 +94,9 @@ export function Hero() {
           style={{ animationDelay: "320ms" }}
         >
           {HERO_SCREENSHOT ? (
-            <img
+            <BrowserFrame
               src={HERO_SCREENSHOT}
               alt="The Bullstudio dashboard"
-              className="w-full border border-border bg-card shadow-xl"
             />
           ) : (
             <ImagePlaceholder className="aspect-[16/9] shadow-xl" />

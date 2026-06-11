@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { BrowserFrame } from "./browser-frame";
 
 export type ImageTextProps = {
   /** Eyebrow label shown above the title. */
@@ -60,11 +61,7 @@ export function ImageText({
       {/* image column */}
       <div className={cn(imageFirst ? "lg:order-1" : "lg:order-2")}>
         {imageSrc ? (
-          <img
-            src={imageSrc}
-            alt={imageAlt}
-            className="w-full border border-border bg-card"
-          />
+          <BrowserFrame src={imageSrc} alt={imageAlt} fade={false} />
         ) : (
           <ImagePlaceholder />
         )}
