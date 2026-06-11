@@ -56,7 +56,7 @@ export function SettingsDialog() {
         <button
           type="button"
           title="Settings"
-          className="flex h-8 w-full items-center justify-center gap-2 rounded-md text-sidebar-foreground/60 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 group-data-[collapsible=icon]:size-8"
+          className="flex h-8 flex-1 items-center justify-center gap-2 rounded-md text-sidebar-foreground/60 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:flex-none"
         >
           <Settings className="size-4" />
           <span className="group-data-[collapsible=icon]:hidden">Settings</span>

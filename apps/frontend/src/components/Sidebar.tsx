@@ -11,7 +11,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from "@bullstudio/ui/components/sidebar";
 import { cn } from "@bullstudio/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -121,7 +120,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0">
+    <Sidebar collapsible="none" className="border-r-0">
       {/* Header with Logo */}
       <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-4">
         <div className="flex items-center gap-3">
@@ -204,11 +203,6 @@ export function AppSidebar() {
                         ? "disconnected"
                         : queueSource?.detail || "connecting…"}
                   </span>
-                  {queueSource?.prefixes && queueSource.prefixes.length > 1 && (
-                    <span className="text-sidebar-foreground/45 font-mono text-[10px] mt-0.5">
-                      prefixes: {queueSource.prefixes.join(", ")}
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
@@ -218,8 +212,10 @@ export function AppSidebar() {
 
       {/* Footer */}
       <SidebarFooter className="gap-3 border-t border-sidebar-border p-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:p-2">
-        <SettingsDialog />
-        <LogoutButton />
+        <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2">
+          <SettingsDialog />
+          <LogoutButton />
+        </div>
         <div className="flex items-center justify-between text-xs text-sidebar-foreground/55 group-data-[collapsible=icon]:justify-center">
           <span className="group-data-[collapsible=icon]:hidden">
             {VERSION}
@@ -244,9 +240,6 @@ export function AppSidebar() {
           </div>
         </div>
       </SidebarFooter>
-
-      {/* Rail for resizing */}
-      <SidebarRail />
     </Sidebar>
   );
 }
@@ -291,7 +284,7 @@ function LogoutButton() {
       type="button"
       onClick={logout}
       title="Log out"
-      className="flex h-8 w-full items-center justify-center gap-2 rounded-md text-sidebar-foreground/60 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 group-data-[collapsible=icon]:size-8"
+      className="flex h-8 flex-1 items-center justify-center gap-2 rounded-md text-sidebar-foreground/60 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:flex-none"
     >
       <LogOut className="size-4" />
       <span className="group-data-[collapsible=icon]:hidden">Log out</span>
