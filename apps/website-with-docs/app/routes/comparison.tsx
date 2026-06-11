@@ -21,7 +21,7 @@ const clientLoader = browserCollections.comparisons.createClientLoader({
   component({ frontmatter, default: Mdx }) {
     return (
       <Container className="max-w-3xl py-16">
-        <title>{`${frontmatter.title} — Bullstudio`}</title>
+        <title>{`${frontmatter.title} | Bullstudio`}</title>
         <meta name="description" content={frontmatter.description} />
 
         <Link

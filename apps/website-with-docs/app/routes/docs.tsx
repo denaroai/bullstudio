@@ -41,7 +41,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
   ) {
     return (
       <DocsPage toc={toc}>
-        <title>{frontmatter.title}</title>
+        <title>{`${frontmatter.title} | Bullstudio`}</title>
         <meta name="description" content={frontmatter.description} />
         <DocsTitle>{frontmatter.title}</DocsTitle>
         <DocsDescription>{frontmatter.description}</DocsDescription>
@@ -63,8 +63,16 @@ const clientLoader = browserCollections.docs.createClientLoader({
 export default function Page({ loaderData }: Route.ComponentProps) {
   const { pageTree, path, markdownUrl } = useFumadocsLoader(loaderData);
 
+  const options = baseOptions();
+
   return (
-    <DocsLayout {...baseOptions()} tree={pageTree}>
+    <DocsLayout
+      {...options}
+      links={options.links?.filter(
+        (link) => !("url" in link) || link.url !== "/comparisons",
+      )}
+      tree={pageTree}
+    >
       {clientLoader.useContent(loaderData.path, {
         markdownUrl,
         path,
