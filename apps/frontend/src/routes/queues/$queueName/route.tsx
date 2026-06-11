@@ -9,6 +9,7 @@ import {
   AlertDialogTitle,
 } from "@bullstudio/ui/components/alert-dialog";
 import { Button } from "@bullstudio/ui/components/button";
+import { ScrollArea } from "@bullstudio/ui/components/scroll-area";
 import { Separator } from "@bullstudio/ui/components/separator";
 import {
   useIsFetching,
@@ -197,9 +198,11 @@ function QueueLayout() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pt-6">
-        <Outlet />
-      </div>
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="pt-6">
+          <Outlet />
+        </div>
+      </ScrollArea>
     </div>
   );
 }
