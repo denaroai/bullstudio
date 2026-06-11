@@ -120,9 +120,12 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="none" className="border-r-0">
+    <Sidebar
+      collapsible="none"
+      className="sticky top-0 h-svh border-r-0"
+    >
       {/* Header with Logo */}
-      <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-4">
+      <SidebarHeader className="h-16 shrink-0 justify-center border-b border-sidebar-border px-4">
         <div className="flex items-center gap-3">
           <img
             src={dashboardLogo?.src ?? getAssetUrl("/logo.svg")}
@@ -211,7 +214,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* Footer */}
-      <SidebarFooter className="gap-3 border-t border-sidebar-border p-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:p-2">
+      <SidebarFooter className="shrink-0 gap-3 border-t border-sidebar-border p-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:p-2">
         <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2">
           <SettingsDialog />
           <LogoutButton />
