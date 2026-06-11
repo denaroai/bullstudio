@@ -482,7 +482,10 @@ function QueueJobsPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={4} className="border-b bg-muted/20 p-0">
+                          <TableCell
+                            colSpan={4}
+                            className="border-b bg-muted/20 p-0"
+                          >
                             <JobDetail
                               jobId={job.id}
                               queueName={queueName}

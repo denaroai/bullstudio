@@ -65,13 +65,6 @@ export function AppSidebar() {
     ? getQueueSourceViewModel(connectionInfo.queueSource)
     : null;
 
-  const isActive = (href: string) => {
-    if (href === "/") {
-      return pathname === "/";
-    }
-    return pathname.startsWith(href);
-  };
-
   const queueBasePath = (queueName: string) => `/queues/${queueName}`;
 
   const isQueueActive = (queueName: string) => {
@@ -85,16 +78,6 @@ export function AppSidebar() {
     pathname === `${queueBasePath(queueName)}${segment}`;
 
   const queues = useQuery(trpc.queues.list.queryOptions());
-
-  // Top-level navigation is now just the aggregate Overview. Jobs / Flows /
-  // Schedulers / Workers live per-queue (see the sub-nav below).
-  const navItems = [
-    {
-      title: "Overview",
-      href: "/",
-      icon: LayoutDashboard,
-    },
-  ];
 
   // Per-queue sub-navigation, gated by provider capabilities. Rendered beneath
   // the active queue. `to`/`label` map to the queue sub-routes.
@@ -170,33 +153,6 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-          {/* Main Navigation */}
-          <SidebarGroup className="py-4">
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {navItems.map((item) => {
-                  const active = isActive(item.href);
-
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={active}
-                        tooltip={item.title}
-                        className="h-10 transition-colors"
-                      >
-                        <Link to={item.href}>
-                          <item.icon className="size-4" />
-                          <span className="font-medium">{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
         <SidebarGroup>
           <SidebarGroupLabel>Queues</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -262,7 +218,14 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <div className="px-3 py-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0">
               <div className="flex items-center gap-2 text-xs text-sidebar-foreground/60 group-data-[collapsible=icon]:justify-center">
-                <Database className="size-3.5 shrink-0 text-emerald-500" />
+                <Database
+                  className={cn(
+                    "size-3.5 shrink-0",
+                    queueSource?.status === "healthy"
+                      ? "text-emerald-500"
+                      : "text-destructive",
+                  )}
+                />
                 <div className="flex flex-col group-data-[collapsible=icon]:hidden">
                   <div className="flex items-center gap-2">
                     <span className="text-sidebar-foreground/80 font-medium">

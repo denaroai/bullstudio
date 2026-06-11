@@ -28,7 +28,7 @@ const FEATURES = [
       "Visualise BullMQ parent/child flows as a live dependency graph, color-coded by state, so you can trace exactly where a flow stalled.",
     // imageSrc: "/screenshots/flows.png",
     imageAlt: "Bullstudio flow dependency graph",
-    imageSrc: "/flows-demo.png"
+    imageSrc: "/flows-demo.png",
   },
 ] as const;
 

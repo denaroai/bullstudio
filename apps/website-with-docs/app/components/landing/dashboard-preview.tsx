@@ -342,7 +342,10 @@ export function OverviewPanel() {
             </div>
             <div className="flex h-28 items-end gap-1.5">
               {[52, 64, 48, 72, 80, 60, 88, 76, 94, 70, 84, 96].map((h) => (
-                <div key={h} className="flex flex-1 flex-col justify-end gap-px">
+                <div
+                  key={h}
+                  className="flex flex-1 flex-col justify-end gap-px"
+                >
                   <div
                     className="bg-red-400/80"
                     style={{ height: `${h * 0.06}px` }}

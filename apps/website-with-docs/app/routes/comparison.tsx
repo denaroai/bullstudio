@@ -49,7 +49,9 @@ const clientLoader = browserCollections.comparisons.createClientLoader({
   },
 });
 
-export default function ComparisonArticle({ loaderData }: Route.ComponentProps) {
+export default function ComparisonArticle({
+  loaderData,
+}: Route.ComponentProps) {
   return (
     <HomeLayout {...baseOptions()}>
       {clientLoader.useContent(loaderData.path)}

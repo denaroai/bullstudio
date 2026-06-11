@@ -82,7 +82,9 @@ function describe(spec: SchedulerSpec): string {
 }
 
 async function simulateWork(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 200 + Math.random() * 600));
+  await new Promise((resolve) =>
+    setTimeout(resolve, 200 + Math.random() * 600),
+  );
 }
 
 async function runBullMq(): Promise<() => Promise<void>> {
@@ -159,7 +161,9 @@ async function runBull(): Promise<() => Promise<void>> {
     }
     await queue.add(spec.jobName, spec.data, {
       jobId: spec.schedulerId,
-      repeat: spec.pattern ? { cron: spec.pattern } : { every: spec.every ?? 0 },
+      repeat: spec.pattern
+        ? { cron: spec.pattern }
+        : { every: spec.every ?? 0 },
     });
     console.log(
       `  ✓ ${spec.queueName} → ${spec.schedulerId} (${describe(spec)})`,

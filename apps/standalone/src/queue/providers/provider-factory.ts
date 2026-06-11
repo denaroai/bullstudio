@@ -35,7 +35,9 @@ export async function createQueueProvider(
       const found = await discoverPrefixes(redis);
       if (found.length > 0) {
         prefixes = found;
-        console.log(`[ProviderFactory] Discovered prefixes: ${found.join(", ")}`);
+        console.log(
+          `[ProviderFactory] Discovered prefixes: ${found.join(", ")}`,
+        );
       } else {
         prefixes = [config.prefix ?? "bull"];
       }

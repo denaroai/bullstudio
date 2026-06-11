@@ -1207,7 +1207,9 @@ function averageProcessingTime(jobs: JobSummary[]): number {
     return 0;
   }
 
-  return jobs.reduce((sum, job) => sum + processingTimeOf(job), 0) / jobs.length;
+  return (
+    jobs.reduce((sum, job) => sum + processingTimeOf(job), 0) / jobs.length
+  );
 }
 
 function averageDelay(jobs: JobSummary[]): number {

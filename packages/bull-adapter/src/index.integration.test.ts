@@ -183,7 +183,9 @@ describe("createBullQueueAdapter with Redis", () => {
     );
 
     // Bull has no native upsert: editing replaces the previous repeatable.
-    const heartbeat = schedulers.find((scheduler) => scheduler.id === "heartbeat");
+    const heartbeat = schedulers.find(
+      (scheduler) => scheduler.id === "heartbeat",
+    );
     await adapter.upsertJobScheduler?.({
       schedulerId: "heartbeat",
       previousKey: heartbeat?.key,
