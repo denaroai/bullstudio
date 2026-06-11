@@ -1,9 +1,12 @@
+import dayjs from "@bullstudio/dayjs";
+import type { OverviewMetricsResponse } from "@bullstudio/private-router";
+import { Badge } from "@bullstudio/ui/components/badge";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@bullstudio/ui/components/card";
 import {
   Table,
@@ -19,9 +22,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@bullstudio/ui/components/tooltip";
-import { Badge } from "@bullstudio/ui/components/badge";
-import dayjs from "@bullstudio/dayjs";
-import type { OverviewMetricsResponse } from "@bullstudio/private-router";
 
 type FailingJobType = OverviewMetricsResponse["failingJobTypes"][number];
 
@@ -49,12 +49,8 @@ export function FailingJobTypesTable({ jobTypes }: FailingJobTypesTableProps) {
               <TableRow className="hover:bg-transparent">
                 <TableHead>Job Type</TableHead>
                 <TableHead>Queue</TableHead>
-                <TableHead className="text-right">
-                  Failures
-                </TableHead>
-                <TableHead className="text-right">
-                  Last Failed
-                </TableHead>
+                <TableHead className="text-right">Failures</TableHead>
+                <TableHead className="text-right">Last Failed</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -69,10 +65,7 @@ export function FailingJobTypesTable({ jobTypes }: FailingJobTypesTableProps) {
                           </span>
                         </TooltipTrigger>
                         {jobType.lastFailedReason && (
-                          <TooltipContent
-                            side="top"
-                            className="max-w-xs"
-                          >
+                          <TooltipContent side="top" className="max-w-xs">
                             <p className="text-xs font-mono break-all">
                               {jobType.lastFailedReason}
                             </p>

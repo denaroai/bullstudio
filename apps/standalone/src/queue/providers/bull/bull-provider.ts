@@ -1,25 +1,32 @@
-import Bull from "bull";
 import { createBullQueueAdapter } from "@bullstudio/bull-adapter";
-import Redis from "ioredis";
 import type {
-  QueueService,
-  QueueProviderType,
-  QueueServiceConfig,
-  QueueServiceEventCallbacks,
-  QueueProviderCapabilities,
-} from "../../types";
-import type {
-  Job,
-  JobSummary,
   Queue as IQueue,
+  Job,
   JobCounts,
   JobQueryOptions,
-  WorkerCount,
+  JobScheduler,
+  JobSchedulerTarget,
+  JobSummary,
   QueueAdapter,
+  QueueMetricSnapshot,
+  QueueMetricType,
+  UpsertJobSchedulerInput,
+  Worker,
+  WorkerCount,
 } from "@bullstudio/connect-types";
-import { NotConnectedError } from "../../errors";
-import { getProviderCapabilities } from "../../types";
+import Bull from "bull";
+import Redis from "ioredis";
 import { discoverPrefixes } from "../../detection/prefix-discovery";
+import { NotConnectedError } from "../../errors";
+import type {
+  QueueProviderCapabilities,
+  QueueProviderType,
+  QueueService,
+  QueueServiceConfig,
+  QueueServiceEventCallbacks,
+} from "../../types";
+import { getProviderCapabilities } from "../../types";
+import { redisReconnectStrategy } from "../../utils";
 
 const DEFAULT_PREFIX = "bull";
 
@@ -91,8 +98,13 @@ export class BullProvider implements QueueService {
       maxRetriesPerRequest: null,
       enableReadyCheck: true,
       lazyConnect: true,
-      // Disable ioredis built-in retry - we handle it ourselves
-      retryStrategy: () => null,
+      // Auto-reconnect with backoff so a dropped connection self-heals once
+      // Redis comes back. The initial connect still fails fast (ioredis only
+      // consults retryStrategy after an established connection drops).
+      retryStrategy: redisReconnectStrategy,
+      // Bound reads so a request issued while Redis is down fails fast instead
+      // of hanging on the offline queue forever. These are non-blocking reads.
+      commandTimeout: 10000,
     });
 
     this.setupEventListeners();
@@ -208,6 +220,10 @@ export class BullProvider implements QueueService {
     await this.getOrCreateQueueAdapter(queueName, prefix).resumeQueue();
   }
 
+  async drainQueue(queueName: string, prefix?: string): Promise<void> {
+    await this.getOrCreateQueueAdapter(queueName, prefix).drainQueue();
+  }
+
   async getJobs(
     queueName: string,
     options?: JobQueryOptions,
@@ -224,6 +240,15 @@ export class BullProvider implements QueueService {
     return this.getOrCreateQueueAdapter(queueName, prefix).getJobsSummary(
       options,
     );
+  }
+
+  async getMetrics(
+    queueName: string,
+    type: QueueMetricType,
+    prefix?: string,
+  ): Promise<QueueMetricSnapshot | null> {
+    const adapter = this.getOrCreateQueueAdapter(queueName, prefix);
+    return adapter.getMetrics ? adapter.getMetrics(type) : null;
   }
 
   async getJob(
@@ -265,6 +290,58 @@ export class BullProvider implements QueueService {
     return this.getOrCreateQueueAdapter(queueName, prefix).getWorkerCount();
   }
 
+  async listWorkers(queueName: string, prefix?: string): Promise<Worker[]> {
+    return (
+      this.getOrCreateQueueAdapter(queueName, prefix).listWorkers?.() ?? []
+    );
+  }
+
+  async listJobSchedulers(
+    queueName: string,
+    options?: { limit?: number },
+    prefix?: string,
+  ): Promise<JobScheduler[]> {
+    return (
+      this.getOrCreateQueueAdapter(queueName, prefix).listJobSchedulers?.(
+        options,
+      ) ?? []
+    );
+  }
+
+  async getJobScheduler(
+    queueName: string,
+    target: JobSchedulerTarget,
+    prefix?: string,
+  ): Promise<JobScheduler | null> {
+    return (
+      this.getOrCreateQueueAdapter(queueName, prefix).getJobScheduler?.(
+        target,
+      ) ?? null
+    );
+  }
+
+  async upsertJobScheduler(
+    queueName: string,
+    input: UpsertJobSchedulerInput,
+    prefix?: string,
+  ): Promise<void> {
+    await this.getOrCreateQueueAdapter(queueName, prefix).upsertJobScheduler?.(
+      input,
+    );
+  }
+
+  async removeJobScheduler(
+    queueName: string,
+    target: JobSchedulerTarget,
+    prefix?: string,
+  ): Promise<boolean> {
+    return (
+      this.getOrCreateQueueAdapter(queueName, prefix).removeJobScheduler?.(
+        target,
+      ) ?? false
+    );
+  }
+
   private getOrCreateQueueAdapter(name: string, prefix?: string): QueueAdapter {
     const pfx = prefix ?? this.defaultPrefix;
     const key = this.queueKey(pfx, name);
@@ -296,9 +373,17 @@ export class BullProvider implements QueueService {
           return new Redis(this.config.redisUrl, {
             maxRetriesPerRequest: null,
             enableReadyCheck: true,
+            retryStrategy: redisReconnectStrategy,
           });
         },
         prefix,
+      });
+      // Bull's Queue re-emits Redis connection errors on itself. Without a
+      // listener Node treats an emitted "error" as fatal and crashes the
+      // process, so swallow it here — connection state is tracked on the
+      // shared connection's own listeners.
+      queue.on("error", (error) => {
+        console.error(`[BullProvider] Queue "${name}" error:`, error.message);
       });
       this.queues.set(key, queue);
     }

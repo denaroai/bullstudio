@@ -1,7 +1,7 @@
+import { randomBytes } from "node:crypto";
 import { createBullQueueAdapter } from "@bullstudio/bull-adapter";
 import Bull from "bull";
 import Redis from "ioredis";
-import { randomBytes } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const TEST_REDIS_URL =
@@ -141,6 +141,77 @@ describe("createBullQueueAdapter with Redis", () => {
 
     expect(adapter).not.toHaveProperty("close");
     await expect(queue.isPaused()).resolves.toBe(false);
+  });
+
+  it("creates, lists, updates, and removes repeatable job schedulers", async () => {
+    const prefix = uniquePrefix("bull-adapter");
+    const queue = track(createQueue("reports", prefix));
+    await queue.isReady();
+    const adapter = createBullQueueAdapter(queue);
+
+    await adapter.upsertJobScheduler?.({
+      schedulerId: "daily-report",
+      repeat: { strategy: "cron", pattern: "0 15 3 * * *", tz: "UTC" },
+      template: { name: "build-report", data: { kind: "daily" } },
+    });
+    await adapter.upsertJobScheduler?.({
+      schedulerId: "heartbeat",
+      repeat: { strategy: "every", every: 5_000 },
+      template: { name: "ping" },
+    });
+
+    const schedulers = (await adapter.listJobSchedulers?.()) ?? [];
+    expect(schedulers).toHaveLength(2);
+    expect(schedulers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "daily-report",
+          name: "build-report",
+          queueName: "reports",
+          prefix,
+          strategy: "cron",
+          pattern: "0 15 3 * * *",
+          tz: "UTC",
+        }),
+        expect.objectContaining({
+          id: "heartbeat",
+          name: "ping",
+          strategy: "every",
+          every: 5_000,
+        }),
+      ]),
+    );
+
+    // Bull has no native upsert: editing replaces the previous repeatable.
+    const heartbeat = schedulers.find(
+      (scheduler) => scheduler.id === "heartbeat",
+    );
+    await adapter.upsertJobScheduler?.({
+      schedulerId: "heartbeat",
+      previousKey: heartbeat?.key,
+      repeat: { strategy: "every", every: 10_000 },
+      template: { name: "ping" },
+    });
+
+    const afterUpdate = (await adapter.listJobSchedulers?.()) ?? [];
+    expect(afterUpdate).toHaveLength(2);
+    expect(
+      afterUpdate.find((scheduler) => scheduler.id === "heartbeat"),
+    ).toMatchObject({ every: 10_000 });
+
+    const daily = afterUpdate.find(
+      (scheduler) => scheduler.id === "daily-report",
+    );
+    await expect(
+      adapter.removeJobScheduler?.({
+        key: daily?.key ?? "",
+        id: daily?.id,
+      }),
+    ).resolves.toBe(true);
+
+    const remaining = (await adapter.listJobSchedulers?.()) ?? [];
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]).toMatchObject({ id: "heartbeat", every: 10_000 });
   });
 
   async function processBullJob(options: {

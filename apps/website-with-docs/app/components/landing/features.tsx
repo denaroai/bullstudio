@@ -1,116 +1,137 @@
-import { useState } from 'react';
-import { LayoutDashboard, ListTodo, Workflow } from 'lucide-react';
-import { cn } from '@/lib/cn';
-import { Container, SectionHeading } from './section';
 import {
-  FlowsPanel,
-  JobsPanel,
-  OverviewPanel,
-  PreviewFrame,
-} from './dashboard-preview';
+  CalendarClock,
+  Cpu,
+  Gauge,
+  Layers,
+  ListTodo,
+  Workflow,
+} from "lucide-react";
+import type { ComponentType } from "react";
+import { ImageText } from "./image-text";
+import { Container, SectionHeading } from "./section";
 
 const FEATURES = [
   {
-    key: 'overview' as const,
-    Icon: LayoutDashboard,
-    title: 'Queue overview',
-    blurb:
-      'Throughput, failure rate, processing time and backlog across every queue — so you spot trouble before someone files a ticket.',
-    Panel: OverviewPanel,
+    key: "overview",
+    eyebrow: "Queue overview",
+    title: "Read the whole system at a glance.",
+    description:
+      "Throughput, failure rate, processing time and backlog across every queue — so you spot trouble before someone files a ticket.",
+    imageAlt: "Bullstudio queue overview dashboard",
+    imageSrc: "/demo/bullstudio-overview-demo",
   },
   {
-    key: 'jobs' as const,
+    key: "jobs",
+    eyebrow: "Jobs explorer",
+    title: "Drill into any job in one click.",
+    description:
+      "Filter by state, search by name or id, and open any job to read its data, logs, return value and stack trace. Retry or remove in one click.",
+    imageAlt: "Bullstudio jobs explorer",
+    imageSrc: "/demo/bullstudio-jobs-demo",
+  },
+  {
+    key: "flows",
+    eyebrow: "Flow graph",
+    title: "Trace exactly where a flow stalled.",
+    description:
+      "Visualise BullMQ parent/child flows as a live dependency graph, color-coded by state, so you can trace exactly where a flow stalled.",
+    imageAlt: "Bullstudio flow dependency graph",
+    imageSrc: "/demo/bullstudio-flows-demo",
+  },
+] as const;
+
+type Surface = {
+  Icon: ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+};
+
+const SURFACES: Surface[] = [
+  {
     Icon: ListTodo,
-    title: 'Jobs explorer',
-    blurb:
-      'Filter by state, search by name or id, and open any job to read its data, logs, return value and stack trace. Retry or remove in one click.',
-    Panel: JobsPanel,
+    title: "Jobs",
+    description:
+      "Browse every job by state, search by name or id, and open one to inspect its payload, logs, return value and stack trace. Retry, promote or remove without a Redis CLI.",
   },
   {
-    key: 'flows' as const,
+    Icon: Cpu,
+    title: "Workers",
+    description:
+      "See every connected worker live — what it's processing right now, its concurrency and last heartbeat — so you know whether work is moving or stuck.",
+  },
+  {
+    Icon: CalendarClock,
+    title: "Schedulers",
+    description:
+      "Read every repeatable and cron-scheduled job in one place, with the pattern and next run time spelled out. Add or remove a schedule on the spot.",
+  },
+  {
     Icon: Workflow,
-    title: 'Flow graph',
-    blurb:
-      'Visualise BullMQ parent/child flows as a live dependency graph, color-coded by state, so you can trace exactly where a flow stalled.',
-    Panel: FlowsPanel,
+    title: "Flows",
+    description:
+      "Follow BullMQ parent/child flows as a live dependency graph, color-coded by state, so you can trace exactly where a multi-step job stalled.",
+  },
+  {
+    Icon: Layers,
+    title: "Queues",
+    description:
+      "Pause, resume, drain or clean any queue, and watch waiting, active, delayed and failed counts update in real time across the whole connection. Supports multi-prefix setups.",
+  },
+  {
+    Icon: Gauge,
+    title: "Metrics",
+    description:
+      "Throughput, failure rate, processing time and backlog trended over time — the at-a-glance health read that turns guesswork into a number.",
   },
 ];
 
 export function Features() {
-  const [active, setActive] = useState<(typeof FEATURES)[number]['key']>(
-    'overview',
-  );
-  const current = FEATURES.find((f) => f.key === active)!;
-  const Panel = current.Panel;
-
   return (
     <section className="border-b border-border py-24">
       <Container>
         <SectionHeading
           title="Everything you need to read a queue at a glance."
-          description="Pick a surface — the preview is the real thing, built from the same components that ship in the product."
+          description="Every surface in Bullstudio is built to answer one question fast: what is happening in this queue right now?"
         />
 
-        <div className="mt-12 grid items-start gap-8 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
-          {/* selectable feature list */}
-          <div className="flex flex-col">
-            {FEATURES.map((f) => {
-              const selected = f.key === active;
-              return (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => setActive(f.key)}
-                  aria-pressed={selected}
-                  className={cn(
-                    'group flex gap-4 border-l-2 px-5 py-5 text-left transition-colors',
-                    selected
-                      ? 'border-l-primary bg-card'
-                      : 'border-l-border hover:bg-card/50',
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'mt-0.5 flex size-9 shrink-0 items-center justify-center border transition-colors',
-                      selected
-                        ? 'border-primary/30 bg-primary/10 text-primary'
-                        : 'border-border bg-card text-muted-foreground',
-                    )}
-                  >
-                    <f.Icon className="size-[18px]" />
-                  </span>
-                  <span className="flex flex-col gap-1">
-                    <span
-                      className={cn(
-                        'text-base font-semibold',
-                        selected ? 'text-foreground' : 'text-muted-foreground',
-                      )}
-                    >
-                      {f.title}
-                    </span>
-                    <span
-                      className={cn(
-                        'text-sm leading-relaxed',
-                        selected
-                          ? 'text-muted-foreground'
-                          : 'text-muted-foreground/0 group-hover:text-muted-foreground/70',
-                        // keep blurb visible on small screens where there is no hover
-                        'max-lg:text-muted-foreground/80',
-                      )}
-                    >
-                      {f.blurb}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        <div className="mt-16 flex flex-col gap-20 lg:gap-28">
+          {FEATURES.map((f, i) => (
+            <ImageText
+              key={f.key}
+              eyebrow={f.eyebrow}
+              title={f.title}
+              description={f.description}
+              imageAlt={f.imageAlt} // alternate: even rows show text first, odd rows show image first
+              imageSrc={f.imageSrc}
+              layout={i % 2 === 0 ? "text" : "image"}
+            />
+          ))}
+        </div>
 
-          {/* live preview */}
-          <div className="lg:sticky lg:top-24">
-            <PreviewFrame>
-              <Panel />
-            </PreviewFrame>
+        {/* every surface, at a glance — the detailed feature card grid */}
+        <div className="mt-24 lg:mt-32">
+          <SectionHeading
+            title="A dedicated view for every part of the queue."
+            description="Jobs, workers, schedulers, flows — each gets a purpose-built screen instead of a wall of raw Redis keys."
+          />
+
+          <div className="mt-12 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+            {SURFACES.map((s) => (
+              <article
+                key={s.title}
+                className="flex flex-col gap-4 bg-card p-7"
+              >
+                <span className="flex size-10 items-center justify-center border border-primary/30 bg-primary/10 text-primary">
+                  <s.Icon className="size-5" />
+                </span>
+                <h3 className="text-lg font-semibold text-foreground">
+                  {s.title}
+                </h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {s.description}
+                </p>
+              </article>
+            ))}
           </div>
         </div>
       </Container>

@@ -4,6 +4,7 @@
   "commit": false,
   "fixed": [
     [
+      "bullstudio",
       "@bullstudio/express",
       "@bullstudio/fastify",
       "@bullstudio/hono",

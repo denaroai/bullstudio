@@ -1,7 +1,13 @@
-import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
-import { FlowProducer, Queue, Worker, type ConnectionOptions } from "bullmq";
-import Redis from "ioredis";
 import { randomBytes } from "node:crypto";
+import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
+import {
+  type ConnectionOptions,
+  FlowProducer,
+  MetricsTime,
+  Queue,
+  Worker,
+} from "bullmq";
+import Redis from "ioredis";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const TEST_REDIS_URL =
@@ -197,6 +203,117 @@ describe("createBullMqQueueAdapter with Redis", () => {
         ],
       },
     });
+  });
+
+  it("creates, lists, updates, and removes job schedulers", async () => {
+    const prefix = uniquePrefix("bullmq-adapter");
+    const queue = track(new Queue("reports", { prefix, connection }));
+    const adapter = createBullMqQueueAdapter(queue);
+
+    await adapter.upsertJobScheduler?.({
+      schedulerId: "daily-report",
+      repeat: { strategy: "cron", pattern: "0 15 3 * * *", tz: "UTC" },
+      template: { name: "build-report", data: { kind: "daily" } },
+    });
+    await adapter.upsertJobScheduler?.({
+      schedulerId: "heartbeat",
+      repeat: { strategy: "every", every: 5_000 },
+      template: { name: "ping" },
+    });
+
+    await expect(adapter.listJobSchedulers?.()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "daily-report",
+          name: "build-report",
+          queueName: "reports",
+          prefix,
+          strategy: "cron",
+          pattern: "0 15 3 * * *",
+          tz: "UTC",
+        }),
+        expect.objectContaining({
+          id: "heartbeat",
+          name: "ping",
+          strategy: "every",
+          every: 5_000,
+        }),
+      ]),
+    );
+
+    const single = await adapter.getJobScheduler?.({
+      key: "",
+      id: "daily-report",
+    });
+    expect(single).toMatchObject({
+      id: "daily-report",
+      strategy: "cron",
+      pattern: "0 15 3 * * *",
+    });
+
+    // Upsert updates the existing scheduler in place.
+    await adapter.upsertJobScheduler?.({
+      schedulerId: "heartbeat",
+      repeat: { strategy: "every", every: 10_000 },
+      template: { name: "ping" },
+    });
+    await expect(
+      adapter.getJobScheduler?.({ key: "", id: "heartbeat" }),
+    ).resolves.toMatchObject({ every: 10_000 });
+
+    await expect(
+      adapter.removeJobScheduler?.({
+        key: single?.key ?? "",
+        id: "daily-report",
+      }),
+    ).resolves.toBe(true);
+
+    const remaining = await adapter.listJobSchedulers?.();
+    expect(remaining).toHaveLength(1);
+    expect(remaining?.[0]).toMatchObject({ id: "heartbeat" });
+  });
+
+  it("reads native throughput metrics recorded by a worker", async () => {
+    const prefix = uniquePrefix("bullmq-adapter");
+    const queueName = "metrics";
+    const queue = track(new Queue(queueName, { prefix, connection }));
+    const adapter = createBullMqQueueAdapter(queue);
+
+    // Tracked for cleanup; the worker just needs to process the jobs so the
+    // queue records native metrics.
+    track(
+      new Worker(
+        queueName,
+        async (job) => {
+          if (job.name === "boom") {
+            throw new Error("simulated failure");
+          }
+          return { ok: true };
+        },
+        {
+          prefix,
+          connection,
+          metrics: { maxDataPoints: MetricsTime.ONE_HOUR },
+        },
+      ),
+    );
+
+    const firstOk = await queue.add("ok", {});
+    const secondOk = await queue.add("ok", {});
+    const failing = await queue.add("boom", {});
+
+    await waitForBullMqJob(queue, firstOk.id as string, "completed");
+    await waitForBullMqJob(queue, secondOk.id as string, "completed");
+    await waitForBullMqJob(queue, failing.id as string, "failed");
+
+    const completedMetrics = await adapter.getMetrics?.("completed");
+    const failedMetrics = await adapter.getMetrics?.("failed");
+
+    expect(completedMetrics?.meta.count).toBeGreaterThanOrEqual(2);
+    expect(failedMetrics?.meta.count).toBeGreaterThanOrEqual(1);
+    expect(
+      completedMetrics?.data.every((point) => typeof point === "number"),
+    ).toBe(true);
   });
 
   async function processBullMqJob(options: {

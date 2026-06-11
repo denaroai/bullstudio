@@ -18,6 +18,8 @@ describe("getQueueSourceViewModel", () => {
       prefixes: ["bull", "mail"],
       capabilities: {
         flows: true,
+        schedulers: true,
+        workers: true,
         supportedStatuses: ["waiting", "waiting-children"],
         mutationsAllowed: true,
       },
@@ -37,6 +39,10 @@ describe("getQueueSourceViewModel", () => {
       },
       features: {
         flows: {
+          visible: true,
+          enabled: true,
+        },
+        workers: {
           visible: true,
           enabled: true,
         },
@@ -64,6 +70,8 @@ describe("getQueueSourceViewModel", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
+        schedulers: true,
         workers: true,
       },
     });
@@ -105,6 +113,8 @@ describe("getQueueSourceViewModel", () => {
         jobRetry: false,
         queuePause: false,
         queueResume: false,
+        queueDrain: false,
+        schedulers: false,
         workers: true,
       },
     });

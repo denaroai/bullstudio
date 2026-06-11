@@ -1,5 +1,6 @@
-import type { Route } from './+types/docs';
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
+import browserCollections from "collections/browser";
+import { useFumadocsLoader } from "fumadocs-core/source/client";
+import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import {
   DocsBody,
   DocsDescription,
@@ -7,18 +8,17 @@ import {
   DocsTitle,
   MarkdownCopyButton,
   ViewOptionsPopover,
-} from 'fumadocs-ui/layouts/docs/page';
-import { getPageMarkdownUrl, source } from '@/lib/source';
-import browserCollections from 'collections/browser';
-import { baseOptions } from '@/lib/layout.shared';
-import { gitConfig } from '@/lib/shared';
-import { useFumadocsLoader } from 'fumadocs-core/source/client';
-import { useMDXComponents } from '@/components/mdx';
+} from "fumadocs-ui/layouts/docs/page";
+import { useMDXComponents } from "@/components/mdx";
+import { baseOptions } from "@/lib/layout.shared";
+import { gitConfig } from "@/lib/shared";
+import { getPageMarkdownUrl, source } from "@/lib/source";
+import type { Route } from "./+types/docs";
 
 export async function loader({ params }: Route.LoaderArgs) {
-  const slugs = params['*'].split(/[\\/]/).filter((v) => v.length > 0);
+  const slugs = params["*"].split(/[\\/]/).filter((v) => v.length > 0);
   const page = source.getPage(slugs);
-  if (!page) throw new Response('Not found', { status: 404 });
+  if (!page) throw new Response("Not found", { status: 404 });
 
   return {
     path: page.path,
@@ -41,7 +41,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
   ) {
     return (
       <DocsPage toc={toc}>
-        <title>{frontmatter.title}</title>
+        <title>{`${frontmatter.title} | Bullstudio`}</title>
         <meta name="description" content={frontmatter.description} />
         <DocsTitle>{frontmatter.title}</DocsTitle>
         <DocsDescription>{frontmatter.description}</DocsDescription>
@@ -63,8 +63,16 @@ const clientLoader = browserCollections.docs.createClientLoader({
 export default function Page({ loaderData }: Route.ComponentProps) {
   const { pageTree, path, markdownUrl } = useFumadocsLoader(loaderData);
 
+  const options = baseOptions();
+
   return (
-    <DocsLayout {...baseOptions()} tree={pageTree}>
+    <DocsLayout
+      {...options}
+      links={options.links?.filter(
+        (link) => !("url" in link) || link.url !== "/comparisons",
+      )}
+      tree={pageTree}
+    >
       {clientLoader.useContent(loaderData.path, {
         markdownUrl,
         path,

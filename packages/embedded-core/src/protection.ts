@@ -1,14 +1,14 @@
-import type {
-  DashboardProtection,
-  FrameworkRequest,
-  FrameworkResponse,
-} from "./types";
 import {
   getAuthenticatedSession,
   getLoginRedirectResponse,
   isCredentialProtection,
   isPublicDashboardRequest,
 } from "./session";
+import type {
+  DashboardProtection,
+  FrameworkRequest,
+  FrameworkResponse,
+} from "./types";
 
 export async function withDashboardProtection(
   protection: DashboardProtection,

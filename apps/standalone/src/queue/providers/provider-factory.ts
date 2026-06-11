@@ -1,12 +1,12 @@
 import Redis from "ioredis";
+import { detectProvider, discoverPrefixes } from "../detection";
 import type {
+  QueueProviderType,
   QueueService,
   QueueServiceConfig,
-  QueueProviderType,
 } from "../types";
-import { BullMqProvider } from "./bullmq";
 import { BullProvider } from "./bull";
-import { detectProvider, discoverPrefixes } from "../detection";
+import { BullMqProvider } from "./bullmq";
 
 /**
  * Auto-detect and create appropriate queue provider.
@@ -22,6 +22,11 @@ export async function createQueueProvider(
     retryStrategy: () => null,
   });
 
+  // This short-lived detection client is closed in `finally`. Attach an error
+  // listener so a connection drop during detection is swallowed rather than
+  // surfacing as an unhandled "error" event that crashes the process.
+  redis.on("error", () => {});
+
   let finalConfig: QueueServiceConfig = {
     ...config,
   };
@@ -32,13 +37,11 @@ export async function createQueueProvider(
     let prefixes = config.prefixes;
 
     if (prefixes?.includes("*")) {
-      const found =
-        await discoverPrefixes(redis);
+      const found = await discoverPrefixes(redis);
       if (found.length > 0) {
         prefixes = found;
         console.log(
-          `[ProviderFactory] Discovered ` +
-            `prefixes: ${found.join(", ")}`,
+          `[ProviderFactory] Discovered prefixes: ${found.join(", ")}`,
         );
       } else {
         prefixes = [config.prefix ?? "bull"];
@@ -47,12 +50,8 @@ export async function createQueueProvider(
 
     finalConfig = { ...config, prefixes };
 
-    const detectionPrefix =
-      prefixes?.[0] ?? config.prefix ?? "bull";
-    const detection = await detectProvider(
-      redis,
-      detectionPrefix,
-    );
+    const detectionPrefix = prefixes?.[0] ?? config.prefix ?? "bull";
+    const detection = await detectProvider(redis, detectionPrefix);
 
     console.log(
       `[ProviderFactory] Detected provider: ` +
@@ -61,15 +60,9 @@ export async function createQueueProvider(
         `from ${detection.detectedFrom})`,
     );
 
-    return createProviderByType(
-      detection.type,
-      finalConfig,
-    );
+    return createProviderByType(detection.type, finalConfig);
   } catch (error) {
-    console.error(
-      "[ProviderFactory] Detection failed:",
-      error,
-    );
+    console.error("[ProviderFactory] Detection failed:", error);
     return new BullMqProvider(finalConfig);
   } finally {
     await redis.quit().catch(() => {});
@@ -81,7 +74,7 @@ export async function createQueueProvider(
  */
 export function createProviderByType(
   type: QueueProviderType,
-  config: QueueServiceConfig
+  config: QueueServiceConfig,
 ): QueueService {
   switch (type) {
     case "bull":

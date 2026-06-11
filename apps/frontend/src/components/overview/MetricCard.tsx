@@ -5,9 +5,9 @@ import {
   CardTitle,
 } from "@bullstudio/ui/components/card";
 import { ChartContainer } from "@bullstudio/ui/components/chart";
-import { Area, AreaChart } from "recharts";
 import { cn } from "@bullstudio/ui/lib/utils";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Minus, TrendingDown, TrendingUp } from "lucide-react";
+import { Area, AreaChart } from "recharts";
 
 type MetricCardProps = {
   title: string;

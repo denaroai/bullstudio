@@ -1,17 +1,21 @@
-import { MetricCard } from "./MetricCard";
-import { Activity, AlertTriangle, Clock, TimerIcon } from "lucide-react";
 import type { OverviewMetricsResponse } from "@bullstudio/private-router";
 import { formatDuration, formatThroughput } from "@bullstudio/ui/shared";
+import { Activity, AlertTriangle, Clock, TimerIcon } from "lucide-react";
+import { formatRangeLabel } from "@/lib/time-ranges";
+import { MetricCard } from "./MetricCard";
+import { MetricsFallbackNotice } from "./MetricsFallbackNotice";
 
 type MetricCardsGridProps = {
   summary: OverviewMetricsResponse["summary"];
   timeSeries: OverviewMetricsResponse["timeSeries"];
   timeRange: number;
+  nativeMetrics: OverviewMetricsResponse["nativeMetrics"];
 };
 
-function calculateTrend(
-  data: number[]
-): { value: number; direction: "up" | "down" | "neutral" } {
+function calculateTrend(data: number[]): {
+  value: number;
+  direction: "up" | "down" | "neutral";
+} {
   if (data.length < 4) return { value: 0, direction: "neutral" };
 
   const midpoint = Math.floor(data.length / 2);
@@ -35,6 +39,7 @@ export function MetricCardsGrid({
   summary,
   timeSeries,
   timeRange,
+  nativeMetrics,
 }: MetricCardsGridProps) {
   const throughputSparkline = timeSeries.map((point) => ({
     value: point.completed + point.failed,
@@ -56,69 +61,72 @@ export function MetricCardsGrid({
   }));
 
   const throughputTrend = calculateTrend(
-    throughputSparkline.map((d) => d.value)
+    throughputSparkline.map((d) => d.value),
   );
   const failureTrend = calculateTrend(failureSparkline.map((d) => d.value));
   const processingTimeTrend = calculateTrend(
-    processingTimeSparkline.map((d) => d.value)
+    processingTimeSparkline.map((d) => d.value),
   );
   const delayTrend = calculateTrend(delaySparkline.map((d) => d.value));
 
   const totalJobs = summary.totalCompleted + summary.totalFailed;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <MetricCard
-        title="Throughput"
-        value={formatThroughput(summary.avgThroughputPerHour)}
-        subtitle={`${totalJobs.toLocaleString()} jobs in ${timeRange}h`}
-        icon={<Activity className="size-4" />}
-        sparklineData={throughputSparkline}
-        sparklineColor="hsl(142, 76%, 36%)"
-        trend={{
-          ...throughputTrend,
-          isPositive: throughputTrend.direction === "up",
-        }}
-      />
+    <div className="space-y-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Throughput"
+          value={formatThroughput(summary.avgThroughputPerHour)}
+          subtitle={`${totalJobs.toLocaleString()} jobs in ${formatRangeLabel(timeRange)}`}
+          icon={<Activity className="size-4" />}
+          sparklineData={throughputSparkline}
+          sparklineColor="hsl(142, 76%, 36%)"
+          trend={{
+            ...throughputTrend,
+            isPositive: throughputTrend.direction === "up",
+          }}
+        />
 
-      <MetricCard
-        title="Failure Rate"
-        value={`${summary.failureRate.toFixed(1)}%`}
-        subtitle={`${summary.totalFailed.toLocaleString()} failed jobs`}
-        icon={<AlertTriangle className="size-4" />}
-        sparklineData={failureSparkline}
-        sparklineColor="hsl(0, 84%, 60%)"
-        trend={{
-          ...failureTrend,
-          isPositive: failureTrend.direction === "down",
-        }}
-      />
+        <MetricCard
+          title="Failure Rate"
+          value={`${summary.failureRate.toFixed(1)}%`}
+          subtitle={`${summary.totalFailed.toLocaleString()} failed jobs`}
+          icon={<AlertTriangle className="size-4" />}
+          sparklineData={failureSparkline}
+          sparklineColor="hsl(0, 84%, 60%)"
+          trend={{
+            ...failureTrend,
+            isPositive: failureTrend.direction === "down",
+          }}
+        />
 
-      <MetricCard
-        title="Processing Time"
-        value={formatDuration(summary.avgProcessingTimeMs)}
-        subtitle="avg per job"
-        icon={<Clock className="size-4" />}
-        sparklineData={processingTimeSparkline}
-        sparklineColor="hsl(217, 91%, 60%)"
-        trend={{
-          ...processingTimeTrend,
-          isPositive: processingTimeTrend.direction === "down",
-        }}
-      />
+        <MetricCard
+          title="Processing Time"
+          value={formatDuration(summary.avgProcessingTimeMs)}
+          subtitle={`avg · min ${formatDuration(summary.minProcessingTimeMs)} · max ${formatDuration(summary.maxProcessingTimeMs)}`}
+          icon={<Clock className="size-4" />}
+          sparklineData={processingTimeSparkline}
+          sparklineColor="hsl(217, 91%, 60%)"
+          trend={{
+            ...processingTimeTrend,
+            isPositive: processingTimeTrend.direction === "down",
+          }}
+        />
 
-      <MetricCard
-        title="Queue Delay"
-        value={formatDuration(summary.avgDelayMs)}
-        subtitle="avg wait time"
-        icon={<TimerIcon className="size-4" />}
-        sparklineData={delaySparkline}
-        sparklineColor="hsl(45, 93%, 47%)"
-        trend={{
-          ...delayTrend,
-          isPositive: delayTrend.direction === "down",
-        }}
-      />
+        <MetricCard
+          title="Queue Delay"
+          value={formatDuration(summary.avgDelayMs)}
+          subtitle={`avg · min ${formatDuration(summary.minDelayMs)} · max ${formatDuration(summary.maxDelayMs)}`}
+          icon={<TimerIcon className="size-4" />}
+          sparklineData={delaySparkline}
+          sparklineColor="hsl(45, 93%, 47%)"
+          trend={{
+            ...delayTrend,
+            isPositive: delayTrend.direction === "down",
+          }}
+        />
+      </div>
+      <MetricsFallbackNotice nativeMetrics={nativeMetrics} />
     </div>
   );
 }

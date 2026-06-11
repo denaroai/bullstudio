@@ -1,27 +1,30 @@
+import dayjs from "@bullstudio/dayjs";
+import type { OverviewMetricsResponse } from "@bullstudio/private-router";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@bullstudio/ui/components/card";
 import {
+  type ChartConfig,
   ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
-  type ChartConfig,
+  ChartTooltip,
+  ChartTooltipContent,
 } from "@bullstudio/ui/components/chart";
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from "recharts";
-import dayjs from "@bullstudio/dayjs";
-import type { OverviewMetricsResponse } from "@bullstudio/private-router";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { formatRangeLabel } from "@/lib/time-ranges";
+import { MetricsFallbackNotice } from "./MetricsFallbackNotice";
 
 type TimeSeriesDataPoint = OverviewMetricsResponse["timeSeries"][number];
 
 type ThroughputChartProps = {
   data: TimeSeriesDataPoint[];
   timeRange: number;
+  nativeMetrics: OverviewMetricsResponse["nativeMetrics"];
 };
 
 const chartConfig: ChartConfig = {
@@ -35,7 +38,11 @@ const chartConfig: ChartConfig = {
   },
 };
 
-export function ThroughputChart({ data, timeRange }: ThroughputChartProps) {
+export function ThroughputChart({
+  data,
+  timeRange,
+  nativeMetrics,
+}: ThroughputChartProps) {
   const formattedData = data.map((point) => ({
     ...point,
     time: dayjs(point.timestamp).format(timeRange <= 24 ? "HH:mm" : "MMM D"),
@@ -46,12 +53,12 @@ export function ThroughputChart({ data, timeRange }: ThroughputChartProps) {
       <CardHeader>
         <CardTitle>Job Throughput</CardTitle>
         <CardDescription>
-          Completed vs failed jobs over the last {timeRange}h
+          Completed vs failed jobs over the last {formatRangeLabel(timeRange)}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-64 w-full">
-          <BarChart data={formattedData} accessibilityLayer>
+          <LineChart data={formattedData} accessibilityLayer>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="var(--border)"
@@ -72,20 +79,23 @@ export function ThroughputChart({ data, timeRange }: ThroughputChartProps) {
             />
             <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />
-            <Bar
+            <Line
               dataKey="completed"
-              fill="var(--color-completed)"
-              radius={[4, 4, 0, 0]}
-              stackId="stack"
+              type="monotone"
+              stroke="var(--color-completed)"
+              strokeWidth={2}
+              dot={false}
             />
-            <Bar
+            <Line
               dataKey="failed"
-              fill="var(--color-failed)"
-              radius={[4, 4, 0, 0]}
-              stackId="stack"
+              type="monotone"
+              stroke="var(--color-failed)"
+              strokeWidth={2}
+              dot={false}
             />
-          </BarChart>
+          </LineChart>
         </ChartContainer>
+        <MetricsFallbackNotice nativeMetrics={nativeMetrics} className="mt-3" />
       </CardContent>
     </Card>
   );

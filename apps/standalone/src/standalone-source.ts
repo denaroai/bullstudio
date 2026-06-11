@@ -3,8 +3,10 @@ import type {
   FlowSummary,
   FlowTree,
   Job,
+  JobScheduler,
   JobStatus,
   JobSummary,
+  Worker,
 } from "@bullstudio/connect-types";
 import {
   type DashboardQueue,
@@ -13,9 +15,14 @@ import {
   type JobListInput,
   type JobTargetInput,
   type PrivateDashboardQueueSource,
+  type QueueMetricsListInput,
+  type QueueMetricsSummary,
   type QueueSourceStatus,
   type QueueTargetInput,
+  type SchedulerTargetInput,
+  type SchedulerUpsertInput,
   supportedJobStatuses,
+  type WorkerListInput,
 } from "@bullstudio/private-router";
 import { TRPCError } from "@trpc/server";
 import { FlowProducer, type JobNode } from "bullmq";
@@ -79,6 +86,7 @@ export function createStandaloneQueueSource(): PrivateDashboardQueueSource {
 
       return jobs;
     },
+    listQueueMetrics,
     getJob: async (input) => {
       const provider = await getQueueProvider();
       const queue = await resolveQueue(input);
@@ -103,30 +111,135 @@ export function createStandaloneQueueSource(): PrivateDashboardQueueSource {
       await provider.resumeQueue(queue.name, queue.prefix);
       return { success: true };
     },
+    drainQueue: async (input) => {
+      const provider = await getQueueProvider();
+      const queue = await resolveQueue(input);
+      await provider.drainQueue(queue.name, queue.prefix);
+      return { success: true };
+    },
     listFlows,
     getFlow,
+    getJobFlow,
+    listWorkers: async (input) => {
+      const provider = await getQueueProvider();
+      const queues = await getQueuesForWorkerList(input);
+      const workers: Worker[] = [];
+
+      for (const queue of queues) {
+        const queueWorkers = await provider.listWorkers(
+          queue.name,
+          queue.prefix,
+        );
+        workers.push(
+          ...queueWorkers.map((worker) => ({
+            ...worker,
+            prefix: worker.prefix ?? queue.prefix,
+            queueKey: queue.key,
+            provider: worker.provider ?? queue.provider,
+          })),
+        );
+      }
+
+      return workers.slice(0, input.limit ?? 200);
+    },
+    getWorker: async (input) => {
+      const provider = await getQueueProvider();
+      const queue = await resolveQueue(input);
+      const workers = await provider.listWorkers(queue.name, queue.prefix);
+      return (
+        workers
+          .map((worker) => ({
+            ...worker,
+            prefix: worker.prefix ?? queue.prefix,
+            queueKey: queue.key,
+            provider: worker.provider ?? queue.provider,
+          }))
+          .find((worker) => worker.id === input.workerId) ?? null
+      );
+    },
+    listJobSchedulers: async (input) => {
+      const provider = await getQueueProvider();
+      const queues = await getQueuesForListInput(input);
+      const schedulers: JobScheduler[] = [];
+
+      for (const queue of queues) {
+        const queueSchedulers = await provider.listJobSchedulers(
+          queue.name,
+          { limit: input.limit },
+          queue.prefix,
+        );
+        schedulers.push(
+          ...queueSchedulers.map((scheduler) => ({
+            ...scheduler,
+            prefix: scheduler.prefix ?? queue.prefix,
+          })),
+        );
+      }
+
+      return schedulers
+        .sort((a, b) => (a.next ?? Infinity) - (b.next ?? Infinity))
+        .slice(0, input.limit ?? 100);
+    },
+    getJobScheduler: async (input) => {
+      const provider = await getQueueProvider();
+      const queue = await resolveQueue(input);
+      return provider.getJobScheduler(
+        queue.name,
+        { key: input.schedulerKey, id: input.schedulerId },
+        queue.prefix,
+      );
+    },
+    upsertJobScheduler,
+    removeJobScheduler,
   };
 }
 
 async function getStandaloneQueueSourceStatus(): Promise<QueueSourceStatus> {
-  const provider = await getQueueProvider();
-  const capabilities = provider.getCapabilities();
-  const prefixes = await provider.getPrefixes();
   const connection = getRedisConnectionInfo();
 
-  return {
-    mode: "standalone",
-    source: "redis",
-    status: "healthy",
-    connection,
-    providers: [capabilities.providerType],
-    prefixes,
-    capabilities: {
-      flows: capabilities.supportsFlows,
-      supportedStatuses: capabilities.supportedJobStates,
-      mutationsAllowed: true,
-    },
-  };
+  try {
+    const provider = await getQueueProvider();
+    const capabilities = provider.getCapabilities();
+    const prefixes = await provider.getPrefixes();
+
+    return {
+      mode: "standalone",
+      source: "redis",
+      // Reflect the live connection state instead of always reporting healthy.
+      // The provider auto-reconnects, so a dropped connection shows as degraded
+      // until it recovers rather than falsely reporting connected.
+      status: provider.isConnected() ? "healthy" : "degraded",
+      connection,
+      providers: [capabilities.providerType],
+      prefixes,
+      capabilities: {
+        flows: capabilities.supportsFlows,
+        schedulers: capabilities.supportsSchedulers,
+        workers: true,
+        supportedStatuses: capabilities.supportedJobStates,
+        mutationsAllowed: true,
+      },
+    };
+  } catch {
+    // Redis is unreachable (e.g. down at startup). Report unavailable rather
+    // than letting the status query throw, so the sidebar can surface the
+    // outage. The status query keeps polling and recovers once Redis is back.
+    return {
+      mode: "standalone",
+      source: "redis",
+      status: "unavailable",
+      connection,
+      providers: [],
+      prefixes: [],
+      capabilities: {
+        flows: false,
+        schedulers: false,
+        workers: false,
+        supportedStatuses: [],
+        mutationsAllowed: false,
+      },
+    };
+  }
 }
 
 function getRedisConnectionInfo() {
@@ -180,6 +293,41 @@ async function resolveQueue(input: QueueTargetInput): Promise<DashboardQueue> {
 
 async function getQueuesForListInput(
   input: JobListInput,
+): Promise<DashboardQueue[]> {
+  if (input.queueKey || input.queueName) {
+    return [await resolveQueue(input)];
+  }
+
+  const provider = await getQueueProvider();
+  return provider.getQueues();
+}
+
+async function listQueueMetrics(
+  input: QueueMetricsListInput,
+): Promise<QueueMetricsSummary[]> {
+  const provider = await getQueueProvider();
+  const queues = await getQueuesForListInput(input);
+
+  return Promise.all(
+    queues.map(async (queue) => {
+      const [completed, failed] = await Promise.all([
+        provider.getMetrics(queue.name, "completed", queue.prefix),
+        provider.getMetrics(queue.name, "failed", queue.prefix),
+      ]);
+
+      return {
+        queueKey: queue.key,
+        queueName: queue.name,
+        prefix: queue.prefix,
+        completed,
+        failed,
+      };
+    }),
+  );
+}
+
+async function getQueuesForWorkerList(
+  input: WorkerListInput,
 ): Promise<DashboardQueue[]> {
   if (input.queueKey || input.queueName) {
     return [await resolveQueue(input)];
@@ -259,6 +407,47 @@ async function removeJob(
   };
 }
 
+async function upsertJobScheduler(
+  input: SchedulerUpsertInput,
+): Promise<{ success: true; message: string }> {
+  const provider = await getQueueProvider();
+  const queue = await resolveQueue(input);
+
+  await provider.upsertJobScheduler(
+    queue.name,
+    {
+      schedulerId: input.schedulerId,
+      previousKey: input.previousKey,
+      repeat: input.repeat,
+      template: input.template,
+    },
+    queue.prefix,
+  );
+
+  return {
+    success: true,
+    message: `Scheduler "${input.schedulerId}" has been saved`,
+  };
+}
+
+async function removeJobScheduler(
+  input: SchedulerTargetInput,
+): Promise<{ success: true; message: string }> {
+  const provider = await getQueueProvider();
+  const queue = await resolveQueue(input);
+
+  await provider.removeJobScheduler(
+    queue.name,
+    { key: input.schedulerKey, id: input.schedulerId },
+    queue.prefix,
+  );
+
+  return {
+    success: true,
+    message: `Scheduler "${input.schedulerId ?? input.schedulerKey}" has been removed`,
+  };
+}
+
 async function listFlows(input: FlowListInput): Promise<FlowSummary[]> {
   const provider = await getQueueProvider();
   const capabilities = provider.getCapabilities();
@@ -269,7 +458,10 @@ async function listFlows(input: FlowListInput): Promise<FlowSummary[]> {
 
   const limit = input?.limit ?? 50;
   const producer = await getFlowProducer();
-  const queues = await provider.getQueues();
+  const queues =
+    input?.queueKey || input?.queueName
+      ? [await resolveQueue(input)]
+      : await provider.getQueues();
   const flows: FlowSummary[] = [];
   const seenJobIds = new Set<string>();
 
@@ -388,10 +580,98 @@ async function getFlow(input: FlowTargetInput): Promise<FlowTree | null> {
   }
 }
 
+async function getJobFlow(input: JobTargetInput): Promise<FlowTree | null> {
+  const provider = await getQueueProvider();
+  const capabilities = provider.getCapabilities();
+
+  if (!capabilities.supportsFlows) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Flows are not supported by this queue provider (Bull)",
+    });
+  }
+
+  const queue = await resolveQueue(input);
+  const producer = await getFlowProducer();
+
+  try {
+    // `producer.getFlow` only walks down to children, so climb the parentKey
+    // chain (which can cross queues) to the flow root before building the tree.
+    let rootNode = await producer.getFlow({
+      id: input.jobId,
+      queueName: queue.name,
+      prefix: queue.prefix,
+    });
+    if (!rootNode) {
+      return null;
+    }
+
+    let rootId = input.jobId;
+    let rootQueueName = queue.name;
+    let parentKey = rootNode.job.parentKey;
+
+    while (parentKey) {
+      const parsed = parseFlowJobKey(parentKey);
+      if (!parsed) {
+        break;
+      }
+      const parentNode = await producer.getFlow(parsed);
+      if (!parentNode) {
+        break;
+      }
+      rootNode = parentNode;
+      rootId = parsed.id;
+      rootQueueName = parsed.queueName;
+      parentKey = parentNode.job.parentKey;
+    }
+
+    const root = await convertFlowTree(rootNode);
+    const stats = await countFlowStats(rootNode);
+
+    return {
+      id: rootId,
+      root,
+      queueName: rootQueueName,
+      totalNodes: stats.total,
+      completedNodes: stats.completed,
+      failedNodes: stats.failed,
+    };
+  } catch (error) {
+    if (error instanceof TRPCError) {
+      throw error;
+    }
+
+    return null;
+  }
+}
+
+/**
+ * Parse a BullMQ parent job key (`<prefix>:<queueName>:<jobId>`). Prefixes may
+ * contain colons, so only the last two segments are the queue name and job id.
+ */
+function parseFlowJobKey(
+  key: string,
+): { prefix: string; queueName: string; id: string } | null {
+  const parts = key.split(":");
+  if (parts.length < 3) {
+    return null;
+  }
+  const id = parts.pop() as string;
+  const queueName = parts.pop() as string;
+  return { prefix: parts.join(":"), queueName, id };
+}
+
 async function getFlowProducer(): Promise<FlowProducer> {
   if (!flowProducer) {
     const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
-    flowProducer = new FlowProducer({ connection: { url: redisUrl } });
+    const producer = new FlowProducer({ connection: { url: redisUrl } });
+    // FlowProducer re-emits Redis connection errors on itself. Without a
+    // listener Node treats an emitted "error" as fatal and crashes the
+    // process when the connection drops, so swallow it here.
+    producer.on("error", (error) => {
+      console.error("[Standalone] FlowProducer error:", error.message);
+    });
+    flowProducer = producer;
   }
 
   return flowProducer;

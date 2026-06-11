@@ -1,6 +1,11 @@
-import { resolve } from "node:path";
 import type { ServerResponse } from "node:http";
-import type { Connect, Plugin, ViteDevServer } from "vite";
+import { resolve } from "node:path";
+import {
+  type Connect,
+  normalizePath,
+  type Plugin,
+  type ViteDevServer,
+} from "vite";
 
 type StandaloneApp = {
   fetch(request: Request): Promise<Response> | Response;
@@ -49,13 +54,17 @@ async function loadStandaloneModule(
   server: ViteDevServer,
 ): Promise<StandaloneModule> {
   const standaloneServerPath = resolve(
-    process.cwd(),
+    server.config.root,
     "../standalone/server/standalone.ts",
   );
 
   return server.ssrLoadModule(
-    `/@fs${standaloneServerPath}`,
+    toViteFsModuleId(standaloneServerPath),
   ) as Promise<StandaloneModule>;
+}
+
+export function toViteFsModuleId(filePath: string): string {
+  return `/@fs/${normalizePath(filePath).replaceAll("\\", "/").replace(/^\/+/, "")}`;
 }
 
 function shouldHandleRequest(url: string): boolean {
@@ -93,10 +102,7 @@ function toRequest(req: Connect.IncomingMessage, server: ViteDevServer) {
   return new Request(url, init);
 }
 
-function getRequestOrigin(
-  req: Connect.IncomingMessage,
-  server: ViteDevServer,
-) {
+function getRequestOrigin(req: Connect.IncomingMessage, server: ViteDevServer) {
   const protocol =
     req.headers["x-forwarded-proto"]?.toString().split(",")[0]?.trim() ??
     "http";
@@ -126,10 +132,7 @@ function toHeaders(headers: Connect.IncomingMessage["headers"]): Headers {
   return result;
 }
 
-async function writeResponse(
-  res: ServerResponse,
-  response: Response,
-) {
+async function writeResponse(res: ServerResponse, response: Response) {
   res.statusCode = response.status;
 
   response.headers.forEach((value, name) => {

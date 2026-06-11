@@ -1,6 +1,6 @@
 {
   "name": "@bullstudio/fastify",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "description": "Fastify framework adapter for Bullstudio embedded mode.",
   "type": "module",
   "license": "MIT",
@@ -36,7 +36,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "lint": "tsc --noEmit",
+    "lint": "biome lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -51,7 +51,7 @@
     "fastify": "^5.0.0"
   },
   "dependencies": {
-    "@bullstudio/embedded-core": "workspace:0.1.0"
+    "@bullstudio/embedded-core": "workspace:*"
   },
   "devDependencies": {
     "@bullstudio/typescript-config": "workspace:*",

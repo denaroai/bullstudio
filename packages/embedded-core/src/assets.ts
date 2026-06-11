@@ -132,6 +132,7 @@ async function renderDashboardHtml(
     basePath,
     dashboardIdentity: config.dashboardIdentity,
     documentIdentity: config.documentIdentity,
+    polling: config.polling,
   });
 
   return html

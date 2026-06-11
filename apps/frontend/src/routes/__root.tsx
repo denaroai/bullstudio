@@ -17,6 +17,7 @@ import { getAssetUrl, getDocumentIdentity } from "@/lib/runtime-config";
 import appCss from "../styles.css?url";
 
 import "../styles.css";
+import { PollingProvider } from "@/components/PollingProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 interface MyRouterContext {
@@ -35,7 +36,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: getDocumentIdentity()?.title ?? "bullstudio CLI",
+        title: getDocumentIdentity()?.title ?? "bullstudio - Queue dashboard",
       },
     ],
     links: [
@@ -70,17 +71,21 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <>
       <HeadContent />
       <ThemeProvider defaultTheme="dark">
-        {isLogin ? (
-          children
-        ) : (
-          <SidebarProvider>
-            <AppSidebar />
-            <SidebarInset className="overflow-y-auto">
-              <main className="flex-1 p-6">{children}</main>
-            </SidebarInset>
-          </SidebarProvider>
-        )}
-        <Toaster theme="dark" position="bottom-right" richColors />
+        <PollingProvider>
+          {isLogin ? (
+            children
+          ) : (
+            <SidebarProvider>
+              <AppSidebar />
+              <SidebarInset className="h-svh overflow-hidden">
+                <main className="flex flex-1 flex-col overflow-y-auto p-6">
+                  {children}
+                </main>
+              </SidebarInset>
+            </SidebarProvider>
+          )}
+          <Toaster theme="dark" position="bottom-right" richColors />
+        </PollingProvider>
       </ThemeProvider>
     </>
   );

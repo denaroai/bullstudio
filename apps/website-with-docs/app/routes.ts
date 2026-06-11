@@ -1,14 +1,16 @@
-import { index, route, type RouteConfig } from '@react-router/dev/routes';
+import { index, type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
-  index('routes/home.tsx'),
-  route('docs/*', 'routes/docs.tsx'),
-  route('api/search', 'routes/search.ts'),
+  index("routes/home.tsx"),
+  route("docs/*", "routes/docs.tsx"),
+  route("comparisons", "routes/comparisons.tsx"),
+  route("comparisons/:slug", "routes/comparison.tsx"),
+  route("api/search", "routes/search.ts"),
 
   // LLM integration:
-  route('llms.txt', 'llms/index.ts'),
-  route('llms-full.txt', 'llms/full.ts'),
-  route('llms.mdx/docs/*', 'llms/mdx.ts'),
+  route("llms.txt", "llms/index.ts"),
+  route("llms-full.txt", "llms/full.ts"),
+  route("llms.mdx/docs/*", "llms/mdx.ts"),
 
-  route('*', 'routes/not-found.tsx'),
+  route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;

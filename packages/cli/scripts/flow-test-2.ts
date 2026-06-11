@@ -40,7 +40,9 @@ const generateJobData = (type: JobType, index: number): JobData => {
       orderId: `ORD-${Date.now()}-${index}`,
     }),
     "send-email": () => ({
-      template: ["welcome", "receipt", "reminder", "promo"][randomBetween(0, 3)],
+      template: ["welcome", "receipt", "reminder", "promo"][
+        randomBetween(0, 3)
+      ],
       recipientCount: randomBetween(1, 100),
     }),
     "generate-report": () => ({
@@ -83,14 +85,20 @@ const generateJobData = (type: JobType, index: number): JobData => {
     type,
     userId: `user-${randomBetween(1000, 9999)}`,
     payload: payloads[type](),
-    priority: ["low", "medium", "high"][randomBetween(0, 2)] as JobData["priority"],
+    priority: ["low", "medium", "high"][
+      randomBetween(0, 2)
+    ] as JobData["priority"],
   };
 };
 
-const processJob = async (job: Job<JobData>): Promise<{ success: boolean; result: unknown }> => {
+const processJob = async (
+  job: Job<JobData>,
+): Promise<{ success: boolean; result: unknown }> => {
   const { type, payload, priority } = job.data;
 
-  console.log(`[Worker] Starting job ${job.id} - ${type} (${priority} priority)`);
+  console.log(
+    `[Worker] Starting job ${job.id} - ${type} (${priority} priority)`,
+  );
 
   const baseTime = {
     low: randomBetween(500, 1500),
@@ -141,7 +149,7 @@ const processJob = async (job: Job<JobData>): Promise<{ success: boolean; result
 
 async function main() {
   console.log("Starting flow test with 10 jobs and workers...\n");
-  
+
   const queueName = "flowQueue";
 
   const queue = new Queue(queueName, { connection });

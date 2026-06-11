@@ -1,12 +1,12 @@
 "use client";
 
-import { memo } from "react";
-import { Handle, Position } from "@xyflow/react";
 import {
-  JobStatusBadge,
-  type JobStatus,
   getStatusColor,
+  type JobStatus,
+  JobStatusBadge,
 } from "@bullstudio/ui/shared";
+import { Handle, Position } from "@xyflow/react";
+import { memo } from "react";
 
 export interface FlowJobNodeData {
   name: string;

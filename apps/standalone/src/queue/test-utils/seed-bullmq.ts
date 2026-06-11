@@ -1,8 +1,8 @@
 import {
-  Queue,
-  Worker,
   type ConnectionOptions,
   type JobsOptions,
+  Queue,
+  Worker,
 } from "bullmq";
 import { TEST_REDIS_URL } from "./redis";
 

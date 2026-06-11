@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
-import { Check, Copy } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import { Check, Copy } from "lucide-react";
+import { useCallback, useState } from "react";
+import { cn } from "@/lib/cn";
 
 function useCopy() {
   const [copied, setCopied] = useState(false);
@@ -16,7 +16,7 @@ function useCopy() {
 export function CopyButton({
   value,
   className,
-  label = 'Copy',
+  label = "Copy",
 }: {
   value: string;
   className?: string;
@@ -27,9 +27,9 @@ export function CopyButton({
     <button
       type="button"
       onClick={() => copy(value)}
-      aria-label={copied ? 'Copied' : label}
+      aria-label={copied ? "Copied" : label}
       className={cn(
-        'inline-flex size-8 shrink-0 items-center justify-center border border-border bg-background text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+        "inline-flex size-8 shrink-0 items-center justify-center border border-border bg-background text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
         className,
       )}
     >
@@ -53,14 +53,16 @@ export function CommandBlock({
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 border border-border bg-card pl-4 pr-2 py-2.5 font-mono text-sm shadow-sm',
+        "group flex items-center gap-3 border border-border bg-card pl-4 pr-2 py-2.5 font-mono text-sm shadow-sm",
         className,
       )}
     >
       <span aria-hidden className="select-none text-primary">
         $
       </span>
-      <code className="flex-1 truncate text-foreground">{command}</code>
+      <code className="bs-noscrollbar block min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-foreground">
+        {command}
+      </code>
       <CopyButton value={command} label="Copy command" />
     </div>
   );

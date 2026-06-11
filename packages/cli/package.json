@@ -1,6 +1,6 @@
 {
   "name": "bullstudio",
-  "version": "1.5.0",
+  "version": "2.0.0",
   "description": "A lightweight queue management dashboard for Bull and BullMQ",
   "private": false,
   "type": "module",
@@ -45,9 +45,10 @@
     "build:cli": "esbuild index.ts --bundle --platform=node --target=node20 --outfile=dist/bin/cli.js --format=esm --external:open",
     "start": "node dist/bin/cli.js",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit",
+    "lint": "biome lint",
     "prepublishOnly": "pnpm build",
-    "generate:bull-jobs": "tsx scripts/generate-bull-jobs.ts"
+    "generate:bull-jobs": "tsx scripts/generate-bull-jobs.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {
     "bull": "^4.16.4",

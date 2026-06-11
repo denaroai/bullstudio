@@ -2,6 +2,7 @@ import {
   createJobNotFoundError,
   createWorkerCount,
   filterJobsByName,
+  mapRedisClientWorker,
   normalizeJobCounts,
   sortJobs,
   toJobSummary,
@@ -12,6 +13,8 @@ import type {
   FlowTree,
   Job,
   JobQueryOptions,
+  JobScheduler,
+  JobSchedulerRepeat,
   JobStatus,
   JobSummary,
   QueueAdapter,
@@ -20,8 +23,10 @@ import {
   type Job as BullMqJob,
   FlowProducer,
   type JobNode,
+  type JobSchedulerJson,
   type JobType,
   type Queue,
+  type RepeatOptions,
 } from "bullmq";
 
 export interface BullMqQueueAdapterOptions {
@@ -49,6 +54,8 @@ export function createBullMqQueueAdapter(
       jobRetry: true,
       queuePause: true,
       queueResume: true,
+      queueDrain: true,
+      schedulers: true,
       workers: true,
     },
     getQueue: async () => {
@@ -70,6 +77,9 @@ export function createBullMqQueueAdapter(
     },
     resumeQueue: async () => {
       await queue.resume();
+    },
+    drainQueue: async () => {
+      await queue.drain(true);
     },
     getJobs: async (options) => {
       const { filter, sort, limit = 100, offset = 0 } = options ?? {};
@@ -114,6 +124,7 @@ export function createBullMqQueueAdapter(
 
       return filteredSummaries;
     },
+    getMetrics: (type) => queue.getMetrics(type),
     getJob: async (jobId) => {
       const job = await queue.getJob(jobId);
       return job ? mapJob(job, queue.name) : null;
@@ -137,9 +148,97 @@ export function createBullMqQueueAdapter(
       const workers = await queue.getWorkers();
       return createWorkerCount(queue.name, workers);
     },
+    listWorkers: async () => {
+      const prefix = getQueuePrefix(queue);
+      const workers = await queue.getWorkers();
+      return workers.map((worker) =>
+        mapRedisClientWorker(worker, queue.name, {
+          prefix,
+          provider: "bullmq",
+        }),
+      );
+    },
     listFlows: async (options) => listFlows(queue, flowProducer, options),
     getFlow: async (flowId) => getFlow(queue, flowProducer, flowId),
+    getJobFlow: async (jobId) => getJobFlow(queue, flowProducer, jobId),
+    listJobSchedulers: async (options) => {
+      const limit = options?.limit ?? 50;
+      const schedulers = await queue.getJobSchedulers(0, limit - 1, true);
+      return schedulers.map((scheduler) =>
+        mapScheduler(scheduler, queue.name, getQueuePrefix(queue)),
+      );
+    },
+    getJobScheduler: async (target) => {
+      const scheduler = await queue.getJobScheduler(target.id ?? target.key);
+      return scheduler
+        ? mapScheduler(scheduler, queue.name, getQueuePrefix(queue))
+        : null;
+    },
+    upsertJobScheduler: async (input) => {
+      await queue.upsertJobScheduler(
+        input.schedulerId,
+        toRepeatOptions(input.repeat),
+        input.template
+          ? {
+              name: input.template.name,
+              data: input.template.data,
+              opts: input.template.opts,
+            }
+          : undefined,
+      );
+    },
+    removeJobScheduler: async (target) => {
+      if (target.id) {
+        return queue.removeJobScheduler(target.id);
+      }
+      return queue.removeRepeatableByKey(target.key);
+    },
   };
+}
+
+function mapScheduler(
+  scheduler: JobSchedulerJson,
+  queueName: string,
+  prefix: string,
+): JobScheduler {
+  return {
+    // For BullMQ job schedulers the `key` is the scheduler id passed to
+    // `upsertJobScheduler`; `id` is only the optional job discriminator.
+    key: scheduler.key,
+    id: scheduler.id ?? scheduler.key,
+    name: scheduler.name,
+    queueName,
+    prefix,
+    strategy: scheduler.pattern ? "cron" : "every",
+    pattern: scheduler.pattern,
+    every: typeof scheduler.every === "number" ? scheduler.every : undefined,
+    tz: scheduler.tz,
+    next: scheduler.next,
+    endDate: scheduler.endDate,
+    limit: scheduler.limit,
+    template: scheduler.template
+      ? {
+          data: scheduler.template.data,
+          opts: scheduler.template.opts as Record<string, unknown> | undefined,
+        }
+      : undefined,
+  };
+}
+
+function toRepeatOptions(
+  repeat: JobSchedulerRepeat,
+): Omit<RepeatOptions, "key"> {
+  const base = {
+    tz: repeat.tz,
+    endDate: repeat.endDate,
+    limit: repeat.limit,
+  };
+
+  if (repeat.strategy === "every") {
+    return { ...base, every: repeat.every };
+  }
+
+  return { ...base, pattern: repeat.pattern };
 }
 
 async function listFlows(
@@ -256,6 +355,76 @@ async function getBullMqFlow(
   } catch {
     return null;
   }
+}
+
+/**
+ * Parse a BullMQ parent job key (`<prefix>:<queueName>:<jobId>`) into its
+ * components. Prefixes may themselves contain colons, so only the last two
+ * segments are treated as the queue name and job id.
+ */
+function parseFlowJobKey(
+  key: string,
+): { prefix: string; queueName: string; id: string } | null {
+  const parts = key.split(":");
+  if (parts.length < 3) {
+    return null;
+  }
+  const id = parts.pop() as string;
+  const queueName = parts.pop() as string;
+  return { prefix: parts.join(":"), queueName, id };
+}
+
+/**
+ * Build the full flow tree a job belongs to. `flowProducer.getFlow` only walks
+ * downward to children, so we climb the `parentKey` chain (which can cross
+ * queues) to find the flow root before materialising the whole tree.
+ */
+async function getJobFlow(
+  queue: Queue,
+  flowProducer: FlowProducer,
+  jobId: string,
+): Promise<FlowTree | null> {
+  const prefix = getQueuePrefix(queue);
+
+  let rootNode = await getBullMqFlow(flowProducer, {
+    id: jobId,
+    queueName: queue.name,
+    prefix,
+  });
+  if (!rootNode) {
+    return null;
+  }
+
+  let rootId = jobId;
+  let rootQueueName = queue.name;
+  let parentKey = rootNode.job.parentKey;
+
+  while (parentKey) {
+    const parsed = parseFlowJobKey(parentKey);
+    if (!parsed) {
+      break;
+    }
+    const parentNode = await getBullMqFlow(flowProducer, parsed);
+    if (!parentNode) {
+      break;
+    }
+    rootNode = parentNode;
+    rootId = parsed.id;
+    rootQueueName = parsed.queueName;
+    parentKey = parentNode.job.parentKey;
+  }
+
+  const root = await convertFlowTree(rootNode);
+  const stats = await countFlowStats(rootNode);
+
+  return {
+    id: rootId,
+    root,
+    queueName: rootQueueName,
+    totalNodes: stats.total,
+    completedNodes: stats.completed,
+    failedNodes: stats.failed,
+  };
 }
 
 async function countFlowStats(tree: JobNode): Promise<{

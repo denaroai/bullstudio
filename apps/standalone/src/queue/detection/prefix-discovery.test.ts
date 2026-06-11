@@ -1,11 +1,11 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type Redis from "ioredis";
-import { discoverPrefixes } from "./prefix-discovery";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   createTestRedis,
   ensureRedisAvailable,
   flushTestDb,
 } from "../test-utils/redis";
+import { discoverPrefixes } from "./prefix-discovery";
 
 describe("discoverPrefixes", () => {
   let redis: Redis;
@@ -16,6 +16,7 @@ describe("discoverPrefixes", () => {
   });
 
   afterAll(async () => {
+    if (!redis) return;
     await redis.quit().catch(() => {});
   });
 

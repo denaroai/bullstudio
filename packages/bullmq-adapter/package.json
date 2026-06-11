@@ -1,6 +1,6 @@
 {
   "name": "@bullstudio/bullmq-adapter",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "description": "BullMQ queue adapter for Bullstudio embedded mode.",
   "type": "module",
   "license": "MIT",
@@ -36,7 +36,7 @@
   ],
   "scripts": {
     "build": "pnpm --filter @bullstudio/connect-types build && tsup",
-    "lint": "tsc --noEmit",
+    "lint": "biome lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -51,7 +51,7 @@
     "bullmq": "^5.0.0"
   },
   "dependencies": {
-    "@bullstudio/connect-types": "workspace:0.1.0"
+    "@bullstudio/connect-types": "workspace:*"
   },
   "devDependencies": {
     "@bullstudio/adapter-utils": "workspace:*",

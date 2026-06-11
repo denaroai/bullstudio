@@ -4,6 +4,7 @@ import {
   defaultCapabilities,
   defaultDashboardIdentity,
   defaultDocumentIdentity,
+  defaultPollingConfig,
   defaultProtection,
 } from "./defaults";
 import { withMutationAccess } from "./mutation";
@@ -51,10 +52,18 @@ export function createEmbeddedDashboard(
       withMutationAccess(resolvedConfig, () =>
         getQueueAdapter(queueAdaptersByKey, queueKey).resumeQueue(),
       ),
+    drainQueue: (queueKey) =>
+      withMutationAccess(resolvedConfig, () =>
+        getQueueAdapter(queueAdaptersByKey, queueKey).drainQueue(),
+      ),
     getJobs: (queueKey, options) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getJobs(options),
     getJobsSummary: (queueKey, options) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getJobsSummary(options),
+    getQueueMetrics: async (queueKey, type) => {
+      const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+      return adapter.getMetrics ? adapter.getMetrics(type) : null;
+    },
     getJob: (queueKey, jobId) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getJob(jobId),
     getJobLogs: (queueKey, jobId) =>
@@ -69,11 +78,60 @@ export function createEmbeddedDashboard(
       ),
     getWorkerCount: (queueKey) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getWorkerCount(),
-    listFlows: (options) => listFlows(resolvedConfig.queues, options),
+    listWorkers: async (queueKey) => {
+      const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+      return adapter.listWorkers ? adapter.listWorkers() : [];
+    },
+    listFlows: (options) =>
+      listFlows(
+        options?.queueKey
+          ? resolvedConfig.queues.filter(
+              (queue) => queue.key === options.queueKey,
+            )
+          : resolvedConfig.queues,
+        options,
+      ),
     getFlow: async (queueKey, flowId) => {
       const getFlow = getQueueAdapter(queueAdaptersByKey, queueKey).getFlow;
       return getFlow ? getFlow(flowId) : null;
     },
+    getJobFlow: async (queueKey, jobId) => {
+      const getJobFlow = getQueueAdapter(
+        queueAdaptersByKey,
+        queueKey,
+      ).getJobFlow;
+      return getJobFlow ? getJobFlow(jobId) : null;
+    },
+    listQueueSchedulers: async (queueKey, options) => {
+      const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+      return adapter.listJobSchedulers
+        ? adapter.listJobSchedulers(options)
+        : [];
+    },
+    getJobScheduler: async (queueKey, target) => {
+      const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+      return adapter.getJobScheduler ? adapter.getJobScheduler(target) : null;
+    },
+    upsertJobScheduler: (queueKey, input) =>
+      withMutationAccess(resolvedConfig, () => {
+        const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+        if (!adapter.upsertJobScheduler) {
+          throw new Error(
+            `Supplied queue "${queueKey}" does not support job schedulers.`,
+          );
+        }
+        return adapter.upsertJobScheduler(input);
+      }),
+    removeJobScheduler: (queueKey, target) =>
+      withMutationAccess(resolvedConfig, () => {
+        const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+        if (!adapter.removeJobScheduler) {
+          throw new Error(
+            `Supplied queue "${queueKey}" does not support job schedulers.`,
+          );
+        }
+        return adapter.removeJobScheduler(target);
+      }),
     handle: (request) =>
       handleEmbeddedDashboardRequest(request, resolvedConfig),
     mountPrivateDashboardApi: () => ({
@@ -181,6 +239,19 @@ function resolveDashboardConfig(
     dashboardIdentity: config.dashboardIdentity ?? defaultDashboardIdentity,
     documentIdentity: config.documentIdentity ?? defaultDocumentIdentity,
     basePath: normalizeBasePath(config.basePath),
+    polling: resolvePollingConfig(config.polling),
+  };
+}
+
+function resolvePollingConfig(
+  polling: DashboardConfig["polling"],
+): ResolvedDashboardConfig["polling"] {
+  return {
+    enabled: polling?.enabled ?? defaultPollingConfig.enabled,
+    interval: polling?.interval ?? defaultPollingConfig.interval,
+    minInterval: polling?.minInterval,
+    allowUserOverride:
+      polling?.allowUserOverride ?? defaultPollingConfig.allowUserOverride,
   };
 }
 
@@ -225,6 +296,8 @@ function aggregateCapabilities(queues: QueueAdapter[]): AdapterCapabilities {
       jobRetry: result.jobRetry || queue.capabilities.jobRetry,
       queuePause: result.queuePause || queue.capabilities.queuePause,
       queueResume: result.queueResume || queue.capabilities.queueResume,
+      queueDrain: result.queueDrain || queue.capabilities.queueDrain,
+      schedulers: result.schedulers || queue.capabilities.schedulers,
       workers: result.workers || queue.capabilities.workers,
     }),
     defaultCapabilities,

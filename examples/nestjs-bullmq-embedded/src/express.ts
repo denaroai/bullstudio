@@ -1,9 +1,9 @@
 import "reflect-metadata";
 
 import { NestFactory } from "@nestjs/core";
-import { AppModule, EMAIL_QUEUE, REDIS_CONNECTION } from "./app.module";
 import type { Queue } from "bullmq";
 import type IORedis from "ioredis";
+import { AppModule, EMAIL_QUEUE, REDIS_CONNECTION } from "./app.module";
 
 const app = await NestFactory.create(AppModule);
 

@@ -1,8 +1,11 @@
-import { PassThrough } from "node:stream";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PassThrough } from "node:stream";
 import type { ViteDevServer } from "vite";
-import { installStandaloneApiMiddleware } from "./standalone-api-plugin";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  installStandaloneApiMiddleware,
+  toViteFsModuleId,
+} from "./standalone-api-plugin";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -82,6 +85,30 @@ describe("standalone API Vite middleware", () => {
     });
 
     vi.unstubAllEnvs();
+  });
+
+  it("loads the standalone server through a Windows-safe Vite fs module id", async () => {
+    const { server } = createServerHarness();
+    await installStandaloneApiMiddleware(server);
+
+    expect(server.ssrLoadModule).toHaveBeenCalledOnce();
+    expect(server.ssrLoadModule).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^\/@fs\/(?:[A-Za-z]:\/)?repo\/apps\/standalone\/server\/standalone\.ts$/,
+      ),
+    );
+  });
+});
+
+describe("toViteFsModuleId", () => {
+  it("normalizes Windows absolute paths for Vite's /@fs URL format", () => {
+    expect(
+      toViteFsModuleId(
+        "C:\\Users\\celovie\\Desktop\\Development\\bullstudio\\apps\\standalone\\server\\standalone.ts",
+      ),
+    ).toBe(
+      "/@fs/C:/Users/celovie/Desktop/Development/bullstudio/apps/standalone/server/standalone.ts",
+    );
   });
 });
 

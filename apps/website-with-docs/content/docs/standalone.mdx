@@ -59,8 +59,26 @@ bullstudio
 | `REDIS_PREFIX` | Comma-separated Redis key prefixes. |
 | `BULLSTUDIO_USERNAME` | Login username when `BULLSTUDIO_PASSWORD` is set. |
 | `BULLSTUDIO_PASSWORD` | Enables dashboard login. |
+| `BULLSTUDIO_POLL_ENABLED` | Set to `false` to disable polling entirely. |
+| `BULLSTUDIO_POLL_INTERVAL` | Default poll interval in milliseconds (default `2000`). |
+| `BULLSTUDIO_POLL_MIN_INTERVAL` | Minimum interval in milliseconds operators can select. |
+| `BULLSTUDIO_POLL_ALLOW_OVERRIDE` | Set to `false` to pin the interval and hide the in-dashboard control. |
 
 Command-line flags take precedence over environment variables for the same setting.
+
+## Polling
+
+Standalone mode polls Redis to keep live views current. To ease load on pay-per-command or shared Redis, slow polling down, pin it, or turn it off with the `BULLSTUDIO_POLL_*` variables above. These mirror the embedded [`polling` config](/docs/configuration#polling).
+
+```bash
+# Poll every 10s instead of the 2s default
+BULLSTUDIO_POLL_INTERVAL=10000 bullstudio -r redis://localhost:6379
+
+# Disable polling; operators refresh each view manually
+BULLSTUDIO_POLL_ENABLED=false bullstudio -r redis://localhost:6379
+```
+
+Operators can still choose their own interval (or **Off**) from the sidebar, bounded by `BULLSTUDIO_POLL_MIN_INTERVAL` and `BULLSTUDIO_POLL_ALLOW_OVERRIDE`.
 
 ## Docker
 

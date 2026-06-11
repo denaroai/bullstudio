@@ -11,10 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as JobsIndexRouteImport } from './routes/jobs/index'
-import { Route as FlowsIndexRouteImport } from './routes/flows/index'
-import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
-import { Route as FlowsFlowIdRouteImport } from './routes/flows/$flowId'
+import { Route as QueuesQueueNameRouteRouteImport } from './routes/queues/$queueName/route'
+import { Route as QueuesQueueNameIndexRouteImport } from './routes/queues/$queueName/index'
+import { Route as QueuesQueueNameWorkersRouteImport } from './routes/queues/$queueName/workers'
+import { Route as QueuesQueueNameSchedulersRouteImport } from './routes/queues/$queueName/schedulers'
+import { Route as QueuesQueueNameJobsRouteImport } from './routes/queues/$queueName/jobs'
+import { Route as QueuesQueueNameFlowsRouteImport } from './routes/queues/$queueName/flows'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -26,80 +28,104 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const JobsIndexRoute = JobsIndexRouteImport.update({
-  id: '/jobs/',
-  path: '/jobs/',
+const QueuesQueueNameRouteRoute = QueuesQueueNameRouteRouteImport.update({
+  id: '/queues/$queueName',
+  path: '/queues/$queueName',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FlowsIndexRoute = FlowsIndexRouteImport.update({
-  id: '/flows/',
-  path: '/flows/',
-  getParentRoute: () => rootRouteImport,
+const QueuesQueueNameIndexRoute = QueuesQueueNameIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => QueuesQueueNameRouteRoute,
 } as any)
-const JobsJobIdRoute = JobsJobIdRouteImport.update({
-  id: '/jobs/$jobId',
-  path: '/jobs/$jobId',
-  getParentRoute: () => rootRouteImport,
+const QueuesQueueNameWorkersRoute = QueuesQueueNameWorkersRouteImport.update({
+  id: '/workers',
+  path: '/workers',
+  getParentRoute: () => QueuesQueueNameRouteRoute,
 } as any)
-const FlowsFlowIdRoute = FlowsFlowIdRouteImport.update({
-  id: '/flows/$flowId',
-  path: '/flows/$flowId',
-  getParentRoute: () => rootRouteImport,
+const QueuesQueueNameSchedulersRoute =
+  QueuesQueueNameSchedulersRouteImport.update({
+    id: '/schedulers',
+    path: '/schedulers',
+    getParentRoute: () => QueuesQueueNameRouteRoute,
+  } as any)
+const QueuesQueueNameJobsRoute = QueuesQueueNameJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => QueuesQueueNameRouteRoute,
+} as any)
+const QueuesQueueNameFlowsRoute = QueuesQueueNameFlowsRouteImport.update({
+  id: '/flows',
+  path: '/flows',
+  getParentRoute: () => QueuesQueueNameRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/flows/$flowId': typeof FlowsFlowIdRoute
-  '/jobs/$jobId': typeof JobsJobIdRoute
-  '/flows/': typeof FlowsIndexRoute
-  '/jobs/': typeof JobsIndexRoute
+  '/queues/$queueName': typeof QueuesQueueNameRouteRouteWithChildren
+  '/queues/$queueName/flows': typeof QueuesQueueNameFlowsRoute
+  '/queues/$queueName/jobs': typeof QueuesQueueNameJobsRoute
+  '/queues/$queueName/schedulers': typeof QueuesQueueNameSchedulersRoute
+  '/queues/$queueName/workers': typeof QueuesQueueNameWorkersRoute
+  '/queues/$queueName/': typeof QueuesQueueNameIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/flows/$flowId': typeof FlowsFlowIdRoute
-  '/jobs/$jobId': typeof JobsJobIdRoute
-  '/flows': typeof FlowsIndexRoute
-  '/jobs': typeof JobsIndexRoute
+  '/queues/$queueName/flows': typeof QueuesQueueNameFlowsRoute
+  '/queues/$queueName/jobs': typeof QueuesQueueNameJobsRoute
+  '/queues/$queueName/schedulers': typeof QueuesQueueNameSchedulersRoute
+  '/queues/$queueName/workers': typeof QueuesQueueNameWorkersRoute
+  '/queues/$queueName': typeof QueuesQueueNameIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/flows/$flowId': typeof FlowsFlowIdRoute
-  '/jobs/$jobId': typeof JobsJobIdRoute
-  '/flows/': typeof FlowsIndexRoute
-  '/jobs/': typeof JobsIndexRoute
+  '/queues/$queueName': typeof QueuesQueueNameRouteRouteWithChildren
+  '/queues/$queueName/flows': typeof QueuesQueueNameFlowsRoute
+  '/queues/$queueName/jobs': typeof QueuesQueueNameJobsRoute
+  '/queues/$queueName/schedulers': typeof QueuesQueueNameSchedulersRoute
+  '/queues/$queueName/workers': typeof QueuesQueueNameWorkersRoute
+  '/queues/$queueName/': typeof QueuesQueueNameIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/login'
-    | '/flows/$flowId'
-    | '/jobs/$jobId'
-    | '/flows/'
-    | '/jobs/'
+    | '/queues/$queueName'
+    | '/queues/$queueName/flows'
+    | '/queues/$queueName/jobs'
+    | '/queues/$queueName/schedulers'
+    | '/queues/$queueName/workers'
+    | '/queues/$queueName/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/flows/$flowId' | '/jobs/$jobId' | '/flows' | '/jobs'
+  to:
+    | '/'
+    | '/login'
+    | '/queues/$queueName/flows'
+    | '/queues/$queueName/jobs'
+    | '/queues/$queueName/schedulers'
+    | '/queues/$queueName/workers'
+    | '/queues/$queueName'
   id:
     | '__root__'
     | '/'
     | '/login'
-    | '/flows/$flowId'
-    | '/jobs/$jobId'
-    | '/flows/'
-    | '/jobs/'
+    | '/queues/$queueName'
+    | '/queues/$queueName/flows'
+    | '/queues/$queueName/jobs'
+    | '/queues/$queueName/schedulers'
+    | '/queues/$queueName/workers'
+    | '/queues/$queueName/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
-  FlowsFlowIdRoute: typeof FlowsFlowIdRoute
-  JobsJobIdRoute: typeof JobsJobIdRoute
-  FlowsIndexRoute: typeof FlowsIndexRoute
-  JobsIndexRoute: typeof JobsIndexRoute
+  QueuesQueueNameRouteRoute: typeof QueuesQueueNameRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -118,44 +144,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/jobs/': {
-      id: '/jobs/'
+    '/queues/$queueName': {
+      id: '/queues/$queueName'
+      path: '/queues/$queueName'
+      fullPath: '/queues/$queueName'
+      preLoaderRoute: typeof QueuesQueueNameRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/queues/$queueName/': {
+      id: '/queues/$queueName/'
+      path: '/'
+      fullPath: '/queues/$queueName/'
+      preLoaderRoute: typeof QueuesQueueNameIndexRouteImport
+      parentRoute: typeof QueuesQueueNameRouteRoute
+    }
+    '/queues/$queueName/workers': {
+      id: '/queues/$queueName/workers'
+      path: '/workers'
+      fullPath: '/queues/$queueName/workers'
+      preLoaderRoute: typeof QueuesQueueNameWorkersRouteImport
+      parentRoute: typeof QueuesQueueNameRouteRoute
+    }
+    '/queues/$queueName/schedulers': {
+      id: '/queues/$queueName/schedulers'
+      path: '/schedulers'
+      fullPath: '/queues/$queueName/schedulers'
+      preLoaderRoute: typeof QueuesQueueNameSchedulersRouteImport
+      parentRoute: typeof QueuesQueueNameRouteRoute
+    }
+    '/queues/$queueName/jobs': {
+      id: '/queues/$queueName/jobs'
       path: '/jobs'
-      fullPath: '/jobs/'
-      preLoaderRoute: typeof JobsIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/queues/$queueName/jobs'
+      preLoaderRoute: typeof QueuesQueueNameJobsRouteImport
+      parentRoute: typeof QueuesQueueNameRouteRoute
     }
-    '/flows/': {
-      id: '/flows/'
+    '/queues/$queueName/flows': {
+      id: '/queues/$queueName/flows'
       path: '/flows'
-      fullPath: '/flows/'
-      preLoaderRoute: typeof FlowsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/jobs/$jobId': {
-      id: '/jobs/$jobId'
-      path: '/jobs/$jobId'
-      fullPath: '/jobs/$jobId'
-      preLoaderRoute: typeof JobsJobIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/flows/$flowId': {
-      id: '/flows/$flowId'
-      path: '/flows/$flowId'
-      fullPath: '/flows/$flowId'
-      preLoaderRoute: typeof FlowsFlowIdRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/queues/$queueName/flows'
+      preLoaderRoute: typeof QueuesQueueNameFlowsRouteImport
+      parentRoute: typeof QueuesQueueNameRouteRoute
     }
   }
 }
 
+interface QueuesQueueNameRouteRouteChildren {
+  QueuesQueueNameFlowsRoute: typeof QueuesQueueNameFlowsRoute
+  QueuesQueueNameJobsRoute: typeof QueuesQueueNameJobsRoute
+  QueuesQueueNameSchedulersRoute: typeof QueuesQueueNameSchedulersRoute
+  QueuesQueueNameWorkersRoute: typeof QueuesQueueNameWorkersRoute
+  QueuesQueueNameIndexRoute: typeof QueuesQueueNameIndexRoute
+}
+
+const QueuesQueueNameRouteRouteChildren: QueuesQueueNameRouteRouteChildren = {
+  QueuesQueueNameFlowsRoute: QueuesQueueNameFlowsRoute,
+  QueuesQueueNameJobsRoute: QueuesQueueNameJobsRoute,
+  QueuesQueueNameSchedulersRoute: QueuesQueueNameSchedulersRoute,
+  QueuesQueueNameWorkersRoute: QueuesQueueNameWorkersRoute,
+  QueuesQueueNameIndexRoute: QueuesQueueNameIndexRoute,
+}
+
+const QueuesQueueNameRouteRouteWithChildren =
+  QueuesQueueNameRouteRoute._addFileChildren(QueuesQueueNameRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
-  FlowsFlowIdRoute: FlowsFlowIdRoute,
-  JobsJobIdRoute: JobsJobIdRoute,
-  FlowsIndexRoute: FlowsIndexRoute,
-  JobsIndexRoute: JobsIndexRoute,
+  QueuesQueueNameRouteRoute: QueuesQueueNameRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

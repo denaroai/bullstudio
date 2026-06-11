@@ -2,6 +2,7 @@ import {
   createJobNotFoundError,
   createWorkerCount,
   filterJobsByName,
+  mapRedisClientWorker,
   normalizeJobCounts,
   sortJobs,
   toJobSummary,
@@ -9,8 +10,12 @@ import {
 import type {
   Job,
   JobCounts,
+  JobScheduler,
+  JobSchedulerRepeat,
   JobStatus,
   QueueAdapter,
+  QueueMetricSnapshot,
+  QueueMetricType,
 } from "@bullstudio/connect-types";
 import type Bull from "bull";
 
@@ -36,6 +41,8 @@ export function createBullQueueAdapter(
       jobRetry: true,
       queuePause: true,
       queueResume: true,
+      queueDrain: true,
+      schedulers: true,
       workers: true,
     },
     getQueue: async () => {
@@ -57,6 +64,9 @@ export function createBullQueueAdapter(
     },
     resumeQueue: async () => {
       await queue.resume();
+    },
+    drainQueue: async () => {
+      await queue.empty();
     },
     getJobs: async (options) => {
       const { filter, sort, limit = 100, offset = 0 } = options ?? {};
@@ -96,6 +106,7 @@ export function createBullQueueAdapter(
 
       return summaries.map(toJobSummary);
     },
+    getMetrics: (type) => getMetrics(queue, type),
     getJob: async (jobId) => {
       const job = await queue.getJob(jobId);
       return job ? mapJob(job, queue.name) : null;
@@ -119,7 +130,130 @@ export function createBullQueueAdapter(
       const workers = await queue.getWorkers();
       return createWorkerCount(queue.name, workers);
     },
+    listWorkers: async () => {
+      const prefix = getQueuePrefix(queue);
+      const workers = await queue.getWorkers();
+      return workers.map((worker) =>
+        mapRedisClientWorker(worker, queue.name, {
+          prefix,
+          provider: "bull",
+        }),
+      );
+    },
+    listJobSchedulers: async (options) => {
+      const limit = options?.limit ?? 50;
+      const jobs = await queue.getRepeatableJobs(0, limit - 1, true);
+      return jobs.map((job) =>
+        mapScheduler(job, queue.name, getQueuePrefix(queue)),
+      );
+    },
+    getJobScheduler: async (target) => {
+      const jobs = await queue.getRepeatableJobs(0, -1, true);
+      const match = jobs.find(
+        (job) =>
+          job.key === target.key ||
+          (target.id !== undefined && job.id === target.id),
+      );
+      return match
+        ? mapScheduler(match, queue.name, getQueuePrefix(queue))
+        : null;
+    },
+    upsertJobScheduler: async (input) => {
+      // Bull has no native upsert: drop the previous repeatable (its key
+      // encodes the repeat options) before adding the updated one.
+      if (input.previousKey) {
+        await queue.removeRepeatableByKey(input.previousKey);
+      }
+      await queue.add(
+        input.template?.name ?? input.schedulerId,
+        input.template?.data ?? {},
+        {
+          repeat: toRepeatOptions(input.repeat),
+          jobId: input.schedulerId,
+        },
+      );
+    },
+    removeJobScheduler: async (target) => {
+      await queue.removeRepeatableByKey(target.key);
+      return true;
+    },
   };
+}
+
+// Bull exposes `getMetrics` at runtime (same shape as BullMQ) but it is absent
+// from `@types/bull`, and its `data` points come back as raw strings.
+type BullMetricsQueue = Bull.Queue & {
+  getMetrics(
+    type: QueueMetricType,
+    start?: number,
+    end?: number,
+  ): Promise<{
+    meta: { count: number; prevTS: number; prevCount: number };
+    data: Array<number | string>;
+    count: number;
+  }>;
+};
+
+async function getMetrics(
+  queue: Bull.Queue,
+  type: QueueMetricType,
+): Promise<QueueMetricSnapshot> {
+  const metrics = await (queue as BullMetricsQueue).getMetrics(type);
+
+  return {
+    meta: metrics.meta,
+    data: metrics.data.map((point) => Number(point) || 0),
+    count: metrics.count,
+  };
+}
+
+function mapScheduler(
+  job: Bull.JobInformation,
+  queueName: string,
+  prefix: string,
+): JobScheduler {
+  // Bull leaves the unused field `null` at runtime, so the static `cron`/
+  // `every` types are wider than what's actually returned.
+  const raw = job as Bull.JobInformation & {
+    cron?: string | null;
+    every?: number | string | null;
+  };
+  const pattern = raw.cron ?? undefined;
+  const every =
+    raw.every === undefined || raw.every === null
+      ? undefined
+      : Number(raw.every);
+
+  return {
+    key: job.key,
+    id: job.id,
+    name: job.name,
+    queueName,
+    prefix,
+    strategy: pattern ? "cron" : "every",
+    pattern,
+    every:
+      pattern || every === undefined || Number.isNaN(every) ? undefined : every,
+    tz: job.tz,
+    next: job.next,
+    endDate: job.endDate,
+  };
+}
+
+function toRepeatOptions(
+  repeat: JobSchedulerRepeat,
+): Bull.CronRepeatOptions | Bull.EveryRepeatOptions {
+  const base = {
+    tz: repeat.tz,
+    endDate: repeat.endDate,
+    limit: repeat.limit,
+  };
+
+  if (repeat.strategy === "every") {
+    return { ...base, every: repeat.every ?? 0 };
+  }
+
+  return { ...base, cron: repeat.pattern ?? "" };
 }
 
 function resolveStatuses(status?: JobStatus | JobStatus[]): BullJobStatus[] {

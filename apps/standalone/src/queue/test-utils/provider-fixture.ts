@@ -1,5 +1,5 @@
-import { BullMqProvider } from "../providers/bullmq";
 import { BullProvider } from "../providers/bull";
+import { BullMqProvider } from "../providers/bullmq";
 import type { QueueServiceConfig } from "../types";
 import { TEST_REDIS_URL } from "./redis";
 

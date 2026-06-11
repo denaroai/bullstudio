@@ -1,7 +1,9 @@
 import type {
   Job,
   JobQueryOptions,
+  JobScheduler,
   JobSummary,
+  Worker,
 } from "@bullstudio/connect-types";
 import {
   createPrivateDashboardRouter,
@@ -11,10 +13,17 @@ import {
   type PrivateDashboardContext,
   type PrivateDashboardQueueSource,
   type QueueSourceStatus as PrivateQueueSourceStatus,
+  type QueueMetricsListInput,
+  type QueueMetricsSummary,
   type QueueTargetInput,
+  type SchedulerListInput,
+  type SchedulerTargetInput,
+  type SchedulerUpsertInput,
+  type WorkerListInput,
 } from "@bullstudio/private-router";
 import { TRPCError } from "@trpc/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { getAuthenticatedSession } from "./session";
 import type {
   DashboardProtection,
   DashboardQueue,
@@ -24,7 +33,6 @@ import type {
   PrivateDashboardApiMount,
   QueueSourceStatus,
 } from "./types";
-import { getAuthenticatedSession } from "./session";
 import { getPathname, toAbsoluteUrl } from "./url";
 
 export function createPrivateDashboardApi(
@@ -91,6 +99,7 @@ export function createEmbeddedQueueSource(
 
       return jobs;
     },
+    listQueueMetrics: (input) => listQueueMetrics(dashboard, input),
     getJob: async (input) => {
       const queue = await getQueueForTarget(dashboard, input);
       return dashboard.getJob(queue.key, input.jobId);
@@ -111,11 +120,101 @@ export function createEmbeddedQueueSource(
       await dashboard.resumeQueue(queue.key);
       return { success: true };
     },
-    listFlows: (input) => dashboard.listFlows(getFlowListInput(input)),
+    drainQueue: async (input) => {
+      const queue = await getSuppliedQueueByPrivateApiInput(dashboard, input);
+      await dashboard.drainQueue(queue.key);
+      return { success: true };
+    },
+    listFlows: async (input) => {
+      if (input?.queueKey || input?.queueName) {
+        const queue = await getSuppliedQueueByPrivateApiInput(dashboard, input);
+        return dashboard.listFlows({
+          limit: input?.limit,
+          queueKey: queue.key,
+        });
+      }
+      return dashboard.listFlows(getFlowListInput(input));
+    },
     getFlow: async (input) => {
       const queue = await getQueueForTarget(dashboard, input);
       return dashboard.getFlow(queue.key, input.flowId);
     },
+    getJobFlow: async (input) => {
+      const queue = await getQueueForTarget(dashboard, input);
+      return dashboard.getJobFlow(queue.key, input.jobId);
+    },
+    listWorkers: async (input) => {
+      const queues = await getQueuesForWorkerList(dashboard, input);
+      const workers: Array<Worker & { queueKey?: string }> = [];
+
+      for (const queue of queues) {
+        if (!queue.capabilities.workers) {
+          if (input.queueKey || input.queueName) {
+            assertWorkerCapability(queue);
+          }
+          continue;
+        }
+        const queueWorkers = await dashboard.listWorkers(queue.key);
+        workers.push(
+          ...queueWorkers.map((worker) => ({
+            ...worker,
+            prefix: worker.prefix ?? queue.prefix,
+            queueKey: queue.key,
+            provider: worker.provider ?? queue.provider,
+          })),
+        );
+      }
+
+      return workers.slice(0, input.limit ?? 200);
+    },
+    getWorker: async (input) => {
+      const queue = await getQueueForTarget(dashboard, input);
+      assertWorkerCapability(queue);
+      const workers = await dashboard.listWorkers(queue.key);
+      return (
+        workers
+          .map((worker) => ({
+            ...worker,
+            prefix: worker.prefix ?? queue.prefix,
+            queueKey: queue.key,
+            provider: worker.provider ?? queue.provider,
+          }))
+          .find((worker) => worker.id === input.workerId) ?? null
+      );
+    },
+    listJobSchedulers: async (input) => {
+      const queues = await getQueuesForSchedulerList(dashboard, input);
+      const schedulers: Array<JobScheduler & { queueKey?: string }> = [];
+
+      for (const queue of queues) {
+        if (!queue.capabilities.schedulers) {
+          continue;
+        }
+        const queueSchedulers = await dashboard.listQueueSchedulers(queue.key, {
+          limit: input.limit,
+        });
+        schedulers.push(
+          ...queueSchedulers.map((scheduler) => ({
+            ...scheduler,
+            prefix: scheduler.prefix ?? queue.prefix,
+            queueKey: queue.key,
+          })),
+        );
+      }
+
+      return schedulers
+        .sort((a, b) => (a.next ?? Infinity) - (b.next ?? Infinity))
+        .slice(0, input.limit ?? 100);
+    },
+    getJobScheduler: async (input) => {
+      const queue = await getQueueForTarget(dashboard, input);
+      return dashboard.getJobScheduler(queue.key, {
+        key: input.schedulerKey,
+        id: input.schedulerId,
+      });
+    },
+    upsertJobScheduler: (input) => upsertJobScheduler(dashboard, input),
+    removeJobScheduler: (input) => removeJobScheduler(dashboard, input),
   };
 }
 
@@ -168,6 +267,30 @@ async function getQueuesForJobList(
   }
 
   return dashboard.listQueues();
+}
+
+async function listQueueMetrics(
+  dashboard: EmbeddedDashboardInstance,
+  input: QueueMetricsListInput,
+): Promise<QueueMetricsSummary[]> {
+  const queues = await getQueuesForJobList(dashboard, input);
+
+  return Promise.all(
+    queues.map(async (queue) => {
+      const [completed, failed] = await Promise.all([
+        dashboard.getQueueMetrics(queue.key, "completed"),
+        dashboard.getQueueMetrics(queue.key, "failed"),
+      ]);
+
+      return {
+        queueKey: queue.key,
+        queueName: queue.name,
+        prefix: queue.prefix,
+        completed,
+        failed,
+      };
+    }),
+  );
 }
 
 function getQueueJobQueryOptions(input: JobListInput): JobQueryOptions {
@@ -248,6 +371,84 @@ async function removeJob(
     success: true,
     message: `Job "${job.name}" has been removed`,
   };
+}
+
+async function getQueuesForSchedulerList(
+  dashboard: EmbeddedDashboardInstance,
+  input: SchedulerListInput,
+): Promise<DashboardQueue[]> {
+  if (input.queueKey || input.queueName) {
+    return [await getSuppliedQueueByPrivateApiInput(dashboard, input)];
+  }
+
+  return dashboard.listQueues();
+}
+
+async function getQueuesForWorkerList(
+  dashboard: EmbeddedDashboardInstance,
+  input: WorkerListInput,
+): Promise<DashboardQueue[]> {
+  if (input.queueKey || input.queueName) {
+    return [await getSuppliedQueueByPrivateApiInput(dashboard, input)];
+  }
+
+  return dashboard.listQueues();
+}
+
+async function upsertJobScheduler(
+  dashboard: EmbeddedDashboardInstance,
+  input: SchedulerUpsertInput,
+): Promise<{ success: true; message: string }> {
+  const queue = await getQueueForTarget(dashboard, input);
+  assertSchedulerCapability(queue);
+
+  await dashboard.upsertJobScheduler(queue.key, {
+    schedulerId: input.schedulerId,
+    previousKey: input.previousKey,
+    repeat: input.repeat,
+    template: input.template,
+  });
+
+  return {
+    success: true,
+    message: `Scheduler "${input.schedulerId}" has been saved`,
+  };
+}
+
+async function removeJobScheduler(
+  dashboard: EmbeddedDashboardInstance,
+  input: SchedulerTargetInput,
+): Promise<{ success: true; message: string }> {
+  const queue = await getQueueForTarget(dashboard, input);
+  assertSchedulerCapability(queue);
+
+  await dashboard.removeJobScheduler(queue.key, {
+    key: input.schedulerKey,
+    id: input.schedulerId,
+  });
+
+  return {
+    success: true,
+    message: `Scheduler "${input.schedulerId ?? input.schedulerKey}" has been removed`,
+  };
+}
+
+function assertSchedulerCapability(queue: DashboardQueue): void {
+  if (!queue.capabilities.schedulers) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Job schedulers are not supported for supplied queue "${queue.key}".`,
+    });
+  }
+}
+
+function assertWorkerCapability(queue: DashboardQueue): void {
+  if (!queue.capabilities.workers) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Workers are not supported for supplied queue "${queue.key}".`,
+    });
+  }
 }
 
 async function getSuppliedQueueByPrivateApiInput(

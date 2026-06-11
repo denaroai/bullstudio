@@ -116,6 +116,10 @@ _Avoid_: Shared server, common middleware
 The origin of the queues visible to a dashboard instance: supplied queues in embedded mode or discovered queues in standalone mode.
 _Avoid_: Backend, connector
 
+**Visible queue**:
+A queue shown in a dashboard instance. In embedded mode, visible queues are supplied queues; in standalone mode, visible queues are discovered queues.
+_Avoid_: Sidebar queue, available queue
+
 **Queue source status**:
 The dashboard's summary of the queue source it is using, such as supplied queue count, adapter types, capabilities, and source health.
 _Avoid_: Redis connection info, connection page
@@ -213,6 +217,10 @@ Maintainer: "No. Framework adapters mount the embedded core into each host frame
 Developer: "Why do standalone mode and embedded mode show different queues?"
 
 Maintainer: "They use different queue sources: standalone mode discovers queues from Redis, while embedded mode uses supplied queues."
+
+Developer: "What should the queue list in the sidebar show?"
+
+Maintainer: "It should show visible queues. In embedded mode those are supplied queues, and in standalone mode those are discovered queues."
 
 Developer: "What should embedded mode show instead of Redis connection details?"
 

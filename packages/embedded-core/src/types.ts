@@ -5,10 +5,16 @@ import type {
   Job,
   JobCounts,
   JobQueryOptions,
+  JobScheduler,
+  JobSchedulerTarget,
   JobSummary,
   Queue,
   QueueAdapter,
   QueueAdapterProvider,
+  QueueMetricSnapshot,
+  QueueMetricType,
+  UpsertJobSchedulerInput,
+  Worker,
   WorkerCount,
 } from "@bullstudio/connect-types";
 
@@ -18,6 +24,8 @@ export type {
   AdapterCapabilities,
   QueueAdapter,
   QueueAdapterProvider,
+  QueueMetricSnapshot,
+  QueueMetricType,
 } from "@bullstudio/connect-types";
 
 export type DashboardProtection =
@@ -67,6 +75,42 @@ export interface DocumentIdentity {
   favicon?: string;
 }
 
+/**
+ * Controls how aggressively the dashboard polls the backend (and therefore
+ * Redis). Operators set this to protect their Redis instance — especially on
+ * pay-per-command hosted Redis where every poll has a cost.
+ */
+export interface PollingConfig {
+  /**
+   * Master switch. When `false`, the dashboard never polls and end-users
+   * cannot turn polling on. Defaults to `true`.
+   */
+  enabled?: boolean;
+  /**
+   * Default poll interval in milliseconds applied to every live view.
+   * Defaults to 2000.
+   */
+  interval?: number;
+  /**
+   * Optional floor (ms) end-users cannot poll faster than. Lets operators cap
+   * load without disabling user overrides entirely.
+   */
+  minInterval?: number;
+  /**
+   * Whether end-users may change the interval / turn polling off from the
+   * dashboard UI. Defaults to `true`. When `false`, the operator's `interval`
+   * is pinned and the in-dashboard control is hidden.
+   */
+  allowUserOverride?: boolean;
+}
+
+export interface ResolvedPollingConfig {
+  enabled: boolean;
+  interval: number;
+  minInterval?: number;
+  allowUserOverride: boolean;
+}
+
 export interface DashboardConfig {
   queues: QueueAdapter[];
   readOnly?: boolean;
@@ -74,6 +118,7 @@ export interface DashboardConfig {
   dashboardIdentity?: DashboardIdentity;
   documentIdentity?: DocumentIdentity;
   basePath?: string;
+  polling?: PollingConfig;
 }
 
 export interface ResolvedDashboardConfig {
@@ -83,6 +128,7 @@ export interface ResolvedDashboardConfig {
   dashboardIdentity: DashboardIdentity;
   documentIdentity: DocumentIdentity;
   basePath: string;
+  polling: ResolvedPollingConfig;
 }
 
 export interface StandaloneDashboardConfig {
@@ -141,11 +187,16 @@ export interface EmbeddedDashboardInstance {
   getJobCounts(queueKey: string): Promise<JobCounts>;
   pauseQueue(queueKey: string): Promise<void>;
   resumeQueue(queueKey: string): Promise<void>;
+  drainQueue(queueKey: string): Promise<void>;
   getJobs(queueKey: string, options?: JobQueryOptions): Promise<Job[]>;
   getJobsSummary(
     queueKey: string,
     options?: JobQueryOptions,
   ): Promise<JobSummary[]>;
+  getQueueMetrics(
+    queueKey: string,
+    type: QueueMetricType,
+  ): Promise<QueueMetricSnapshot | null>;
   getJob(queueKey: string, jobId: string): Promise<Job | null>;
   getJobLogs(
     queueKey: string,
@@ -157,8 +208,29 @@ export interface EmbeddedDashboardInstance {
   retryJob(queueKey: string, jobId: string): Promise<void>;
   removeJob(queueKey: string, jobId: string): Promise<void>;
   getWorkerCount(queueKey: string): Promise<WorkerCount>;
-  listFlows(options?: { limit?: number }): Promise<FlowSummary[]>;
+  listWorkers(queueKey: string): Promise<Worker[]>;
+  listFlows(options?: {
+    limit?: number;
+    queueKey?: string;
+  }): Promise<FlowSummary[]>;
   getFlow(queueKey: string, flowId: string): Promise<FlowTree | null>;
+  getJobFlow(queueKey: string, jobId: string): Promise<FlowTree | null>;
+  listQueueSchedulers(
+    queueKey: string,
+    options?: { limit?: number },
+  ): Promise<JobScheduler[]>;
+  getJobScheduler(
+    queueKey: string,
+    target: JobSchedulerTarget,
+  ): Promise<JobScheduler | null>;
+  upsertJobScheduler(
+    queueKey: string,
+    input: UpsertJobSchedulerInput,
+  ): Promise<void>;
+  removeJobScheduler(
+    queueKey: string,
+    target: JobSchedulerTarget,
+  ): Promise<boolean>;
   handle(request: FrameworkRequest): Promise<FrameworkResponse>;
   mountPrivateDashboardApi(): PrivateDashboardApiMount;
 }

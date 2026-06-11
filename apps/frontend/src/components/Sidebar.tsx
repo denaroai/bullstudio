@@ -6,29 +6,23 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from "@bullstudio/ui/components/sidebar";
+import { cn } from "@bullstudio/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
-import {
-  Database,
-  Github,
-  LayoutDashboard,
-  ListTodo,
-  LogOut,
-  Monitor,
-  Moon,
-  Sun,
-  Twitter,
-  Workflow,
-} from "lucide-react";
+import { Database, Github, LogOut, Twitter } from "lucide-react";
+import { useEffect, useState } from "react";
+import { JobDistributionPie } from "@/components/overview/JobDistributionPie";
+import { usePolling } from "@/components/PollingProvider";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import { VERSION } from "@/const";
-import { type Theme, useTheme } from "@/components/ThemeProvider";
 import { useTRPC } from "@/integrations/trpc/react";
+import { queueRouteParam } from "@/lib/queue-key";
 import { getQueueSourceViewModel } from "@/lib/queue-source-status";
 import {
   getAssetUrl,
@@ -36,8 +30,6 @@ import {
   getBasePath,
   getDashboardIdentity,
 } from "@/lib/runtime-config";
-import { cn } from "@bullstudio/ui/lib/utils";
-import { useEffect, useState } from "react";
 
 interface AuthSessionResponse {
   authEnabled?: boolean;
@@ -50,49 +42,85 @@ export function AppSidebar() {
   const dashboardIdentity = getDashboardIdentity();
   const dashboardLogo = dashboardIdentity?.logo;
   const dashboardTitle = dashboardIdentity?.title ?? "bullstudio";
+  const { enabled: pollEnabled, interval: pollInterval } = usePolling();
 
-  const { data: connectionInfo } = useQuery(
-    trpc.connection.info.queryOptions(),
+  const { data: connectionInfo, isError: connectionError } = useQuery(
+    // Poll so the connection indicator reflects Redis going down/recovering
+    // instead of staying frozen on the last successful fetch. Honors the
+    // user's polling preference so we don't keep hitting Redis when disabled.
+    trpc.connection.info.queryOptions(undefined, {
+      refetchInterval: pollEnabled ? pollInterval : false,
+    }),
   );
   const queueSource = connectionInfo?.queueSource
     ? getQueueSourceViewModel(connectionInfo.queueSource)
     : null;
 
-  const isActive = (href: string) => {
-    if (href === "/") {
-      return pathname === "/";
-    }
-    return pathname.startsWith(href);
+  const hasMultiplePrefixes =
+    queueSource?.prefixes && queueSource.prefixes.length > 1;
+
+  // If the status query itself fails the API is unreachable; treat that as the
+  // worst case so the indicator never shows a stale "connected" state.
+  const connectionStatus = connectionError
+    ? "unavailable"
+    : (queueSource?.status ?? null);
+
+  const queueBasePath = (queueName: string) => `/queues/${queueName}`;
+
+  const isQueueActive = (queueName: string) => {
+    const base = queueBasePath(queueName);
+    return pathname === base || pathname.startsWith(`${base}/`);
   };
 
-  // Build navigation items based on provider capabilities
-  const baseNavItems = [
-    {
-      title: "Overview",
-      href: "/",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "Jobs",
-      href: "/jobs",
-      icon: ListTodo,
-    },
-  ];
+  const queues = useQuery(trpc.queues.list.queryOptions());
 
-  // Only show Flows for providers that support it (BullMQ)
-  const navItems = queueSource?.features.flows.visible
-    ? [
-        ...baseNavItems,
-        {
-          title: "Flows",
-          href: "/flows",
-          icon: Workflow,
-        },
-      ]
-    : baseNavItems;
+  const queueList = queues.data ?? [];
+
+  // Bucket queues by prefix so each Redis prefix can render as its own labelled
+  // subsection. Insertion order is preserved (the backend already returns
+  // queues grouped by prefix), and queue names are unique within a prefix.
+  const queuesByPrefix = new Map<string, typeof queueList>();
+  for (const queue of queueList) {
+    const bucket = queuesByPrefix.get(queue.prefix ?? "");
+    if (bucket) {
+      bucket.push(queue);
+    } else {
+      queuesByPrefix.set(queue.prefix ?? "", [queue]);
+    }
+  }
+
+  const renderQueueItem = (queue: (typeof queueList)[number]) => {
+    const routeParam = queueRouteParam(queue);
+    const queueActive = isQueueActive(routeParam);
+
+    return (
+      <SidebarMenuItem key={routeParam}>
+        <SidebarMenuButton
+          asChild
+          isActive={queueActive}
+          tooltip={queue.name}
+          className="h-9"
+        >
+          <Link
+            to="/queues/$queueName"
+            params={{ queueName: routeParam }}
+            className="h-9"
+          >
+            {queue.jobCounts && (
+              <JobDistributionPie
+                counts={queue.jobCounts}
+                className="group-data-[collapsible=icon]:hidden"
+              />
+            )}
+            <span className="font-mono text-sm">{queue.name}</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0">
+    <Sidebar collapsible="none" className="border-r-0">
       {/* Header with Logo */}
       <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-4">
         <div className="flex items-center gap-3">
@@ -106,46 +134,48 @@ export function AppSidebar() {
               {dashboardTitle}
             </span>
             <span className="text-[10px] text-sidebar-foreground/55 uppercase tracking-wider">
-              {dashboardIdentity ? "Embedded" : "CLI"}
+              {dashboardIdentity ? "Embedded" : "Standalone"}
             </span>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Main Navigation */}
-        <SidebarGroup className="py-4">
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => {
-                const active = isActive(item.href);
-
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={active}
-                      tooltip={item.title}
-                      className="h-10 transition-colors"
-                    >
-                      <Link to={item.href}>
-                        <item.icon className="size-4" />
-                        <span className="font-medium">{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {hasMultiplePrefixes ? (
+          Array.from(queuesByPrefix, ([prefix, prefixQueues]) => (
+            <SidebarGroup key={prefix}>
+              <SidebarGroupLabel className="font-mono">
+                {prefix}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>{prefixQueues.map(renderQueueItem)}</SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))
+        ) : (
+          <SidebarGroup>
+            <SidebarGroupLabel>Queues</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>{queueList.map(renderQueueItem)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Redis Connection Info */}
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <div className="px-3 py-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0">
               <div className="flex items-center gap-2 text-xs text-sidebar-foreground/60 group-data-[collapsible=icon]:justify-center">
-                <Database className="size-3.5 shrink-0 text-emerald-500" />
+                <Database
+                  className={cn(
+                    "size-3.5 shrink-0",
+                    connectionStatus === "healthy"
+                      ? "text-emerald-500"
+                      : connectionStatus === "degraded"
+                        ? "text-amber-500"
+                        : "text-destructive",
+                  )}
+                />
                 <div className="flex flex-col group-data-[collapsible=icon]:hidden">
                   <div className="flex items-center gap-2">
                     <span className="text-sidebar-foreground/80 font-medium">
@@ -157,14 +187,22 @@ export function AppSidebar() {
                       </span>
                     )}
                   </div>
-                  <span className="text-sidebar-foreground/60 font-mono text-[11px]">
-                    {queueSource?.detail || "connecting..."}
+                  <span
+                    className={cn(
+                      "font-mono text-[11px]",
+                      connectionStatus === "degraded"
+                        ? "text-amber-500"
+                        : connectionStatus === "unavailable"
+                          ? "text-destructive"
+                          : "text-sidebar-foreground/60",
+                    )}
+                  >
+                    {connectionStatus === "degraded"
+                      ? "reconnecting…"
+                      : connectionStatus === "unavailable"
+                        ? "disconnected"
+                        : queueSource?.detail || "connecting…"}
                   </span>
-                  {queueSource?.prefixes && queueSource.prefixes.length > 1 && (
-                    <span className="text-sidebar-foreground/45 font-mono text-[10px] mt-0.5">
-                      prefixes: {queueSource.prefixes.join(", ")}
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
@@ -174,8 +212,10 @@ export function AppSidebar() {
 
       {/* Footer */}
       <SidebarFooter className="gap-3 border-t border-sidebar-border p-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:p-2">
-        <ThemeSwitcher />
-        <LogoutButton />
+        <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2">
+          <SettingsDialog />
+          <LogoutButton />
+        </div>
         <div className="flex items-center justify-between text-xs text-sidebar-foreground/55 group-data-[collapsible=icon]:justify-center">
           <span className="group-data-[collapsible=icon]:hidden">
             {VERSION}
@@ -200,9 +240,6 @@ export function AppSidebar() {
           </div>
         </div>
       </SidebarFooter>
-
-      {/* Rail for resizing */}
-      <SidebarRail />
     </Sidebar>
   );
 }
@@ -247,81 +284,10 @@ function LogoutButton() {
       type="button"
       onClick={logout}
       title="Log out"
-      className="flex h-8 w-full items-center justify-center gap-2 rounded-md text-sidebar-foreground/60 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 group-data-[collapsible=icon]:size-8"
+      className="flex h-8 flex-1 items-center justify-center gap-2 rounded-md text-sidebar-foreground/60 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:flex-none"
     >
       <LogOut className="size-4" />
       <span className="group-data-[collapsible=icon]:hidden">Log out</span>
     </button>
-  );
-}
-
-const themeOptions: Array<{
-  icon: typeof Moon;
-  label: string;
-  value: Theme;
-}> = [
-  {
-    icon: Moon,
-    label: "Dark",
-    value: "dark",
-  },
-  {
-    icon: Sun,
-    label: "Light",
-    value: "light",
-  },
-  {
-    icon: Monitor,
-    label: "System",
-    value: "system",
-  },
-];
-
-function ThemeSwitcher() {
-  const { theme, setTheme } = useTheme();
-  const activeTheme =
-    themeOptions.find((option) => option.value === theme) ?? themeOptions[0];
-  const ActiveIcon = activeTheme.icon;
-
-  const cycleTheme = () => {
-    const index = themeOptions.findIndex((option) => option.value === theme);
-    const next = themeOptions[(index + 1) % themeOptions.length];
-    setTheme(next.value);
-  };
-
-  return (
-    <div className="w-full group-data-[collapsible=icon]:w-auto">
-      <div className="grid grid-cols-3 gap-1 rounded-md border border-sidebar-border bg-sidebar-accent/45 p-1 group-data-[collapsible=icon]:hidden">
-        {themeOptions.map((option) => {
-          const Icon = option.icon;
-          const active = option.value === theme;
-
-          return (
-            <button
-              key={option.value}
-              type="button"
-              aria-label={`Use ${option.label.toLowerCase()} theme`}
-              aria-pressed={active}
-              onClick={() => setTheme(option.value)}
-              className={cn(
-                "flex h-7 items-center justify-center rounded text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50",
-                active && "bg-sidebar text-sidebar-foreground shadow-sm",
-              )}
-            >
-              <Icon className="size-3.5" />
-            </button>
-          );
-        })}
-      </div>
-      <button
-        type="button"
-        aria-label={`Theme: ${activeTheme.label}. Click to change theme.`}
-        title={`Theme: ${activeTheme.label}`}
-        onClick={cycleTheme}
-        className="hidden size-8 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 group-data-[collapsible=icon]:flex"
-      >
-        <ActiveIcon className="size-4" />
-      </button>
-    </div>
   );
 }

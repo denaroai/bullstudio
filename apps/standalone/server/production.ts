@@ -1,6 +1,5 @@
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import { disconnectProvider } from "../src/connection";
 import { createStandaloneApp } from "./standalone";
@@ -14,8 +13,7 @@ export interface StandaloneServerOptions {
 
 export function startStandaloneServer(options: StandaloneServerOptions) {
   const env = options.env ?? process.env;
-  const port =
-    options.port ?? Number.parseInt(env.PORT || "4000", 10);
+  const port = options.port ?? Number.parseInt(env.PORT || "4000", 10);
   const host = options.host ?? env.HOST ?? "localhost";
 
   const app = createStandaloneApp({
@@ -35,7 +33,9 @@ export function startStandaloneServer(options: StandaloneServerOptions) {
   );
 
   const shutdown = (signal: string) => {
-    console.log(`Process received ${signal}, attempting to shut down gracefully`);
+    console.log(
+      `Process received ${signal}, attempting to shut down gracefully`,
+    );
 
     server.close(async () => {
       await disconnectProvider();

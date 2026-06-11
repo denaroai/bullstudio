@@ -1,11 +1,14 @@
 import type {
-  AdapterCapabilities as QueueAdapterCapabilities,
   FlowSummary,
   FlowTree,
   Job,
   JobCounts,
+  JobScheduler,
   JobStatus,
   JobSummary,
+  AdapterCapabilities as QueueAdapterCapabilities,
+  QueueMetricSnapshot,
+  Worker,
 } from "@bullstudio/connect-types";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
@@ -37,6 +40,8 @@ export type QueueSourceStatus =
       prefixes: string[];
       capabilities: {
         flows: boolean;
+        schedulers: boolean;
+        workers: boolean;
         supportedStatuses: string[];
         mutationsAllowed: boolean;
       };
@@ -60,6 +65,7 @@ export type ConnectionInfo = {
   prefixes: string[];
   capabilities: {
     supportsFlows: boolean;
+    workers: boolean;
     supportedStatuses: string[];
   };
   queueSource: QueueSourceStatus;
@@ -101,6 +107,26 @@ export type OverviewMetricsInput = {
   prefix?: string;
 };
 
+export type QueueMetricsListInput = {
+  queueKey?: string;
+  queueName?: string;
+  prefix?: string;
+};
+
+/**
+ * Native throughput metrics for a single queue. `completed`/`failed` are
+ * `null` when the queue's backend exposes no metrics API; both are present
+ * (but may be empty) when it does. Whether metrics are actually being
+ * recorded is signalled by `meta.count > 0`.
+ */
+export type QueueMetricsSummary = {
+  queueKey?: string;
+  queueName: string;
+  prefix?: string;
+  completed: QueueMetricSnapshot | null;
+  failed: QueueMetricSnapshot | null;
+};
+
 export type OverviewMetricsResponse = {
   summary: {
     totalCompleted: number;
@@ -108,7 +134,11 @@ export type OverviewMetricsResponse = {
     avgThroughputPerHour: number;
     failureRate: number;
     avgProcessingTimeMs: number;
+    minProcessingTimeMs: number;
+    maxProcessingTimeMs: number;
     avgDelayMs: number;
+    minDelayMs: number;
+    maxDelayMs: number;
   };
   timeSeries: Array<{
     timestamp: number;
@@ -133,6 +163,16 @@ export type OverviewMetricsResponse = {
     lastFailedReason?: string;
   }>;
   queuesCount: number;
+  /**
+   * Coverage of native Bull/BullMQ throughput metrics for the queues in scope.
+   * When `recordingQueues < totalQueues`, some throughput/failure figures were
+   * estimated from raw jobs in Redis instead of `getMetrics()`, and may be
+   * inaccurate (e.g. when finished jobs are removed).
+   */
+  nativeMetrics: {
+    totalQueues: number;
+    recordingQueues: number;
+  };
   lastUpdated: number;
 };
 
@@ -143,6 +183,25 @@ export type JobListInput = {
   status?: JobStatus;
   limit?: number;
   offset?: number;
+  search?: string;
+  sortField?: JobListSortField;
+  sortOrder?: JobListSortOrder;
+};
+
+export type JobListSortField =
+  | "name"
+  | "queueName"
+  | "status"
+  | "timestamp"
+  | "duration";
+
+export type JobListSortOrder = "asc" | "desc";
+
+export type JobListResponse<T> = {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
 };
 
 export type JobTargetInput = {
@@ -166,7 +225,14 @@ export type JobRemoveResponse = {
   message: string;
 };
 
-export type FlowListInput = { limit?: number } | undefined;
+export type FlowListInput =
+  | {
+      queueKey?: string;
+      queueName?: string;
+      prefix?: string;
+      limit?: number;
+    }
+  | undefined;
 
 export type FlowTargetInput = {
   queueKey?: string;
@@ -174,6 +240,64 @@ export type FlowTargetInput = {
   name?: string;
   prefix?: string;
   flowId: string;
+};
+
+export type SchedulerListInput = {
+  queueKey?: string;
+  queueName?: string;
+  prefix?: string;
+  limit?: number;
+};
+
+export type SchedulerTargetInput = {
+  queueKey?: string;
+  queueName?: string;
+  name?: string;
+  prefix?: string;
+  schedulerKey: string;
+  schedulerId?: string;
+};
+
+export type SchedulerUpsertInput = {
+  queueKey?: string;
+  queueName?: string;
+  name?: string;
+  prefix?: string;
+  schedulerId: string;
+  previousKey?: string;
+  repeat: {
+    strategy: "cron" | "every";
+    pattern?: string;
+    every?: number;
+    tz?: string;
+    endDate?: number;
+    limit?: number;
+  };
+  template?: {
+    name?: string;
+    data?: unknown;
+    opts?: Record<string, unknown>;
+  };
+};
+
+export type SchedulerMutationResponse = {
+  success: true;
+  message: string;
+};
+
+export type WorkerListInput = {
+  queueKey?: string;
+  queueName?: string;
+  prefix?: string;
+  limit?: number;
+};
+
+export type WorkerTargetInput = {
+  queueKey?: string;
+  queueName?: string;
+  name?: string;
+  prefix?: string;
+  workerId: string;
 };
 
 export interface PrivateDashboardQueueSource {
@@ -187,16 +311,35 @@ export interface PrivateDashboardQueueSource {
   listJobSummaries(
     input: JobListInput,
   ): Promise<Array<JobSummary & { queueKey?: string }>>;
+  listQueueMetrics(
+    input: QueueMetricsListInput,
+  ): Promise<QueueMetricsSummary[]>;
   getJob(input: JobTargetInput): Promise<Job | null>;
   getJobLogs(input: JobTargetInput): Promise<JobLogsResponse>;
   retryJob(input: JobTargetInput): Promise<JobRetryResponse>;
   removeJob(input: JobTargetInput): Promise<JobRemoveResponse>;
   pauseQueue(input: QueueTargetInput): Promise<QueueMutationResponse>;
   resumeQueue(input: QueueTargetInput): Promise<QueueMutationResponse>;
+  drainQueue(input: QueueTargetInput): Promise<QueueMutationResponse>;
   listFlows(
     input?: FlowListInput,
   ): Promise<Array<FlowSummary & { queueKey?: string }>>;
   getFlow(input: FlowTargetInput): Promise<FlowTree | null>;
+  getJobFlow(input: JobTargetInput): Promise<FlowTree | null>;
+  listWorkers(
+    input: WorkerListInput,
+  ): Promise<Array<Worker & { queueKey?: string }>>;
+  getWorker(input: WorkerTargetInput): Promise<Worker | null>;
+  listJobSchedulers(
+    input: SchedulerListInput,
+  ): Promise<Array<JobScheduler & { queueKey?: string }>>;
+  getJobScheduler(input: SchedulerTargetInput): Promise<JobScheduler | null>;
+  upsertJobScheduler(
+    input: SchedulerUpsertInput,
+  ): Promise<SchedulerMutationResponse>;
+  removeJobScheduler(
+    input: SchedulerTargetInput,
+  ): Promise<SchedulerMutationResponse>;
 }
 
 export interface PrivateDashboardContext {
@@ -222,6 +365,14 @@ const authenticatedProcedure = t.procedure.use(({ ctx, next }) => {
 });
 
 const jobStatusSchema = z.enum(supportedJobStatuses);
+const jobListSortFieldSchema = z.enum([
+  "name",
+  "queueName",
+  "status",
+  "timestamp",
+  "duration",
+]);
+const jobListSortOrderSchema = z.enum(["asc", "desc"]);
 
 const queueTargetSchema = z.object({
   queueKey: z.string().optional(),
@@ -232,7 +383,7 @@ const queueTargetSchema = z.object({
 
 const overviewMetricsSchema = z
   .object({
-    timeRangeHours: z.number().min(1).max(168).default(24),
+    timeRangeHours: z.number().positive().max(168).default(24),
     queueKey: z.string().optional(),
     queueName: z.string().optional(),
     prefix: z.string().optional(),
@@ -247,6 +398,9 @@ const jobListSchema = z
     status: jobStatusSchema.optional(),
     limit: z.number().min(1).max(1000).default(100),
     offset: z.number().min(0).default(0),
+    search: z.string().trim().optional(),
+    sortField: jobListSortFieldSchema.default("timestamp"),
+    sortOrder: jobListSortOrderSchema.default("desc"),
   })
   .optional();
 
@@ -260,6 +414,9 @@ const jobTargetSchema = z.object({
 
 const flowListSchema = z
   .object({
+    queueKey: z.string().optional(),
+    queueName: z.string().optional(),
+    prefix: z.string().optional(),
     limit: z.number().min(1).max(100).default(50),
   })
   .optional();
@@ -270,6 +427,78 @@ const flowTargetSchema = z.object({
   name: z.string().optional(),
   prefix: z.string().optional(),
   flowId: z.string(),
+});
+
+const schedulerListSchema = z
+  .object({
+    queueKey: z.string().optional(),
+    queueName: z.string().optional(),
+    prefix: z.string().optional(),
+    limit: z.number().min(1).max(500).default(100),
+  })
+  .optional();
+
+const workerListSchema = z
+  .object({
+    queueKey: z.string().optional(),
+    queueName: z.string().optional(),
+    prefix: z.string().optional(),
+    limit: z.number().min(1).max(1000).default(200),
+  })
+  .optional();
+
+const workerTargetSchema = z.object({
+  queueKey: z.string().optional(),
+  queueName: z.string().optional(),
+  name: z.string().optional(),
+  prefix: z.string().optional(),
+  workerId: z.string(),
+});
+
+const schedulerTargetSchema = z.object({
+  queueKey: z.string().optional(),
+  queueName: z.string().optional(),
+  name: z.string().optional(),
+  prefix: z.string().optional(),
+  schedulerKey: z.string(),
+  schedulerId: z.string().optional(),
+});
+
+const schedulerRepeatSchema = z
+  .object({
+    strategy: z.enum(["cron", "every"]),
+    pattern: z.string().optional(),
+    every: z.number().int().positive().optional(),
+    tz: z.string().optional(),
+    endDate: z.number().optional(),
+    limit: z.number().int().positive().optional(),
+  })
+  .refine(
+    (repeat) =>
+      repeat.strategy === "cron"
+        ? Boolean(repeat.pattern)
+        : Boolean(repeat.every),
+    {
+      message:
+        'A "cron" schedule requires a pattern and an "every" schedule requires an interval.',
+    },
+  );
+
+const schedulerUpsertSchema = z.object({
+  queueKey: z.string().optional(),
+  queueName: z.string().optional(),
+  name: z.string().optional(),
+  prefix: z.string().optional(),
+  schedulerId: z.string().min(1),
+  previousKey: z.string().optional(),
+  repeat: schedulerRepeatSchema,
+  template: z
+    .object({
+      name: z.string().optional(),
+      data: z.unknown().optional(),
+      opts: z.record(z.string(), z.unknown()).optional(),
+    })
+    .optional(),
 });
 
 export function createPrivateDashboardRouter(
@@ -311,23 +540,47 @@ export function createPrivateDashboardRouter(
           assertQueueCapability(source, queue, "queueResume", "Queue resume");
           return source.resumeQueue(input);
         }),
+      drain: authenticatedProcedure
+        .input(queueTargetSchema)
+        .mutation(async ({ input }) => {
+          await assertCanMutate(source);
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "queueDrain", "Queue drain");
+          return source.drainQueue(input);
+        }),
     }),
     jobs: t.router({
       list: authenticatedProcedure
         .input(jobListSchema)
         .query(async ({ input }) => {
           const normalized = normalizeJobListInput(input);
-          const jobs = await source.listJobs(getSourceJobListInput(normalized));
-          return mergeSortAndPageJobs(jobs, normalized);
+          const totalCandidates = await countJobsForListInput(
+            source,
+            normalized,
+          );
+          if (totalCandidates === 0) {
+            return filterSortAndPageJobs([], normalized, 0);
+          }
+          const jobs = await source.listJobs(
+            getSourceJobListInput(normalized, totalCandidates),
+          );
+          return filterSortAndPageJobs(jobs, normalized, totalCandidates);
         }),
       listSummary: authenticatedProcedure
         .input(jobListSchema)
         .query(async ({ input }) => {
           const normalized = normalizeJobListInput(input);
-          const jobs = await source.listJobSummaries(
-            getSourceJobListInput(normalized),
+          const totalCandidates = await countJobsForListInput(
+            source,
+            normalized,
           );
-          return mergeSortAndPageJobs(jobs, normalized);
+          if (totalCandidates === 0) {
+            return filterSortAndPageJobs([], normalized, 0);
+          }
+          const jobs = await source.listJobSummaries(
+            getSourceJobListInput(normalized, totalCandidates),
+          );
+          return filterSortAndPageJobs(jobs, normalized, totalCandidates);
         }),
       get: authenticatedProcedure
         .input(jobTargetSchema)
@@ -377,6 +630,69 @@ export function createPrivateDashboardRouter(
 
           return flow;
         }),
+      forJob: authenticatedProcedure
+        .input(jobTargetSchema)
+        .query(async ({ input }) => {
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "flows", "Flows");
+          // Returns the full flow tree the job belongs to, or null when the
+          // job is standalone. Callers use null to hide the flow view.
+          return source.getJobFlow(input);
+        }),
+    }),
+    workers: t.router({
+      list: authenticatedProcedure
+        .input(workerListSchema)
+        .query(async ({ input }) => {
+          if (input?.queueKey || input?.queueName) {
+            const queue = await resolveQueueTarget(source, input);
+            assertQueueCapability(source, queue, "workers", "Workers");
+          }
+          return source.listWorkers(input ?? { limit: 200 });
+        }),
+      get: authenticatedProcedure
+        .input(workerTargetSchema)
+        .query(async ({ input }) => {
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "workers", "Workers");
+          const worker = await source.getWorker(input);
+
+          if (!worker) {
+            const queueLabel = input.queueName ?? input.queueKey ?? "unknown";
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: `Worker ${input.workerId} not found in queue ${queueLabel}`,
+            });
+          }
+
+          return worker;
+        }),
+    }),
+    schedulers: t.router({
+      list: authenticatedProcedure
+        .input(schedulerListSchema)
+        .query(({ input }) =>
+          source.listJobSchedulers(input ?? { limit: 100 }),
+        ),
+      get: authenticatedProcedure
+        .input(schedulerTargetSchema)
+        .query(({ input }) => source.getJobScheduler(input)),
+      upsert: authenticatedProcedure
+        .input(schedulerUpsertSchema)
+        .mutation(async ({ input }) => {
+          await assertCanMutate(source);
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "schedulers", "Job schedulers");
+          return source.upsertJobScheduler(input);
+        }),
+      remove: authenticatedProcedure
+        .input(schedulerTargetSchema)
+        .mutation(async ({ input }) => {
+          await assertCanMutate(source);
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "schedulers", "Job schedulers");
+          return source.removeJobScheduler(input);
+        }),
     }),
   });
 }
@@ -415,6 +731,7 @@ export async function createConnectionInfo(
       prefixes,
       capabilities: {
         supportsFlows: queueSource.capabilities.flows,
+        workers: queueSource.capabilities.workers,
         supportedStatuses: queueSource.capabilities.supportedStatuses,
       },
       queueSource,
@@ -432,41 +749,171 @@ export async function createConnectionInfo(
     prefixes,
     capabilities: {
       supportsFlows: queueSource.capabilities.flows,
+      workers: queueSource.capabilities.workers,
       supportedStatuses: [...supportedJobStatuses],
     },
     queueSource,
   };
 }
 
+const HOUR_MS = 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
+
+// Choose a time-series bucket size that keeps the chart readable (~5–24 points)
+// for the selected range. Metric snapshots are per-minute, so 1 min is the floor.
+function getBucketMs(timeRangeHours: number): number {
+  const rangeMs = timeRangeHours * HOUR_MS;
+  if (rangeMs <= 15 * MINUTE_MS) return MINUTE_MS; // ≤15m → 1-min
+  if (rangeMs <= 30 * MINUTE_MS) return 2 * MINUTE_MS; // ≤30m → 2-min
+  if (rangeMs <= HOUR_MS) return 5 * MINUTE_MS; // ≤1h  → 5-min
+  if (rangeMs <= 6 * HOUR_MS) return 30 * MINUTE_MS; // ≤6h  → 30-min
+  return HOUR_MS; // >6h  → 1-hour
+}
+
+type OverviewJobSummary = JobSummary & { queueKey?: string };
+
 export function aggregateOverviewMetrics(
-  jobs: JobSummary[],
+  jobs: OverviewJobSummary[],
   timeRangeHours: number,
   queuesCount: number,
+  queueMetrics: QueueMetricsSummary[] = [],
+  now: number = Date.now(),
 ): OverviewMetricsResponse {
-  const completedJobs = jobs.filter((job) => job.status === "completed");
-  const failedJobs = jobs.filter((job) => job.status === "failed");
+  const cutoff = now - timeRangeHours * HOUR_MS;
+  // A queue is "metric-backed" only when it is actively recording metrics.
+  // Otherwise its throughput falls back to counting raw job summaries.
+  const metricBackedQueues = queueMetrics.filter(hasRecordedMetrics);
+
+  const fallbackJobs = jobs.filter(
+    (job) => !isMetricBacked(job, metricBackedQueues),
+  );
+  const totalCompleted =
+    fallbackJobs.filter((job) => job.status === "completed").length +
+    sumMetricsInRange(metricBackedQueues, "completed", cutoff, now);
+  const totalFailed =
+    fallbackJobs.filter((job) => job.status === "failed").length +
+    sumMetricsInRange(metricBackedQueues, "failed", cutoff, now);
+  const totalJobs = totalCompleted + totalFailed;
+
+  // Timing, slowest jobs, and failing types are never available from metrics,
+  // so they always derive from the full set of raw job summaries.
   const jobsWithProcessingTime = jobs.filter(
     (job) => job.processedOn && job.finishedOn,
   );
   const jobsWithDelay = jobs.filter((job) => job.processedOn && job.timestamp);
-  const totalJobs = completedJobs.length + failedJobs.length;
+  const failedJobs = jobs.filter((job) => job.status === "failed");
+
+  const processingTimeRange = minMax(
+    jobsWithProcessingTime.map(processingTimeOf),
+  );
+  const delayRange = minMax(
+    jobsWithDelay.map((job) => Math.max(0, delayOf(job))),
+  );
 
   return {
     summary: {
-      totalCompleted: completedJobs.length,
-      totalFailed: failedJobs.length,
+      totalCompleted,
+      totalFailed,
       avgThroughputPerHour: totalJobs / timeRangeHours,
-      failureRate: totalJobs > 0 ? (failedJobs.length / totalJobs) * 100 : 0,
+      failureRate: totalJobs > 0 ? (totalFailed / totalJobs) * 100 : 0,
       avgProcessingTimeMs: averageProcessingTime(jobsWithProcessingTime),
+      minProcessingTimeMs: processingTimeRange.min,
+      maxProcessingTimeMs: processingTimeRange.max,
       avgDelayMs: Math.max(0, averageDelay(jobsWithDelay)),
+      minDelayMs: delayRange.min,
+      maxDelayMs: delayRange.max,
     },
-    timeSeries: buildOverviewTimeSeries(jobs, timeRangeHours),
+    timeSeries: buildOverviewTimeSeries(
+      jobs,
+      timeRangeHours,
+      metricBackedQueues,
+      now,
+    ),
     slowestJobs: buildOverviewSlowestJobs(jobsWithProcessingTime),
     failingJobTypes: buildOverviewFailingJobTypes(failedJobs),
     queuesCount,
-    lastUpdated: Date.now(),
+    nativeMetrics: {
+      totalQueues: queueMetrics.length,
+      recordingQueues: metricBackedQueues.length,
+    },
+    lastUpdated: now,
   };
 }
+
+function hasRecordedMetrics(metric: QueueMetricsSummary): boolean {
+  return (
+    (metric.completed?.meta.count ?? 0) > 0 ||
+    (metric.failed?.meta.count ?? 0) > 0
+  );
+}
+
+function isMetricBacked(
+  job: OverviewJobSummary,
+  metricBackedQueues: QueueMetricsSummary[],
+): boolean {
+  return metricBackedQueues.some((metric) => metricMatchesJob(metric, job));
+}
+
+function metricMatchesJob(
+  metric: QueueMetricsSummary,
+  job: OverviewJobSummary,
+): boolean {
+  if (metric.queueKey && job.queueKey) {
+    return metric.queueKey === job.queueKey;
+  }
+  return (
+    metric.queueName === job.queueName &&
+    (!metric.prefix || metric.prefix === job.prefix)
+  );
+}
+
+/**
+ * Walk a metric snapshot's per-minute data points, newest first, invoking
+ * `visit` for each non-zero point that falls inside `[cutoff, now]`.
+ */
+function forEachMetricPointInRange(
+  snapshot: QueueMetricSnapshot | null,
+  cutoff: number,
+  now: number,
+  visit: (value: number, minute: number) => void,
+): void {
+  if (!snapshot || snapshot.meta.count === 0) {
+    return;
+  }
+
+  const newestMinute = Math.floor(snapshot.meta.prevTS / MINUTE_MS) * MINUTE_MS;
+  for (let index = 0; index < snapshot.data.length; index++) {
+    const value = snapshot.data[index];
+    if (!value) {
+      continue;
+    }
+    const minute = newestMinute - index * MINUTE_MS;
+    if (minute < cutoff || minute > now) {
+      continue;
+    }
+    visit(value, minute);
+  }
+}
+
+function sumMetricsInRange(
+  metricBackedQueues: QueueMetricsSummary[],
+  type: "completed" | "failed",
+  cutoff: number,
+  now: number,
+): number {
+  let total = 0;
+  for (const metric of metricBackedQueues) {
+    forEachMetricPointInRange(metric[type], cutoff, now, (value) => {
+      total += value;
+    });
+  }
+  return total;
+}
+
+type NormalizedJobListInput = Required<
+  Pick<JobListInput, "limit" | "offset" | "sortField" | "sortOrder" | "search">
+> &
+  Omit<JobListInput, "limit" | "offset" | "sortField" | "sortOrder" | "search">;
 
 export function mergeSortAndPageJobs<T extends { timestamp: number }>(
   jobs: T[],
@@ -480,6 +927,36 @@ export function mergeSortAndPageJobs<T extends { timestamp: number }>(
     .slice(offset, offset + limit);
 }
 
+export function filterSortAndPageJobs<
+  T extends {
+    id: string;
+    name: string;
+    queueName: string;
+    status: JobStatus;
+    timestamp: number;
+    prefix?: string;
+    processedOn?: number;
+    finishedOn?: number;
+  },
+>(
+  jobs: T[],
+  input: NormalizedJobListInput,
+  totalCandidates = jobs.length,
+): JobListResponse<T> {
+  const searched = input.search
+    ? jobs.filter((job) => jobMatchesSearch(job, input.search))
+    : jobs;
+  const sorted = sortJobList(searched, input.sortField, input.sortOrder);
+  const total = input.search ? searched.length : totalCandidates;
+
+  return {
+    items: sorted.slice(input.offset, input.offset + input.limit),
+    total,
+    limit: input.limit,
+    offset: input.offset,
+  };
+}
+
 async function getOverviewMetrics(
   source: PrivateDashboardQueueSource,
   input: OverviewMetricsInput,
@@ -489,7 +966,8 @@ async function getOverviewMetrics(
       ? await resolveQueueTarget(source, input)
       : undefined;
   const queuesCount = target ? 1 : (await source.listQueues()).length;
-  const cutoffTimestamp = Date.now() - input.timeRangeHours * 60 * 60 * 1000;
+  const now = Date.now();
+  const cutoffTimestamp = now - input.timeRangeHours * HOUR_MS;
   const sourceInput = {
     queueKey: input.queueKey,
     queueName: input.queueName,
@@ -497,21 +975,35 @@ async function getOverviewMetrics(
     limit: 1000,
     offset: 0,
   };
-  const [completed, failed] = await Promise.all([
+  const metricsInput: QueueMetricsListInput = {
+    queueKey: input.queueKey,
+    queueName: input.queueName,
+    prefix: input.prefix,
+  };
+  // Native throughput metrics give accurate completed/failed counts even when
+  // jobs are removed; raw job summaries still feed timing, slowest jobs, and
+  // failing-type breakdowns, which metrics cannot provide.
+  const [completed, failed, queueMetrics] = await Promise.all([
     source.listJobSummaries({ ...sourceInput, status: "completed" }),
     source.listJobSummaries({ ...sourceInput, status: "failed" }),
+    source.listQueueMetrics(metricsInput),
   ]);
   const jobs = [...completed, ...failed].filter(
     (job) => job.finishedOn && job.finishedOn >= cutoffTimestamp,
   );
 
-  return aggregateOverviewMetrics(jobs, input.timeRangeHours, queuesCount);
+  return aggregateOverviewMetrics(
+    jobs,
+    input.timeRangeHours,
+    queuesCount,
+    queueMetrics,
+    now,
+  );
 }
 
 function normalizeJobListInput(
   input: JobListInput | undefined,
-): Required<Pick<JobListInput, "limit" | "offset">> &
-  Omit<JobListInput, "limit" | "offset"> {
+): NormalizedJobListInput {
   return {
     queueKey: input?.queueKey,
     queueName: input?.queueName,
@@ -519,18 +1011,151 @@ function normalizeJobListInput(
     status: input?.status,
     limit: input?.limit ?? 100,
     offset: input?.offset ?? 0,
+    search: input?.search?.trim() ?? "",
+    sortField: input?.sortField ?? "timestamp",
+    sortOrder: input?.sortOrder ?? "desc",
   };
 }
 
 function getSourceJobListInput(
-  input: Required<Pick<JobListInput, "limit" | "offset">> &
-    Omit<JobListInput, "limit" | "offset">,
+  input: NormalizedJobListInput,
+  totalCandidates: number,
 ): JobListInput {
+  const needsFullCandidateSet =
+    input.search ||
+    input.sortField !== "timestamp" ||
+    input.sortOrder !== "desc";
+
   return {
-    ...input,
-    limit: input.limit + input.offset,
+    queueKey: input.queueKey,
+    queueName: input.queueName,
+    prefix: input.prefix,
+    status: input.status,
+    limit: needsFullCandidateSet ? totalCandidates : input.limit + input.offset,
     offset: 0,
   };
+}
+
+async function countJobsForListInput(
+  source: PrivateDashboardQueueSource,
+  input: NormalizedJobListInput,
+): Promise<number> {
+  const queues =
+    input.queueKey || input.queueName
+      ? [await resolveQueueTarget(source, input)]
+      : await source.listQueues();
+
+  return queues.reduce(
+    (total, queue) => total + countQueueJobs(queue, input.status),
+    0,
+  );
+}
+
+function countQueueJobs(queue: DashboardQueue, status?: JobStatus): number {
+  if (!queue.jobCounts) {
+    return 0;
+  }
+
+  if (!status) {
+    const bullMqOnlyCount =
+      queue.provider !== "bull"
+        ? queue.jobCounts.paused +
+          queue.jobCounts.prioritized +
+          queue.jobCounts.waitingChildren
+        : 0;
+
+    return (
+      queue.jobCounts.waiting +
+      queue.jobCounts.active +
+      queue.jobCounts.completed +
+      queue.jobCounts.failed +
+      queue.jobCounts.delayed +
+      bullMqOnlyCount
+    );
+  }
+
+  if (
+    queue.provider === "bull" &&
+    (status === "paused" || status === "waiting-children")
+  ) {
+    return 0;
+  }
+
+  if (status === "waiting-children") {
+    return queue.jobCounts.waitingChildren;
+  }
+
+  return queue.jobCounts[status];
+}
+
+function jobMatchesSearch(
+  job: { id: string; name: string; queueName: string; prefix?: string },
+  search: string,
+): boolean {
+  const query = search.toLowerCase();
+  return [job.id, job.name, job.queueName, job.prefix].some((field) =>
+    field?.toLowerCase().includes(query),
+  );
+}
+
+function sortJobList<
+  T extends {
+    name: string;
+    queueName: string;
+    status: JobStatus;
+    timestamp: number;
+    processedOn?: number;
+    finishedOn?: number;
+  },
+>(jobs: T[], field: JobListSortField, order: JobListSortOrder): T[] {
+  return [...jobs].sort((a, b) => {
+    const direction = order === "asc" ? 1 : -1;
+    const comparison = compareJobListValues(a, b, field);
+    if (comparison !== 0) {
+      return comparison * direction;
+    }
+    return b.timestamp - a.timestamp || a.name.localeCompare(b.name);
+  });
+}
+
+function compareJobListValues<
+  T extends {
+    name: string;
+    queueName: string;
+    status: JobStatus;
+    timestamp: number;
+    processedOn?: number;
+    finishedOn?: number;
+  },
+>(a: T, b: T, field: JobListSortField): number {
+  switch (field) {
+    case "name":
+      return a.name.localeCompare(b.name);
+    case "queueName":
+      return a.queueName.localeCompare(b.queueName);
+    case "status":
+      return a.status.localeCompare(b.status);
+    case "duration":
+      return getJobDuration(a) - getJobDuration(b);
+    case "timestamp":
+      return a.timestamp - b.timestamp;
+  }
+}
+
+function getJobDuration(job: {
+  timestamp: number;
+  processedOn?: number;
+  finishedOn?: number;
+}): number {
+  if (job.finishedOn) {
+    return job.finishedOn - (job.processedOn ?? job.timestamp);
+  }
+
+  if (job.processedOn) {
+    return Date.now() - job.processedOn;
+  }
+
+  return 0;
 }
 
 async function assertCanMutate(
@@ -569,18 +1194,21 @@ function assertQueueCapability(
   }
 }
 
+function processingTimeOf(job: JobSummary): number {
+  return (job.finishedOn ?? job.processedOn ?? 0) - (job.processedOn ?? 0);
+}
+
+function delayOf(job: JobSummary): number {
+  return (job.processedOn ?? job.timestamp) - job.timestamp - (job.delay || 0);
+}
+
 function averageProcessingTime(jobs: JobSummary[]): number {
   if (jobs.length === 0) {
     return 0;
   }
 
   return (
-    jobs.reduce(
-      (sum, job) =>
-        sum +
-        ((job.finishedOn ?? job.processedOn ?? 0) - (job.processedOn ?? 0)),
-      0,
-    ) / jobs.length
+    jobs.reduce((sum, job) => sum + processingTimeOf(job), 0) / jobs.length
   );
 }
 
@@ -589,28 +1217,46 @@ function averageDelay(jobs: JobSummary[]): number {
     return 0;
   }
 
-  return (
-    jobs.reduce(
-      (sum, job) =>
-        sum +
-        ((job.processedOn ?? job.timestamp) - job.timestamp - (job.delay || 0)),
-      0,
-    ) / jobs.length
-  );
+  return jobs.reduce((sum, job) => sum + delayOf(job), 0) / jobs.length;
 }
 
-function buildOverviewTimeSeries(
-  jobs: JobSummary[],
-  timeRangeHours: number,
-): OverviewMetricsResponse["timeSeries"] {
-  const hourlyBuckets = new Map<number, JobSummary[]>();
-  const now = Date.now();
+function minMax(values: number[]): { min: number; max: number } {
+  if (values.length === 0) {
+    return { min: 0, max: 0 };
+  }
 
-  for (let index = 0; index < timeRangeHours; index++) {
-    const bucketTime = now - index * 60 * 60 * 1000;
-    const hourStart =
-      Math.floor(bucketTime / (60 * 60 * 1000)) * (60 * 60 * 1000);
-    hourlyBuckets.set(hourStart, []);
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const value of values) {
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  return { min, max };
+}
+
+type TimeSeriesBucket = {
+  // All raw jobs in the bucket, used for timing regardless of metric backing.
+  timingJobs: OverviewJobSummary[];
+  completed: number;
+  failed: number;
+};
+
+function buildOverviewTimeSeries(
+  jobs: OverviewJobSummary[],
+  timeRangeHours: number,
+  metricBackedQueues: QueueMetricsSummary[],
+  now: number,
+): OverviewMetricsResponse["timeSeries"] {
+  const bucketMs = getBucketMs(timeRangeHours);
+  const rangeMs = timeRangeHours * HOUR_MS;
+  const cutoff = now - rangeMs;
+  const buckets = new Map<number, TimeSeriesBucket>();
+
+  const bucketCount = Math.ceil(rangeMs / bucketMs);
+  for (let index = 0; index < bucketCount; index++) {
+    const bucketStart =
+      Math.floor((now - index * bucketMs) / bucketMs) * bucketMs;
+    buckets.set(bucketStart, { timingJobs: [], completed: 0, failed: 0 });
   }
 
   for (const job of jobs) {
@@ -618,28 +1264,67 @@ function buildOverviewTimeSeries(
       continue;
     }
 
-    const hourStart =
-      Math.floor(job.finishedOn / (60 * 60 * 1000)) * (60 * 60 * 1000);
-    const bucket = hourlyBuckets.get(hourStart);
-    if (bucket) {
-      bucket.push(job);
+    const bucketStart = Math.floor(job.finishedOn / bucketMs) * bucketMs;
+    const bucket = buckets.get(bucketStart);
+    if (!bucket) {
+      continue;
+    }
+
+    bucket.timingJobs.push(job);
+    // Only count jobs from queues without metrics; metric-backed queues
+    // contribute their counts from the snapshot below.
+    if (!isMetricBacked(job, metricBackedQueues)) {
+      if (job.status === "completed") {
+        bucket.completed++;
+      } else if (job.status === "failed") {
+        bucket.failed++;
+      }
     }
   }
 
-  return Array.from(hourlyBuckets.entries())
-    .map(([timestamp, bucketJobs]) => ({
+  for (const metric of metricBackedQueues) {
+    addMetricToBuckets(
+      buckets,
+      metric.completed,
+      "completed",
+      cutoff,
+      now,
+      bucketMs,
+    );
+    addMetricToBuckets(buckets, metric.failed, "failed", cutoff, now, bucketMs);
+  }
+
+  return Array.from(buckets.entries())
+    .map(([timestamp, bucket]) => ({
       timestamp,
-      completed: bucketJobs.filter((job) => job.status === "completed").length,
-      failed: bucketJobs.filter((job) => job.status === "failed").length,
+      completed: bucket.completed,
+      failed: bucket.failed,
       avgProcessingTimeMs: averageProcessingTime(
-        bucketJobs.filter((job) => job.processedOn && job.finishedOn),
+        bucket.timingJobs.filter((job) => job.processedOn && job.finishedOn),
       ),
       avgDelayMs: Math.max(
         0,
-        averageDelay(bucketJobs.filter((job) => job.processedOn)),
+        averageDelay(bucket.timingJobs.filter((job) => job.processedOn)),
       ),
     }))
     .sort((a, b) => a.timestamp - b.timestamp);
+}
+
+function addMetricToBuckets(
+  buckets: Map<number, TimeSeriesBucket>,
+  snapshot: QueueMetricSnapshot | null,
+  type: "completed" | "failed",
+  cutoff: number,
+  now: number,
+  bucketMs: number,
+): void {
+  forEachMetricPointInRange(snapshot, cutoff, now, (value, minute) => {
+    const bucketStart = Math.floor(minute / bucketMs) * bucketMs;
+    const bucket = buckets.get(bucketStart);
+    if (bucket) {
+      bucket[type] += value;
+    }
+  });
 }
 
 function buildOverviewSlowestJobs(

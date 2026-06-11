@@ -297,6 +297,7 @@ function createQueueAdapter(options: {
       jobRetry: true,
       queuePause: true,
       queueResume: true,
+      queueDrain: true,
       workers: true,
     },
     getQueue: async () => ({

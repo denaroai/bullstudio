@@ -1,13 +1,15 @@
-import { Link } from "react-router";
 import { ArrowRight } from "lucide-react";
-import { Container } from "./section";
-import { CommandBlock } from "./copy";
-import {
-  DashboardFrame,
-  OverviewPanel,
-  GithubGlyph,
-} from "./dashboard-preview";
+import { Link } from "react-router";
 import { gitConfig } from "@/lib/shared";
+import { BrowserFrame } from "./browser-frame";
+import { CommandBlock } from "./copy";
+import { GithubGlyph } from "./dashboard-preview";
+import { ImagePlaceholder } from "./image-text";
+import { Container } from "./section";
+
+// Base path of the hero screenshot (no theme suffix / extension). BrowserFrame
+// loads the matching `-light.png` / `-dark.png` for the active theme.
+const HERO_SCREENSHOT: string | undefined = "/demo/bullstudio-dashboard-demo";
 
 export function Hero() {
   return (
@@ -35,8 +37,9 @@ export function Hero() {
         aria-hidden
         className="pointer-events-none absolute right-[-5%] top-16 hidden w-[34rem] select-none opacity-[0.12] md:block lg:top-10 lg:w-[44rem]"
         style={{
-          WebkitMaskImage: 'linear-gradient(to left, #000 30%, transparent 90%)',
-          maskImage: 'linear-gradient(to left, #000 30%, transparent 90%)',
+          WebkitMaskImage:
+            "linear-gradient(to left, #000 30%, transparent 90%)",
+          maskImage: "linear-gradient(to left, #000 30%, transparent 90%)",
         }}
       />
 
@@ -54,9 +57,9 @@ export function Hero() {
             className="bs-rise mt-6 max-w-xl text-balance text-lg leading-relaxed text-muted-foreground"
             style={{ animationDelay: "140ms" }}
           >
-            A precise, production-grade dashboard for Bull and BullMQ. Inspect
-            jobs, trace flows, and unstick backlogs — standalone from your
-            laptop, or embedded inside the app you already run.
+            A modern, performant dashboard for Bull and BullMQ. Inspect and
+            manage queues, jobs and flows directly from your app. Proudly
+            open-source.
           </p>
 
           <div
@@ -90,9 +93,14 @@ export function Hero() {
           className="bs-rise mt-16 [perspective:2000px]"
           style={{ animationDelay: "320ms" }}
         >
-          <DashboardFrame active="overview">
-            <OverviewPanel />
-          </DashboardFrame>
+          {HERO_SCREENSHOT ? (
+            <BrowserFrame
+              src={HERO_SCREENSHOT}
+              alt="The Bullstudio dashboard"
+            />
+          ) : (
+            <ImagePlaceholder className="aspect-[16/9] shadow-xl" />
+          )}
         </div>
       </Container>
     </section>

@@ -1,10 +1,3 @@
-import {
-  createEmbeddedDashboard,
-  type DashboardConfig,
-  type EmbeddedDashboardInstance,
-  type QueueAdapter,
-  ReadOnlyDashboardError,
-} from "@bullstudio/embedded-core";
 import type {
   FlowSummary,
   FlowTree,
@@ -12,6 +5,13 @@ import type {
   JobQueryOptions,
   JobSummary,
 } from "@bullstudio/connect-types";
+import {
+  createEmbeddedDashboard,
+  type DashboardConfig,
+  type EmbeddedDashboardInstance,
+  type QueueAdapter,
+  ReadOnlyDashboardError,
+} from "@bullstudio/embedded-core";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 
 afterEach(() => {
@@ -70,6 +70,7 @@ describe("embedded core public contracts", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
         workers: true,
       },
     });
@@ -123,6 +124,7 @@ describe("embedded core public contracts", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
         workers: true,
       },
     });
@@ -137,6 +139,7 @@ describe("embedded core public contracts", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
         workers: false,
       },
     });
@@ -191,6 +194,7 @@ describe("embedded core public contracts", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
         workers: true,
       },
     });
@@ -300,6 +304,7 @@ describe("embedded private dashboard API queue source compatibility", () => {
             jobRetry: true,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: false,
           },
         }),
@@ -343,6 +348,7 @@ describe("embedded private dashboard API queue source compatibility", () => {
           jobRetry: true,
           queuePause: true,
           queueResume: true,
+          queueDrain: true,
           workers: true,
         },
       },
@@ -576,7 +582,7 @@ describe("embedded private dashboard API overview metrics", () => {
         },
       ],
     });
-    expect(response.json.timeSeries).toHaveLength(2);
+    expect(response.json.timeSeries).toHaveLength(4);
     expect(
       response.json.timeSeries.reduce(
         (total: number, point: { completed: number; failed: number }) =>
@@ -722,22 +728,27 @@ describe("embedded private dashboard API job lists", () => {
       }),
     ).resolves.toMatchObject({
       status: 200,
-      json: [
-        {
-          id: "new-email",
-          queueName: "email",
-          prefix: "bull",
-          queueKey: "email",
-          timestamp: 300,
-        },
-        {
-          id: "new-report",
-          queueName: "reports",
-          prefix: "bull",
-          queueKey: "reports",
-          timestamp: 200,
-        },
-      ],
+      json: {
+        items: [
+          {
+            id: "new-email",
+            queueName: "email",
+            prefix: "bull",
+            queueKey: "email",
+            timestamp: 300,
+          },
+          {
+            id: "new-report",
+            queueName: "reports",
+            prefix: "bull",
+            queueKey: "reports",
+            timestamp: 200,
+          },
+        ],
+        total: 3,
+        limit: 2,
+        offset: 0,
+      },
     });
   });
 
@@ -793,15 +804,17 @@ describe("embedded private dashboard API job lists", () => {
       }),
     ).resolves.toMatchObject({
       status: 200,
-      json: [
-        {
-          id: "failed-email",
-          queueName: "email",
-          prefix: "bull",
-          queueKey: "email-primary",
-          status: "failed",
-        },
-      ],
+      json: {
+        items: [
+          {
+            id: "failed-email",
+            queueName: "email",
+            prefix: "bull",
+            queueKey: "email-primary",
+            status: "failed",
+          },
+        ],
+      },
     });
     await expect(
       callPrivateDashboardApi(dashboard, "jobs.list", {
@@ -812,15 +825,17 @@ describe("embedded private dashboard API job lists", () => {
       }),
     ).resolves.toMatchObject({
       status: 200,
-      json: [
-        {
-          id: "failed-tenant-email",
-          queueName: "email",
-          prefix: "tenant",
-          queueKey: "email-secondary",
-          status: "failed",
-        },
-      ],
+      json: {
+        items: [
+          {
+            id: "failed-tenant-email",
+            queueName: "email",
+            prefix: "tenant",
+            queueKey: "email-secondary",
+            status: "failed",
+          },
+        ],
+      },
     });
     await expect(
       callPrivateDashboardApi(dashboard, "jobs.list", {
@@ -870,6 +885,7 @@ describe("embedded private dashboard API job detail operations", () => {
             jobRetry: true,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: true,
           },
           jobs: [
@@ -975,6 +991,7 @@ describe("embedded private dashboard API job detail operations", () => {
             jobRetry: false,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: true,
           },
           jobs: [
@@ -1013,6 +1030,7 @@ describe("embedded private dashboard API job detail operations", () => {
             jobRetry: true,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: false,
           },
           jobs: [
@@ -1137,6 +1155,7 @@ describe("embedded private dashboard API job detail operations", () => {
             jobRetry: true,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: true,
           },
           jobs: [
@@ -1323,6 +1342,7 @@ describe("embedded private dashboard API flow operations", () => {
             jobRetry: true,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: true,
           },
           listFlows: unsupportedListFlows,
@@ -1370,6 +1390,7 @@ describe("embedded private dashboard API flow operations", () => {
                 jobRetry: true,
                 queuePause: true,
                 queueResume: true,
+                queueDrain: true,
                 workers: true,
               },
               listFlows: unsupportedListFlows,
@@ -1428,6 +1449,7 @@ describe("embedded private dashboard API flow operations", () => {
             jobRetry: true,
             queuePause: true,
             queueResume: true,
+            queueDrain: true,
             workers: true,
           },
         }),
@@ -1579,6 +1601,7 @@ describe("embedded private dashboard API queue pause and resume operations", () 
             jobRetry: true,
             queuePause: false,
             queueResume: false,
+            queueDrain: false,
             workers: true,
           },
         }),
@@ -1727,9 +1750,13 @@ function createQueueAdapter(
     jobRetry: true,
     queuePause: true,
     queueResume: true,
+    queueDrain: true,
     workers: true,
   };
   const queueName = options.queueName ?? options.key;
+  const jobCounts = getJobCountsForTestJobs(
+    options.jobs ?? options.jobSummaries ?? [],
+  );
 
   return {
     key: options.key,
@@ -1740,9 +1767,9 @@ function createQueueAdapter(
       name: queueName,
       prefix: options.prefix ?? "bull",
       isPaused: false,
-      jobCounts: emptyJobCounts,
+      jobCounts,
     }),
-    getJobCounts: async () => emptyJobCounts,
+    getJobCounts: async () => jobCounts,
     pauseQueue: options.pauseQueue ?? (async () => {}),
     resumeQueue: options.resumeQueue ?? (async () => {}),
     getJobs: async (queryOptions?: JobQueryOptions) =>
@@ -1761,6 +1788,20 @@ function createQueueAdapter(
     }),
     listFlows: options.listFlows,
     getFlow: async (flowId) => options.flows?.[flowId] ?? null,
+  };
+}
+
+function getJobCountsForTestJobs(jobs: Array<Job | JobSummary>) {
+  return {
+    waiting: jobs.filter((job) => job.status === "waiting").length,
+    active: jobs.filter((job) => job.status === "active").length,
+    completed: jobs.filter((job) => job.status === "completed").length,
+    failed: jobs.filter((job) => job.status === "failed").length,
+    delayed: jobs.filter((job) => job.status === "delayed").length,
+    paused: jobs.filter((job) => job.status === "paused").length,
+    prioritized: 0,
+    waitingChildren: jobs.filter((job) => job.status === "waiting-children")
+      .length,
   };
 }
 

@@ -1,10 +1,10 @@
-import { Link } from 'react-router';
-import { ArrowRight } from 'lucide-react';
-import { Container } from './section';
-import { CommandBlock } from './copy';
-import { Logo } from './logo';
-import { GithubGlyph } from './dashboard-preview';
-import { gitConfig } from '@/lib/shared';
+import { ArrowRight } from "lucide-react";
+import { Link } from "react-router";
+import { gitConfig } from "@/lib/shared";
+import { CommandBlock } from "./copy";
+import { GithubGlyph } from "./dashboard-preview";
+import { Logo } from "./logo";
+import { Container } from "./section";
 
 const repo = `https://github.com/${gitConfig.user}/${gitConfig.repo}`;
 
@@ -17,7 +17,7 @@ export function FinalCta() {
         className="absolute left-1/2 top-1/2 h-72 w-[680px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-50 blur-3xl"
         style={{
           background:
-            'radial-gradient(closest-side, color-mix(in oklch, var(--primary) 24%, transparent), transparent)',
+            "radial-gradient(closest-side, color-mix(in oklch, var(--primary) 24%, transparent), transparent)",
         }}
       />
       <Container className="relative flex flex-col items-center text-center">
@@ -61,7 +61,10 @@ export function Footer() {
             <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
               Product
             </span>
-            <Link to="/docs" className="text-sm text-foreground hover:text-primary">
+            <Link
+              to="/docs"
+              className="text-sm text-foreground hover:text-primary"
+            >
               Documentation
             </Link>
             <a
@@ -111,7 +114,9 @@ export function Footer() {
           <span className="font-mono">
             © {new Date().getFullYear()} Bullstudio · MIT License
           </span>
-          <span className="font-mono">Built for the terminal-and-editor crowd.</span>
+          <span className="font-mono">
+            Built for the terminal-and-editor crowd.
+          </span>
         </Container>
       </div>
     </footer>

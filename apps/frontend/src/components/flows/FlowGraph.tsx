@@ -1,21 +1,21 @@
 "use client";
 
-import { useMemo, useCallback, useEffect } from "react";
 import {
-  ReactFlow,
   Background,
   Controls,
-  type Node,
   type Edge,
   MarkerType,
-  useNodesState,
+  type Node,
+  ReactFlow,
   useEdgesState,
+  useNodesState,
 } from "@xyflow/react";
+import { useCallback, useEffect, useMemo } from "react";
 import "@xyflow/react/dist/style.css";
+import type { FlowNode as FlowNodeType } from "@bullstudio/connect-types";
+import { getStatusColor, type JobStatus } from "@bullstudio/ui/shared";
 import dagre from "dagre";
 import { FlowJobNode, type FlowJobNodeData } from "./FlowJobNode";
-import { getStatusColor, type JobStatus } from "@bullstudio/ui/shared";
-import type { FlowNode as FlowNodeType } from "@bullstudio/connect-types";
 
 const nodeTypes = {
   flowJob: FlowJobNode,
@@ -27,6 +27,8 @@ const NODE_HEIGHT = 92;
 interface FlowGraphProps {
   root: FlowNodeType;
   onNodeClick: (jobId: string, queueName: string) => void;
+  /** Tailwind height utility for the graph canvas. Defaults to the full-page height. */
+  heightClassName?: string;
 }
 
 function buildNodesAndEdges(root: FlowNodeType): {
@@ -127,7 +129,11 @@ function getLayoutedElements(
   return { nodes: layoutedNodes, edges };
 }
 
-export function FlowGraph({ root, onNodeClick }: FlowGraphProps) {
+export function FlowGraph({
+  root,
+  onNodeClick,
+  heightClassName = "h-[calc(100vh-260px)] min-h-[520px]",
+}: FlowGraphProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     const { nodes, edges } = buildNodesAndEdges(root);
     return getLayoutedElements(nodes, edges);
@@ -155,7 +161,9 @@ export function FlowGraph({ root, onNodeClick }: FlowGraphProps) {
   }, [root, setNodes, setEdges]);
 
   return (
-    <div className="h-[calc(100vh-260px)] min-h-[520px] overflow-hidden rounded-lg border bg-card/80">
+    <div
+      className={`${heightClassName} overflow-hidden rounded-lg border bg-card/80`}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}

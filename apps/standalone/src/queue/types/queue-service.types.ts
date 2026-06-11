@@ -1,9 +1,15 @@
 import type {
   Job,
-  JobSummary,
-  Queue,
   JobCounts,
   JobQueryOptions,
+  JobScheduler,
+  JobSchedulerTarget,
+  JobSummary,
+  Queue,
+  QueueMetricSnapshot,
+  QueueMetricType,
+  UpsertJobSchedulerInput,
+  Worker,
   WorkerCount,
 } from "@bullstudio/connect-types";
 import type { QueueProviderCapabilities } from "./provider-capabilities.types";
@@ -57,18 +63,11 @@ export interface QueueService {
 
   // Queue operations
   getQueues(): Promise<Queue[]>;
-  getQueue(
-    name: string, prefix?: string,
-  ): Promise<Queue | null>;
-  pauseQueue(
-    queueName: string, prefix?: string,
-  ): Promise<void>;
-  resumeQueue(
-    queueName: string, prefix?: string,
-  ): Promise<void>;
-  getJobCounts(
-    queueName: string, prefix?: string,
-  ): Promise<JobCounts>;
+  getQueue(name: string, prefix?: string): Promise<Queue | null>;
+  pauseQueue(queueName: string, prefix?: string): Promise<void>;
+  resumeQueue(queueName: string, prefix?: string): Promise<void>;
+  drainQueue(queueName: string, prefix?: string): Promise<void>;
+  getJobCounts(queueName: string, prefix?: string): Promise<JobCounts>;
 
   // Job operations
   getJobs(
@@ -81,6 +80,11 @@ export interface QueueService {
     options?: JobQueryOptions,
     prefix?: string,
   ): Promise<JobSummary[]>;
+  getMetrics(
+    queueName: string,
+    type: QueueMetricType,
+    prefix?: string,
+  ): Promise<QueueMetricSnapshot | null>;
   getJob(
     queueName: string,
     jobId: string,
@@ -91,21 +95,34 @@ export interface QueueService {
     jobId: string,
     prefix?: string,
   ): Promise<{ logs: string[]; count: number }>;
-  retryJob(
-    queueName: string,
-    jobId: string,
-    prefix?: string,
-  ): Promise<void>;
-  removeJob(
-    queueName: string,
-    jobId: string,
-    prefix?: string,
-  ): Promise<void>;
+  retryJob(queueName: string, jobId: string, prefix?: string): Promise<void>;
+  removeJob(queueName: string, jobId: string, prefix?: string): Promise<void>;
 
   // Worker operations
-  getWorkerCount(
-    queueName: string, prefix?: string,
-  ): Promise<WorkerCount>;
+  getWorkerCount(queueName: string, prefix?: string): Promise<WorkerCount>;
+  listWorkers(queueName: string, prefix?: string): Promise<Worker[]>;
+
+  // Job scheduler operations
+  listJobSchedulers(
+    queueName: string,
+    options?: { limit?: number },
+    prefix?: string,
+  ): Promise<JobScheduler[]>;
+  getJobScheduler(
+    queueName: string,
+    target: JobSchedulerTarget,
+    prefix?: string,
+  ): Promise<JobScheduler | null>;
+  upsertJobScheduler(
+    queueName: string,
+    input: UpsertJobSchedulerInput,
+    prefix?: string,
+  ): Promise<void>;
+  removeJobScheduler(
+    queueName: string,
+    target: JobSchedulerTarget,
+    prefix?: string,
+  ): Promise<boolean>;
 
   // Provider capabilities
   getCapabilities(): QueueProviderCapabilities;

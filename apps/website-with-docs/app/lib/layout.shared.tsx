@@ -1,6 +1,6 @@
-import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
-import { gitConfig } from './shared';
-import { Logo } from '@/components/landing/logo';
+import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
+import { Logo } from "@/components/landing/logo";
+import { gitConfig } from "./shared";
 
 export function baseOptions(): BaseLayoutProps {
   return {
@@ -9,8 +9,12 @@ export function baseOptions(): BaseLayoutProps {
     },
     links: [
       {
-        text: 'Docs',
-        url: '/docs',
+        text: "Docs",
+        url: "/docs",
+      },
+      {
+        text: "Comparisons",
+        url: "/comparisons",
       },
     ],
     githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,

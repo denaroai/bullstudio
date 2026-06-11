@@ -7,6 +7,7 @@ Bullstudio is a modern Bull/BullMQ dashboard.
 - Keep it simple. Write minimal code that solves the problem.
 - No abstractions for single code use. If you find repeating code, abstract it into a reusable component.
 - For context and domain specific lanugage refer to CONTEXT.md
+- Always land your changes green: typecheck, linter/formatter and tests.
 
 ## Important commands
 

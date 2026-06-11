@@ -1,2 +1,2 @@
-export { BullMqProvider } from "./bullmq";
 export { BullProvider } from "./bull";
+export { BullMqProvider } from "./bullmq";

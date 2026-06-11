@@ -6,9 +6,7 @@ import type Redis from "ioredis";
  *   - BullMQ: `<prefix>:<queue>:meta`
  *   - Bull:   `<prefix>:<queue>:id`
  */
-export async function discoverPrefixes(
-  redis: Redis,
-): Promise<string[]> {
+export async function discoverPrefixes(redis: Redis): Promise<string[]> {
   const prefixes = new Set<string>();
 
   await scanForPattern(redis, "*:*:meta", prefixes);

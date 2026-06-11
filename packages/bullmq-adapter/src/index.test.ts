@@ -38,6 +38,7 @@ describe("createBullMqQueueAdapter", () => {
         jobRetry: true,
         queuePause: true,
         queueResume: true,
+        queueDrain: true,
         workers: true,
       },
     });
@@ -240,6 +241,30 @@ describe("createBullMqQueueAdapter", () => {
       queueName: "email",
       count: 2,
     });
+    await expect(adapter.listWorkers?.()).resolves.toEqual([
+      {
+        id: "bull:email:worker",
+        name: "worker",
+        queueName: "email",
+        prefix: "bull",
+        provider: "bullmq",
+        address: undefined,
+        age: 0,
+        idle: 0,
+        metadata: {},
+      },
+      {
+        id: "bull:email:worker",
+        name: "worker",
+        queueName: "email",
+        prefix: "bull",
+        provider: "bullmq",
+        address: undefined,
+        age: 0,
+        idle: 0,
+        metadata: {},
+      },
+    ]);
 
     expect(queue.pause).toHaveBeenCalledOnce();
     expect(queue.resume).toHaveBeenCalledOnce();
@@ -248,6 +273,57 @@ describe("createBullMqQueueAdapter", () => {
     expect(close).not.toHaveBeenCalled();
     expect(adapter).not.toHaveProperty("close");
     expect(adapter).not.toHaveProperty("disconnect");
+  });
+
+  it("maps BullMQ worker client metadata", async () => {
+    const queue = {
+      name: "email",
+      opts: { prefix: "production" },
+      getWorkers: async () => [
+        {
+          name: "worker-a",
+          addr: "127.0.0.1:6379",
+          age: "12",
+          idle: "2",
+        },
+      ],
+    } as unknown as Queue;
+
+    const adapter = createBullMqQueueAdapter(queue);
+
+    await expect(adapter.listWorkers?.()).resolves.toEqual([
+      {
+        id: "production:email:worker-a:127.0.0.1:6379",
+        name: "worker-a",
+        queueName: "email",
+        prefix: "production",
+        provider: "bullmq",
+        address: "127.0.0.1:6379",
+        age: 12,
+        idle: 2,
+        metadata: {
+          name: "worker-a",
+          addr: "127.0.0.1:6379",
+          age: "12",
+          idle: "2",
+        },
+      },
+    ]);
+  });
+
+  it("returns an empty BullMQ worker list", async () => {
+    const queue = {
+      name: "email",
+      getWorkers: async () => [],
+    } as unknown as Queue;
+
+    const adapter = createBullMqQueueAdapter(queue);
+
+    await expect(adapter.listWorkers?.()).resolves.toEqual([]);
+    await expect(adapter.getWorkerCount()).resolves.toEqual({
+      queueName: "email",
+      count: 0,
+    });
   });
 
   it("lists and reads BullMQ flows from the supplied queue", async () => {
