@@ -1,6 +1,6 @@
 {
   "name": "@bullstudio/nestjs",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "description": "NestJS framework adapter for Bullstudio embedded mode.",
   "type": "module",
   "license": "MIT",
@@ -62,8 +62,8 @@
     }
   },
   "dependencies": {
-    "@bullstudio/express": "workspace:0.1.0",
-    "@bullstudio/fastify": "workspace:0.1.0"
+    "@bullstudio/express": "workspace:*",
+    "@bullstudio/fastify": "workspace:*"
   },
   "devDependencies": {
     "@bullstudio/embedded-core": "workspace:*",

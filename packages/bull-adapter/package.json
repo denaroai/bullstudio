@@ -1,6 +1,6 @@
 {
   "name": "@bullstudio/bull-adapter",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "description": "Bull queue adapter for Bullstudio embedded mode.",
   "type": "module",
   "license": "MIT",
@@ -51,7 +51,7 @@
     "bull": "^4.0.0"
   },
   "dependencies": {
-    "@bullstudio/connect-types": "workspace:0.1.0"
+    "@bullstudio/connect-types": "workspace:*"
   },
   "devDependencies": {
     "@bullstudio/adapter-utils": "workspace:*",
