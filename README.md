@@ -4,9 +4,6 @@
 
 <h1 align="center">bullstudio</h1>
 
-<p align="center">
-  Queue management dashboard for <a href="https://github.com/OptimalBits/bull">Bull</a> and <a href="https://docs.bullmq.io/">BullMQ</a>.
-</p>
 
 <p align="center">
   <a href="https://hub.docker.com/r/emirce/bullstudio"><img src="https://img.shields.io/docker/v/emirce/bullstudio?sort=semver&label=Docker%20Hub" alt="Docker Hub" /></a>
@@ -16,22 +13,49 @@
   <img src="https://img.shields.io/badge/TypeScript-5.x-blue" alt="TypeScript" />
 </p>
 
-<div align="center">
-  <img width="80%" src="https://github.com/user-attachments/assets/b5eea348-5919-40ff-ad55-3a0387dbec47" alt="Bullstudio dashboard screenshot" />
-</div>
+<p align="center">
+Modern, sleek queue dashboard for <a href="https://docs.bullmq.io/">BullMQ</a> and <a href="https://github.com/OptimalBits/bull">Bull</a>. Run it standalone with one command or embed it in your app.
+</p>
+
+<p align="center">View official <a href="https://bullstudio.dev/docs">docs &#8594;</a></p>
+
+
+
+<table align="center">
+  <tr>
+    <td width="30%"><img src="apps/website-with-docs/public/demo/bullstudio-overview-demo-dark.png" alt="Bullstudio dashboard overview" /></td>
+    <td width="30%"><img src="apps/website-with-docs/public/demo/bullstudio-jobs-demo-dark.png" alt="Bullstudio job inspection" /></td>
+    <td  width="30%"><img src="apps/website-with-docs/public/demo/bullstudio-flows-demo-dark.png" alt="Bullstudio dashboard overview" /></td>
+  </tr>
+</table>
+
+## Features
+
+- **Queue overviews** — live queue counts and job states surface stuck, failed, and backed-up work at a glance.
+- **Two ways to run** — launch standalone with one command, or embed it inside your existing app.
+- **BullMQ & Bull** — works with both BullMQ and legacy Bull queues via adapters.
+- **Framework adapters** — support for Hono, Express, Fastify, Next.js, and NestJS.
+- **Flow view** — visualize parent/child job trees and trace dependencies across your flows.
+- **Job control** — retry, promote, remove, and clean jobs; inspect data, logs, and stack traces.
+- **Built-in auth** — protect access with basic authentication or a read-only mode.
+- **Docker ready** — run anywhere from the official image, standalone or in a compose stack.
+
+## Quick start
 
 Bullstudio runs in two modes:
 
-- **Standalone mode**: run a separate dashboard process that connects to Redis and discovers queues.
+- **Standalone mode**: run a separate dashboard process that connects directly to Redis and discovers queues on start up.
 - **Embedded mode**: mount Bullstudio inside your app and expose only the queues you supply.
 
-## Standalone
+### Standalone
+
+The quickest way to spin up bullstudio is via CLI:
 
 ```bash
 npx bullstudio -r redis://localhost:6379
 ```
 
-The dashboard opens at `http://localhost:4000`.
+The dashboard opens at `http://localhost:4000` and connects to your local redis instance on port 6379.
 
 ```bash
 bullstudio --help
@@ -40,7 +64,9 @@ bullstudio --prefix stage,stage2
 bullstudio --username operator --password change-me
 ```
 
-## Docker
+### Docker
+
+Bullstudio is available as a Docker image:
 
 ```bash
 docker run -d \
@@ -49,6 +75,7 @@ docker run -d \
   emirce/bullstudio
 ```
 
+You can also run it in a Docker compose stack:
 ```yaml
 services:
   bullstudio:
@@ -66,10 +93,12 @@ services:
 
 ## Embedded
 
-Install one framework adapter and one queue adapter:
+Use embedded mode if want to access Bullstudio from an existing application that is accessible via a public URL
+
+Install one framework adapter and one queue adapter. Here as an example, we use Hono:
 
 ```bash
-pnpm add @bullstudio/hono @bullstudio/bullmq-adapter bullmq ioredis
+pnpm add @bullstudio/hono @bullstudio/bullmq-adapter
 ```
 
 ```ts
@@ -109,15 +138,15 @@ app.route(
 
 Open `/ops/bullstudio`. Dashboard assets and the private dashboard API are served under the same mount path.
 
-## Framework Adapters
+### Framework Adapters
 
-| Framework | Package | Mount |
+| Framework | Package | Docs |
 | --- | --- | --- |
-| Hono | `@bullstudio/hono` | `app.route("/ops/bullstudio", bullstudio(config))` |
-| Express | `@bullstudio/express` | `app.use("/ops/bullstudio", bullstudio(config))` |
-| Fastify | `@bullstudio/fastify` | `app.register(bullstudio(config), { prefix: "/ops/bullstudio" })` |
-| Next.js App Router | `@bullstudio/next` | `export const { GET, HEAD, POST } = bullstudio({ mountPath: "/ops/bullstudio", ...config })` |
-| NestJS | `@bullstudio/nestjs` | `BullstudioModule.forRoot({ mountPath: "/ops/bullstudio", ...config })` |
+| Hono | <a href="https://www.npmjs.com/package/@bullstudio/hono">@bullstudio/hono</a> | <a href="https://bullstudio.dev/docs/embedded/hono">Hono docs</a> |
+| Express | <a href="https://www.npmjs.com/package/@bullstudio/express">@bullstudio/express</a> | <a href="https://bullstudio.dev/docs/embedded/express">Express docs</a> |
+| Fastify | <a href="https://www.npmjs.com/package/@bullstudio/fastify">@bullstudio/fastify</a> | <a href="https://bullstudio.dev/docs/embedded/fastify">Fastify docs</a> |
+| Next.js App Router | <a href="https://www.npmjs.com/package/@bullstudio/next">@bullstudio/next</a> | <a href="https://bullstudio.dev/docs/embedded/next">Next.js docs</a> |
+| NestJS | <a href="https://www.npmjs.com/package/@bullstudio/nestjs">@bullstudio/nestjs</a> | <a href="https://bullstudio.dev/docs/embedded/nestjs">NestJS docs</a> |
 
 ```ts
 // Express
@@ -148,8 +177,8 @@ export const { GET, HEAD, POST } = bullstudio({
 });
 ```
 
-## Queue Adapters
-
+### Queue Adapters
+Bullstudio supports BullMQ and Bull (legacy) queues. You simply wrap your queue in the according adapter:
 ```ts
 import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
 
@@ -170,7 +199,7 @@ const queue = createBullQueueAdapter(emailQueue, {
 
 Embedded mode only shows supplied queues. Bullstudio does not discover all Redis queues in embedded mode and does not close host-owned queue connections.
 
-## Embedded Options
+### Embedded Options
 
 ```ts
 bullstudio({
@@ -203,23 +232,20 @@ Set `protection: { type: "disabled" }` only when your host application protects 
 | Next.js App Router | `pnpm --filter @bullstudio/example-next-bullmq-embedded dev` |
 | NestJS | `pnpm --filter @bullstudio/example-nestjs-bullmq-embedded dev:express` |
 
-## Packages
 
-- `bullstudio`: standalone CLI.
-- `@bullstudio/hono`, `@bullstudio/express`, `@bullstudio/fastify`, `@bullstudio/next`, `@bullstudio/nestjs`: framework adapters.
-- `@bullstudio/bullmq-adapter`, `@bullstudio/bull-adapter`: queue adapters.
-- `@bullstudio/connect-types`: contracts for custom queue adapters.
+## Tech stack
+
+Bullstudio's core is built with
+
+- <a href="https://www.typescriptlang.org/">Typescript</a>
+- <a href="https://react.dev/">React</a>
+- <a href="https://tailwindcss.com/">Tailwind</a>
+- <a href="https://tanstack.com/router/latest">Tanstack Router</a> + <a href="https://tanstack.com/query/latest">Query</a>
+- <a href="https://trpc.io/">tRPC</a>
 
 ## Development
 
-```bash
-pnpm install
-pnpm test
-pnpm typecheck
-pnpm build
-```
-
-See `docs/embedded-mode.md` for embedded-mode details and package-level READMEs for adapter-specific usage.
+For detailed development guidelines visit the <a href="https://bullstudio.dev/docs/development">development section</a> in the docs.
 
 ## License
 
