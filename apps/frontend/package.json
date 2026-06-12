@@ -1,6 +1,6 @@
 {
   "name": "@bullstudio/frontend",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Bullstudio dashboard frontend",
   "private": true,
   "type": "module",
