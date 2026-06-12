@@ -28,6 +28,7 @@ import type {
 } from "../../types";
 import { getProviderCapabilities } from "../../types";
 import { redisReconnectStrategy } from "../../utils";
+import { parseQueueNameFromKey } from "../redis-key";
 
 const DEFAULT_PREFIX = "bull";
 
@@ -414,8 +415,7 @@ export class BullMqProvider implements QueueService {
         );
         cursor = next;
         for (const key of keys) {
-          const parts = key.split(":");
-          const name = parts[1] ?? "";
+          const name = parseQueueNameFromKey(key, prefix, "meta");
           if (!name) continue;
           const composite = this.queueKey(prefix, name);
           if (seen.has(composite)) continue;
