@@ -56,6 +56,16 @@ export function createEmbeddedDashboard(
       withMutationAccess(resolvedConfig, () =>
         getQueueAdapter(queueAdaptersByKey, queueKey).drainQueue(),
       ),
+    addJob: (queueKey, input) =>
+      withMutationAccess(resolvedConfig, () => {
+        const adapter = getQueueAdapter(queueAdaptersByKey, queueKey);
+        if (!adapter.addJob) {
+          throw new Error(
+            `Supplied queue "${queueKey}" does not support adding jobs.`,
+          );
+        }
+        return adapter.addJob(input);
+      }),
     getJobs: (queueKey, options) =>
       getQueueAdapter(queueAdaptersByKey, queueKey).getJobs(options),
     getJobsSummary: (queueKey, options) =>
@@ -297,6 +307,7 @@ function aggregateCapabilities(queues: QueueAdapter[]): AdapterCapabilities {
       queuePause: result.queuePause || queue.capabilities.queuePause,
       queueResume: result.queueResume || queue.capabilities.queueResume,
       queueDrain: result.queueDrain || queue.capabilities.queueDrain,
+      queueAddJob: result.queueAddJob || queue.capabilities.queueAddJob,
       schedulers: result.schedulers || queue.capabilities.schedulers,
       workers: result.workers || queue.capabilities.workers,
     }),

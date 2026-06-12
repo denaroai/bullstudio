@@ -1,5 +1,5 @@
 import type { FlowSummary, FlowTree } from "./flow";
-import type { Job, JobQueryOptions, JobSummary } from "./job";
+import type { AddJobInput, Job, JobQueryOptions, JobSummary } from "./job";
 import type { JobCounts, Queue } from "./queue";
 import type {
   JobScheduler,
@@ -40,6 +40,7 @@ export interface AdapterCapabilities {
   queuePause: boolean;
   queueResume: boolean;
   queueDrain: boolean;
+  queueAddJob: boolean;
   schedulers: boolean;
   workers: boolean;
 }
@@ -54,6 +55,7 @@ export interface QueueAdapter {
   pauseQueue(): Promise<void>;
   resumeQueue(): Promise<void>;
   drainQueue(): Promise<void>;
+  addJob?(input: AddJobInput): Promise<void>;
   getJobs(options?: JobQueryOptions): Promise<Job[]>;
   getJobsSummary(options?: JobQueryOptions): Promise<JobSummary[]>;
   /**

@@ -212,6 +212,22 @@ export type JobTargetInput = {
   jobId: string;
 };
 
+export type JobAddInput = {
+  queueKey?: string;
+  queueName?: string;
+  name?: string;
+  prefix?: string;
+  jobName: string;
+  data?: unknown;
+  delay?: number;
+  attempts?: number;
+};
+
+export type JobAddResponse = {
+  success: true;
+  message: string;
+};
+
 export type JobLogsResponse = { logs: string[]; count: number };
 
 export type JobRetryResponse = {
@@ -318,6 +334,7 @@ export interface PrivateDashboardQueueSource {
   getJobLogs(input: JobTargetInput): Promise<JobLogsResponse>;
   retryJob(input: JobTargetInput): Promise<JobRetryResponse>;
   removeJob(input: JobTargetInput): Promise<JobRemoveResponse>;
+  addJob(input: JobAddInput): Promise<JobAddResponse>;
   pauseQueue(input: QueueTargetInput): Promise<QueueMutationResponse>;
   resumeQueue(input: QueueTargetInput): Promise<QueueMutationResponse>;
   drainQueue(input: QueueTargetInput): Promise<QueueMutationResponse>;
@@ -410,6 +427,17 @@ const jobTargetSchema = z.object({
   name: z.string().optional(),
   prefix: z.string().optional(),
   jobId: z.string(),
+});
+
+const jobAddSchema = z.object({
+  queueKey: z.string().optional(),
+  queueName: z.string().optional(),
+  name: z.string().optional(),
+  prefix: z.string().optional(),
+  jobName: z.string().trim().min(1),
+  data: z.unknown().optional(),
+  delay: z.number().int().min(0).optional(),
+  attempts: z.number().int().min(1).optional(),
 });
 
 const flowListSchema = z
@@ -607,6 +635,14 @@ export function createPrivateDashboardRouter(
           const queue = await resolveQueueTarget(source, input);
           assertQueueCapability(source, queue, "jobRemoval", "Job removal");
           return source.removeJob(input);
+        }),
+      add: authenticatedProcedure
+        .input(jobAddSchema)
+        .mutation(async ({ input }) => {
+          await assertCanMutate(source);
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "queueAddJob", "Add job");
+          return source.addJob(input);
         }),
     }),
     flows: t.router({

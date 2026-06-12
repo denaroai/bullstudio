@@ -12,6 +12,7 @@ import {
   type DashboardQueue,
   type FlowListInput,
   type FlowTargetInput,
+  type JobAddInput,
   type JobListInput,
   type JobTargetInput,
   type PrivateDashboardQueueSource,
@@ -99,6 +100,7 @@ export function createStandaloneQueueSource(): PrivateDashboardQueueSource {
     },
     retryJob: retryJob,
     removeJob: removeJob,
+    addJob: addJob,
     pauseQueue: async (input) => {
       const provider = await getQueueProvider();
       const queue = await resolveQueue(input);
@@ -404,6 +406,28 @@ async function removeJob(
   return {
     success: true,
     message: `Job "${job.name}" has been removed`,
+  };
+}
+
+async function addJob(
+  input: JobAddInput,
+): Promise<{ success: true; message: string }> {
+  const provider = await getQueueProvider();
+  const queue = await resolveQueue(input);
+
+  await provider.addJob(
+    queue.name,
+    {
+      name: input.jobName,
+      data: input.data,
+      opts: { delay: input.delay, attempts: input.attempts },
+    },
+    queue.prefix,
+  );
+
+  return {
+    success: true,
+    message: `Job "${input.jobName}" has been added to queue "${queue.name}"`,
   };
 }
 

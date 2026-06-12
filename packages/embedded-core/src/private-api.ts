@@ -8,6 +8,7 @@ import type {
 import {
   createPrivateDashboardRouter,
   type FlowListInput,
+  type JobAddInput,
   type JobListInput,
   type JobTargetInput,
   type PrivateDashboardContext,
@@ -110,6 +111,7 @@ export function createEmbeddedQueueSource(
     },
     retryJob: (input) => retryJob(dashboard, input),
     removeJob: (input) => removeJob(dashboard, input),
+    addJob: (input) => addJob(dashboard, input),
     pauseQueue: async (input) => {
       const queue = await getSuppliedQueueByPrivateApiInput(dashboard, input);
       await dashboard.pauseQueue(queue.key);
@@ -371,6 +373,34 @@ async function removeJob(
     success: true,
     message: `Job "${job.name}" has been removed`,
   };
+}
+
+async function addJob(
+  dashboard: EmbeddedDashboardInstance,
+  input: JobAddInput,
+): Promise<{ success: true; message: string }> {
+  const queue = await getQueueForTarget(dashboard, input);
+  assertAddJobCapability(queue);
+
+  await dashboard.addJob(queue.key, {
+    name: input.jobName,
+    data: input.data,
+    opts: { delay: input.delay, attempts: input.attempts },
+  });
+
+  return {
+    success: true,
+    message: `Job "${input.jobName}" has been added to queue "${queue.name}"`,
+  };
+}
+
+function assertAddJobCapability(queue: DashboardQueue): void {
+  if (!queue.capabilities.queueAddJob) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Adding jobs is not supported for supplied queue "${queue.key}".`,
+    });
+  }
 }
 
 async function getQueuesForSchedulerList(

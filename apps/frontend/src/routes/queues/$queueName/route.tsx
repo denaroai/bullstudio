@@ -18,9 +18,10 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { Pause, Play, RefreshCw, Trash2 } from "lucide-react";
+import { Pause, Play, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AddJobDialog } from "@/components/jobs/AddJobDialog";
 import { QueueTabs } from "@/components/QueueTabs";
 import { useTRPC } from "@/integrations/trpc/react";
 import { queueNameFromParam, resolveQueueFromParam } from "@/lib/queue-key";
@@ -35,6 +36,7 @@ function QueueLayout() {
   const queryClient = useQueryClient();
   const { queueName: queueParam } = Route.useParams();
   const [drainDialogOpen, setDrainDialogOpen] = useState(false);
+  const [addJobDialogOpen, setAddJobDialogOpen] = useState(false);
 
   const isFetching = useIsFetching() > 0;
   const refreshAll = () => queryClient.invalidateQueries();
@@ -65,6 +67,7 @@ function QueueLayout() {
   const canPause = queueSource?.features.queuePause.enabled ?? false;
   const canResume = queueSource?.features.queueResume.enabled ?? false;
   const canDrain = queueSource?.features.queueDrain.enabled ?? false;
+  const canAddJob = queueSource?.features.queueAddJob.enabled ?? false;
   const queueTarget = {
     queueKey: queue?.key,
     queueName,
@@ -143,6 +146,16 @@ function QueueLayout() {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setAddJobDialogOpen(true)}
+            disabled={!canAddJob}
+            className="bg-card"
+          >
+            <Plus className="size-4 mr-2" />
+            Add job
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleToggle}
             disabled={toggleDisabled || togglePending}
             className="bg-card"
@@ -181,6 +194,14 @@ function QueueLayout() {
       </header>
 
       <QueueTabs queueParam={queueParam} features={tabFeatures} />
+
+      <AddJobDialog
+        open={addJobDialogOpen}
+        onOpenChange={setAddJobDialogOpen}
+        queueName={queueName}
+        queueTarget={queueTarget}
+        mutationsEnabled={canAddJob}
+      />
 
       <AlertDialog open={drainDialogOpen} onOpenChange={setDrainDialogOpen}>
         <AlertDialogContent>

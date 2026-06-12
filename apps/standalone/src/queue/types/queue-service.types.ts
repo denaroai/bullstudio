@@ -1,4 +1,5 @@
 import type {
+  AddJobInput,
   Job,
   JobCounts,
   JobQueryOptions,
@@ -97,6 +98,11 @@ export interface QueueService {
   ): Promise<{ logs: string[]; count: number }>;
   retryJob(queueName: string, jobId: string, prefix?: string): Promise<void>;
   removeJob(queueName: string, jobId: string, prefix?: string): Promise<void>;
+  addJob(
+    queueName: string,
+    input: AddJobInput,
+    prefix?: string,
+  ): Promise<void>;
 
   // Worker operations
   getWorkerCount(queueName: string, prefix?: string): Promise<WorkerCount>;

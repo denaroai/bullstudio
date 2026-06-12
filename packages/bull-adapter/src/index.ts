@@ -42,6 +42,7 @@ export function createBullQueueAdapter(
       queuePause: true,
       queueResume: true,
       queueDrain: true,
+      queueAddJob: true,
       schedulers: true,
       workers: true,
     },
@@ -67,6 +68,9 @@ export function createBullQueueAdapter(
     },
     drainQueue: async () => {
       await queue.empty();
+    },
+    addJob: async (input) => {
+      await queue.add(input.name, input.data ?? {}, input.opts);
     },
     getJobs: async (options) => {
       const { filter, sort, limit = 100, offset = 0 } = options ?? {};

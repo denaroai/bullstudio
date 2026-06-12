@@ -1,5 +1,6 @@
 import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
 import type {
+  AddJobInput,
   Queue as IQueue,
   Job,
   JobCounts,
@@ -281,6 +282,14 @@ export class BullMqProvider implements QueueService {
     prefix?: string,
   ): Promise<void> {
     await this.getOrCreateQueueAdapter(queueName, prefix).removeJob(jobId);
+  }
+
+  async addJob(
+    queueName: string,
+    input: AddJobInput,
+    prefix?: string,
+  ): Promise<void> {
+    await this.getOrCreateQueueAdapter(queueName, prefix).addJob?.(input);
   }
 
   async getWorkerCount(
