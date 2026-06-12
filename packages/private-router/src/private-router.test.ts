@@ -19,6 +19,7 @@ import {
   type JobListInput,
   type JobLogsResponse,
   type JobRemoveResponse,
+  type JobRetryAllResponse,
   type JobRetryResponse,
   type JobTargetInput,
   mergeSortAndPageJobs,
@@ -137,6 +138,16 @@ describe("createPrivateDashboardRouter", () => {
         jobId: "failed",
       }),
     ).resolves.toMatchObject({ success: true, workerCount: 1 });
+    await expect(
+      caller.jobs.retryAllFailed({
+        queueKey: "email-critical",
+        queueName: "email",
+      }),
+    ).resolves.toMatchObject({ success: true, count: 1, workerCount: 1 });
+    expect(source.retryAllFailedJobs).toHaveBeenCalledWith({
+      queueKey: "email-critical",
+      queueName: "email",
+    });
     await expect(
       caller.jobs.remove({
         queueKey: "email-critical",
@@ -825,6 +836,9 @@ type FakeSource = PrivateDashboardQueueSource & {
   retryJob: ReturnType<
     typeof vi.fn<[JobTargetInput], Promise<JobRetryResponse>>
   >;
+  retryAllFailedJobs: ReturnType<
+    typeof vi.fn<[QueueTargetInput], Promise<JobRetryAllResponse>>
+  >;
   removeJob: ReturnType<
     typeof vi.fn<[JobTargetInput], Promise<JobRemoveResponse>>
   >;
@@ -995,6 +1009,12 @@ function createFakeSource(options: FakeSourceOptions = {}): FakeSource {
             workerCount: 1,
           },
     ),
+    retryAllFailedJobs: vi.fn(async () => ({
+      success: true as const,
+      message: "Re-enqueued 1 failed job",
+      count: 1,
+      workerCount: 1,
+    })),
     removeJob: vi.fn(
       async (): Promise<JobRemoveResponse> => ({
         success: true,

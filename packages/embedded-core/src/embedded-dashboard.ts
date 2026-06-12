@@ -82,6 +82,10 @@ export function createEmbeddedDashboard(
       withMutationAccess(resolvedConfig, () =>
         getQueueAdapter(queueAdaptersByKey, queueKey).retryJob(jobId),
       ),
+    retryFailedJobs: (queueKey) =>
+      withMutationAccess(resolvedConfig, () =>
+        getQueueAdapter(queueAdaptersByKey, queueKey).retryFailedJobs(),
+      ),
     removeJob: (queueKey, jobId) =>
       withMutationAccess(resolvedConfig, () =>
         getQueueAdapter(queueAdaptersByKey, queueKey).removeJob(jobId),

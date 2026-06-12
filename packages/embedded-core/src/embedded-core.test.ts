@@ -1740,6 +1740,7 @@ function createQueueAdapter(
     pauseQueue?: () => Promise<void>;
     resumeQueue?: () => Promise<void>;
     retryJob?: (jobId: string) => Promise<void>;
+    retryFailedJobs?: () => Promise<number>;
     removeJob?: (jobId: string) => Promise<void>;
   },
 ): QueueAdapter {
@@ -1781,6 +1782,7 @@ function createQueueAdapter(
     getJobLogs: async (jobId) =>
       options.jobLogs?.[jobId] ?? { logs: [], count: 0 },
     retryJob: options.retryJob ?? (async () => {}),
+    retryFailedJobs: options.retryFailedJobs ?? (async () => 0),
     removeJob: options.removeJob ?? (async () => {}),
     getWorkerCount: async () => ({
       queueName,

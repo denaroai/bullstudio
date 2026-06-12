@@ -97,12 +97,9 @@ export interface QueueService {
     prefix?: string,
   ): Promise<{ logs: string[]; count: number }>;
   retryJob(queueName: string, jobId: string, prefix?: string): Promise<void>;
+  retryFailedJobs(queueName: string, prefix?: string): Promise<number>;
   removeJob(queueName: string, jobId: string, prefix?: string): Promise<void>;
-  addJob(
-    queueName: string,
-    input: AddJobInput,
-    prefix?: string,
-  ): Promise<void>;
+  addJob(queueName: string, input: AddJobInput, prefix?: string): Promise<void>;
 
   // Worker operations
   getWorkerCount(queueName: string, prefix?: string): Promise<WorkerCount>;

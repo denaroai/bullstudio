@@ -10,6 +10,7 @@ import {
   type FlowListInput,
   type JobAddInput,
   type JobListInput,
+  type JobRetryAllResponse,
   type JobTargetInput,
   type PrivateDashboardContext,
   type PrivateDashboardQueueSource,
@@ -110,6 +111,7 @@ export function createEmbeddedQueueSource(
       return dashboard.getJobLogs(queue.key, input.jobId);
     },
     retryJob: (input) => retryJob(dashboard, input),
+    retryAllFailedJobs: (input) => retryAllFailed(dashboard, input),
     removeJob: (input) => removeJob(dashboard, input),
     addJob: (input) => addJob(dashboard, input),
     pauseQueue: async (input) => {
@@ -349,6 +351,38 @@ async function retryJob(
   return {
     success: true,
     message: `Job "${job.name}" has been enqueued for retry`,
+    workerCount: workerCount.count,
+  };
+}
+
+async function retryAllFailed(
+  dashboard: EmbeddedDashboardInstance,
+  input: QueueTargetInput,
+): Promise<JobRetryAllResponse> {
+  const queue = await getQueueForTarget(dashboard, input);
+
+  const workerCount = queue.capabilities.workers
+    ? await dashboard.getWorkerCount(queue.key)
+    : { queueName: queue.name, count: 0 };
+
+  if (queue.capabilities.workers && workerCount.count === 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        `No workers available for queue "${queue.name}". ` +
+        "Start a worker to process retried jobs.",
+    });
+  }
+
+  const count = await dashboard.retryFailedJobs(queue.key);
+
+  return {
+    success: true,
+    message:
+      count === 0
+        ? "No failed jobs to retry"
+        : `Re-enqueued ${count} failed job${count === 1 ? "" : "s"}`,
+    count,
     workerCount: workerCount.count,
   };
 }

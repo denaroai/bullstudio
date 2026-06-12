@@ -141,6 +141,24 @@ export function createBullMqQueueAdapter(
       }
       await job.retry();
     },
+    retryFailedJobs: async () => {
+      let total = 0;
+      // BullMQ retries up to `count` failed jobs per call, so loop in batches
+      // until the failed set is drained (or stops shrinking, e.g. jobs re-fail).
+      for (;;) {
+        const before = await queue.getJobCountByTypes("failed");
+        if (before === 0) {
+          break;
+        }
+        await queue.retryJobs({ state: "failed", count: 1000 });
+        const after = await queue.getJobCountByTypes("failed");
+        total += Math.max(0, before - after);
+        if (after === 0 || after >= before) {
+          break;
+        }
+      }
+      return total;
+    },
     removeJob: async (jobId) => {
       const job = await queue.getJob(jobId);
       if (!job) {

@@ -236,6 +236,13 @@ export type JobRetryResponse = {
   workerCount: number;
 };
 
+export type JobRetryAllResponse = {
+  success: true;
+  message: string;
+  count: number;
+  workerCount: number;
+};
+
 export type JobRemoveResponse = {
   success: true;
   message: string;
@@ -333,6 +340,7 @@ export interface PrivateDashboardQueueSource {
   getJob(input: JobTargetInput): Promise<Job | null>;
   getJobLogs(input: JobTargetInput): Promise<JobLogsResponse>;
   retryJob(input: JobTargetInput): Promise<JobRetryResponse>;
+  retryAllFailedJobs(input: QueueTargetInput): Promise<JobRetryAllResponse>;
   removeJob(input: JobTargetInput): Promise<JobRemoveResponse>;
   addJob(input: JobAddInput): Promise<JobAddResponse>;
   pauseQueue(input: QueueTargetInput): Promise<QueueMutationResponse>;
@@ -627,6 +635,14 @@ export function createPrivateDashboardRouter(
           const queue = await resolveQueueTarget(source, input);
           assertQueueCapability(source, queue, "jobRetry", "Job retry");
           return source.retryJob(input);
+        }),
+      retryAllFailed: authenticatedProcedure
+        .input(queueTargetSchema)
+        .mutation(async ({ input }) => {
+          await assertCanMutate(source);
+          const queue = await resolveQueueTarget(source, input);
+          assertQueueCapability(source, queue, "jobRetry", "Job retry");
+          return source.retryAllFailedJobs(input);
         }),
       remove: authenticatedProcedure
         .input(jobTargetSchema)

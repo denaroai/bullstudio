@@ -198,6 +198,7 @@ describe("createBullMqQueueAdapter", () => {
   it("delegates job and queue operations without closing the supplied queue", async () => {
     const retry = vi.fn<() => Promise<void>>();
     const remove = vi.fn<() => Promise<void>>();
+    const retryJobs = vi.fn<() => Promise<void>>();
     const close = vi.fn<() => Promise<void>>();
     const queue = {
       name: "email",
@@ -215,6 +216,11 @@ describe("createBullMqQueueAdapter", () => {
         remove,
       }),
       getJobLogs: async () => ({ logs: ["created"], count: 1 }),
+      getJobCountByTypes: vi
+        .fn<() => Promise<number>>()
+        .mockResolvedValueOnce(2)
+        .mockResolvedValueOnce(0),
+      retryJobs,
       pause: vi.fn<() => Promise<void>>(),
       resume: vi.fn<() => Promise<void>>(),
       getWorkers: async () => [{}, {}],
@@ -236,6 +242,8 @@ describe("createBullMqQueueAdapter", () => {
     await adapter.pauseQueue();
     await adapter.resumeQueue();
     await adapter.retryJob("1");
+    await expect(adapter.retryFailedJobs()).resolves.toBe(2);
+    expect(retryJobs).toHaveBeenCalledWith({ state: "failed", count: 1000 });
     await adapter.removeJob("1");
     await expect(adapter.getWorkerCount()).resolves.toEqual({
       queueName: "email",

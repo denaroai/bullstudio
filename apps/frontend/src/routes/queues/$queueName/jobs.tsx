@@ -1,5 +1,15 @@
 import type { JobSummary } from "@bullstudio/connect-types";
 import dayjs from "@bullstudio/dayjs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@bullstudio/ui/components/alert-dialog";
 import { Button } from "@bullstudio/ui/components/button";
 import { Input } from "@bullstudio/ui/components/input";
 import {
@@ -29,7 +39,7 @@ import {
   type JobStatus,
   JobStatusBadge,
 } from "@bullstudio/ui/shared";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowDown,
@@ -42,9 +52,11 @@ import {
   ChevronsRight,
   Inbox,
   RefreshCw,
+  RotateCcw,
   Search,
 } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { JobDetail } from "@/components/jobs/JobDetail";
 import { useTRPC } from "@/integrations/trpc/react";
 import {
@@ -87,9 +99,11 @@ function useDebounce<T>(value: T, delay: number): T {
 
 function QueueJobsPage() {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const navigate = useNavigate({ from: Route.fullPath });
   const { queueName: queueParam } = Route.useParams();
   const tableScrollRef = useRef<HTMLDivElement>(null);
+  const [confirmRetryAll, setConfirmRetryAll] = useState(false);
 
   const { statusFilter, q, selected, page, pageSize, sortField, sortOrder } =
     Route.useSearch();
@@ -182,6 +196,23 @@ function QueueJobsPage() {
       sortOrder,
       limit: pageSize,
       offset: (page - 1) * pageSize,
+    }),
+  );
+
+  const retryAllMutation = useMutation(
+    trpc.jobs.retryAllFailed.mutationOptions({
+      onSuccess: (data) => {
+        toast.success(data.message, {
+          description: `${data.workerCount} worker(s) available to process`,
+        });
+        queryClient.invalidateQueries({ queryKey: [["jobs"]] });
+        queryClient.invalidateQueries({ queryKey: [["queues"]] });
+        setConfirmRetryAll(false);
+      },
+      onError: (error) => {
+        toast.error("Failed to retry jobs", { description: error.message });
+        setConfirmRetryAll(false);
+      },
     }),
   );
 
@@ -340,6 +371,25 @@ function QueueJobsPage() {
         </Tabs>
 
         <div className="flex shrink-0 items-center gap-3">
+          {statusCounts.failed > 0 &&
+            queueSource?.features.jobRetry.visible && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmRetryAll(true)}
+                disabled={
+                  retryAllMutation.isPending ||
+                  !queueSource.features.jobRetry.enabled
+                }
+                className="bg-card shrink-0 text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+              >
+                <RotateCcw
+                  className={`size-4 ${retryAllMutation.isPending ? "animate-spin" : ""}`}
+                />
+                Retry All Failed
+              </Button>
+            )}
+
           <Button
             variant="outline"
             size="icon"
@@ -610,6 +660,35 @@ function QueueJobsPage() {
           </div>
         </div>
       )}
+
+      <AlertDialog open={confirmRetryAll} onOpenChange={setConfirmRetryAll}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Retry all failed jobs?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This re-enqueues {statusCounts.failed.toLocaleString()} failed job
+              {statusCounts.failed === 1 ? "" : "s"} in "{queueName}". They will
+              be processed again by available workers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                retryAllMutation.mutate({
+                  queueKey: queue?.key,
+                  queueName,
+                  prefix,
+                })
+              }
+              disabled={retryAllMutation.isPending}
+            >
+              Retry {statusCounts.failed.toLocaleString()} job
+              {statusCounts.failed === 1 ? "" : "s"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

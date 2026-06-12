@@ -1,6 +1,6 @@
 import type {
-  AddJobInput,
   AdapterCapabilities,
+  AddJobInput,
   FlowSummary,
   FlowTree,
   Job,
@@ -208,6 +208,7 @@ export interface EmbeddedDashboardInstance {
     count: number;
   }>;
   retryJob(queueKey: string, jobId: string): Promise<void>;
+  retryFailedJobs(queueKey: string): Promise<number>;
   removeJob(queueKey: string, jobId: string): Promise<void>;
   getWorkerCount(queueKey: string): Promise<WorkerCount>;
   listWorkers(queueKey: string): Promise<Worker[]>;

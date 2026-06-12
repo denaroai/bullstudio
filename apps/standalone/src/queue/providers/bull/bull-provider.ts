@@ -276,6 +276,10 @@ export class BullProvider implements QueueService {
     await this.getOrCreateQueueAdapter(queueName, prefix).retryJob(jobId);
   }
 
+  async retryFailedJobs(queueName: string, prefix?: string): Promise<number> {
+    return this.getOrCreateQueueAdapter(queueName, prefix).retryFailedJobs();
+  }
+
   async removeJob(
     queueName: string,
     jobId: string,

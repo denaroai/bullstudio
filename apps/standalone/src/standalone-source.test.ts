@@ -147,6 +147,52 @@ describe("standalone private dashboard queue source", () => {
     expect(retryJob).toHaveBeenCalledWith("email", "1", "bull");
   });
 
+  it("retries all failed jobs through the resolved queue target", async () => {
+    const retryFailedJobs = vi.fn(async () => 3);
+
+    vi.doMock("./connection", () => ({
+      getQueueProvider: async () => ({
+        getQueue: async (name: string, prefix?: string) =>
+          name === "email" ? queue(name, prefix ?? "bull") : null,
+        getWorkerCount: async () => ({ queueName: "email", count: 2 }),
+        retryFailedJobs,
+      }),
+    }));
+
+    const { createStandaloneQueueSource } = await import("./standalone-source");
+    const source = createStandaloneQueueSource();
+
+    await expect(
+      source.retryAllFailedJobs({ queueName: "email", prefix: "bull" }),
+    ).resolves.toMatchObject({
+      success: true,
+      count: 3,
+      workerCount: 2,
+    });
+    expect(retryFailedJobs).toHaveBeenCalledWith("email", "bull");
+  });
+
+  it("blocks retrying all failed jobs when no workers are available", async () => {
+    const retryFailedJobs = vi.fn(async () => 0);
+
+    vi.doMock("./connection", () => ({
+      getQueueProvider: async () => ({
+        getQueue: async (name: string, prefix?: string) =>
+          name === "email" ? queue(name, prefix ?? "bull") : null,
+        getWorkerCount: async () => ({ queueName: "email", count: 0 }),
+        retryFailedJobs,
+      }),
+    }));
+
+    const { createStandaloneQueueSource } = await import("./standalone-source");
+    const source = createStandaloneQueueSource();
+
+    await expect(
+      source.retryAllFailedJobs({ queueName: "email", prefix: "bull" }),
+    ).rejects.toThrow(/No workers available/);
+    expect(retryFailedJobs).not.toHaveBeenCalled();
+  });
+
   it("returns no flows for providers without flow support", async () => {
     vi.doMock("./connection", () => ({
       getQueueProvider: async () => ({

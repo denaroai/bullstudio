@@ -14,6 +14,7 @@ import {
   type FlowTargetInput,
   type JobAddInput,
   type JobListInput,
+  type JobRetryAllResponse,
   type JobTargetInput,
   type PrivateDashboardQueueSource,
   type QueueMetricsListInput,
@@ -99,6 +100,7 @@ export function createStandaloneQueueSource(): PrivateDashboardQueueSource {
       return provider.getJobLogs(queue.name, input.jobId, queue.prefix);
     },
     retryJob: retryJob,
+    retryAllFailedJobs: retryAllFailedJobs,
     removeJob: removeJob,
     addJob: addJob,
     pauseQueue: async (input) => {
@@ -383,6 +385,35 @@ async function retryJob(
   return {
     success: true,
     message: `Job "${job.name}" has been enqueued for retry`,
+    workerCount: workerCount.count,
+  };
+}
+
+async function retryAllFailedJobs(
+  input: QueueTargetInput,
+): Promise<JobRetryAllResponse> {
+  const provider = await getQueueProvider();
+  const queue = await resolveQueue(input);
+
+  const workerCount = await provider.getWorkerCount(queue.name, queue.prefix);
+  if (workerCount.count === 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        `No workers available for queue "${queue.name}". ` +
+        "Start a worker to process retried jobs.",
+    });
+  }
+
+  const count = await provider.retryFailedJobs(queue.name, queue.prefix);
+
+  return {
+    success: true,
+    message:
+      count === 0
+        ? "No failed jobs to retry"
+        : `Re-enqueued ${count} failed job${count === 1 ? "" : "s"}`,
+    count,
     workerCount: workerCount.count,
   };
 }

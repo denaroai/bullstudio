@@ -123,6 +123,16 @@ export function createBullQueueAdapter(
       }
       await job.retry();
     },
+    retryFailedJobs: async () => {
+      // Bull has no bulk retry, so retry each failed job individually.
+      const failed = await queue.getFailed(0, -1);
+      let count = 0;
+      for (const job of failed) {
+        await job.retry();
+        count++;
+      }
+      return count;
+    },
     removeJob: async (jobId) => {
       const job = await queue.getJob(jobId);
       if (!job) {

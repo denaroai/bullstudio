@@ -176,6 +176,7 @@ describe("createBullQueueAdapter", () => {
     const retry = vi.fn<() => Promise<void>>();
     const remove = vi.fn<() => Promise<void>>();
     const close = vi.fn<() => Promise<void>>();
+    const failedRetry = vi.fn<() => Promise<void>>();
     const queue = {
       name: "email",
       getJob: async () => ({
@@ -191,6 +192,7 @@ describe("createBullQueueAdapter", () => {
         remove,
       }),
       getJobLogs: async () => ({ logs: ["created"], count: 1 }),
+      getFailed: async () => [{ retry: failedRetry }, { retry: failedRetry }],
       pause: vi.fn<() => Promise<void>>(),
       resume: vi.fn<() => Promise<void>>(),
       getWorkers: async () => [{}, {}],
@@ -212,6 +214,8 @@ describe("createBullQueueAdapter", () => {
     await adapter.pauseQueue();
     await adapter.resumeQueue();
     await adapter.retryJob("1");
+    await expect(adapter.retryFailedJobs()).resolves.toBe(2);
+    expect(failedRetry).toHaveBeenCalledTimes(2);
     await adapter.removeJob("1");
     await expect(adapter.getWorkerCount()).resolves.toEqual({
       queueName: "email",

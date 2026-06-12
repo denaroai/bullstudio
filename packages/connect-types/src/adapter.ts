@@ -66,6 +66,8 @@ export interface QueueAdapter {
   getJob(jobId: string): Promise<Job | null>;
   getJobLogs(jobId: string): Promise<{ logs: string[]; count: number }>;
   retryJob(jobId: string): Promise<void>;
+  /** Re-enqueue all failed jobs. Returns the number of jobs retried. */
+  retryFailedJobs(): Promise<number>;
   removeJob(jobId: string): Promise<void>;
   getWorkerCount(): Promise<WorkerCount>;
   listWorkers?(): Promise<Worker[]>;
