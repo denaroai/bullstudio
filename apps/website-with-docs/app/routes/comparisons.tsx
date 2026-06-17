@@ -1,3 +1,4 @@
+import { usePostHog } from "@posthog/react";
 import { HomeLayout } from "fumadocs-ui/layouts/home";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
@@ -33,6 +34,7 @@ export async function loader(_: Route.LoaderArgs) {
 
 export default function ComparisonsIndex({ loaderData }: Route.ComponentProps) {
   const { articles } = loaderData;
+  const posthog = usePostHog();
 
   return (
     <HomeLayout {...baseOptions()}>
@@ -55,6 +57,12 @@ export default function ComparisonsIndex({ loaderData }: Route.ComponentProps) {
               <li key={article.url}>
                 <Link
                   to={article.url}
+                  onClick={() =>
+                    posthog?.capture("comparison_article_opened", {
+                      title: article.title,
+                      url: article.url,
+                    })
+                  }
                   className="group flex h-full flex-col border border-border bg-card p-6 transition-colors hover:border-primary"
                 >
                   <h2 className="text-lg font-semibold tracking-tight text-foreground">

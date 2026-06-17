@@ -1,3 +1,4 @@
+import { usePostHog } from "@posthog/react";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 import { gitConfig } from "@/lib/shared";
@@ -12,6 +13,8 @@ import { Container } from "./section";
 const HERO_SCREENSHOT: string | undefined = "/demo/bullstudio-dashboard-demo";
 
 export function Hero() {
+  const posthog = usePostHog();
+
   return (
     <section className="relative overflow-hidden border-b border-border">
       {/* atmosphere: engineered grid + a single terracotta glow */}
@@ -66,10 +69,19 @@ export function Hero() {
             className="bs-rise mt-9 w-full max-w-md"
             style={{ animationDelay: "210ms" }}
           >
-            <CommandBlock command="npx bullstudio -r redis://localhost:6379" />
+            <CommandBlock
+              command="npx bullstudio -r redis://localhost:6379"
+              onCopied={() =>
+                posthog?.capture("install_command_copied", {
+                  command: "npx bullstudio -r redis://localhost:6379",
+                  location: "hero",
+                })
+              }
+            />
             <div className="mt-4 flex items-center justify-center gap-3">
               <Link
                 to="/docs"
+                onClick={() => posthog?.capture("docs_cta_clicked", { location: "hero" })}
                 className="inline-flex items-center gap-2 border border-primary bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 Read the docs
@@ -79,6 +91,7 @@ export function Hero() {
                 href={`https://github.com/${gitConfig.user}/${gitConfig.repo}`}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => posthog?.capture("github_star_clicked", { location: "hero" })}
                 className="inline-flex items-center gap-2 border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/60"
               >
                 <GithubGlyph className="size-4" />

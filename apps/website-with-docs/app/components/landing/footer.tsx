@@ -1,3 +1,4 @@
+import { usePostHog } from "@posthog/react";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 import { gitConfig } from "@/lib/shared";
@@ -9,6 +10,8 @@ import { Container } from "./section";
 const repo = `https://github.com/${gitConfig.user}/${gitConfig.repo}`;
 
 export function FinalCta() {
+  const posthog = usePostHog();
+
   return (
     <section className="relative overflow-hidden border-b border-border py-24">
       <div aria-hidden className="bs-grid absolute inset-0 opacity-[0.35]" />
@@ -29,11 +32,20 @@ export function FinalCta() {
           second service.
         </p>
         <div className="mt-8 w-full max-w-md">
-          <CommandBlock command="npx bullstudio -r redis://localhost:6379" />
+          <CommandBlock
+            command="npx bullstudio -r redis://localhost:6379"
+            onCopied={() =>
+              posthog?.capture("install_command_copied", {
+                command: "npx bullstudio -r redis://localhost:6379",
+                location: "final_cta",
+              })
+            }
+          />
         </div>
         <div className="mt-5 flex items-center gap-3">
           <Link
             to="/docs"
+            onClick={() => posthog?.capture("docs_cta_clicked", { location: "final_cta" })}
             className="inline-flex items-center gap-2 border border-primary bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Read the docs
@@ -46,6 +58,8 @@ export function FinalCta() {
 }
 
 export function Footer() {
+  const posthog = usePostHog();
+
   return (
     <footer className="bg-background">
       <Container className="flex flex-col gap-8 py-12 sm:flex-row sm:items-center sm:justify-between">
@@ -71,6 +85,7 @@ export function Footer() {
               href="https://www.npmjs.com/package/bullstudio"
               target="_blank"
               rel="noreferrer"
+              onClick={() => posthog?.capture("footer_external_link_clicked", { destination: "npm" })}
               className="text-sm text-foreground hover:text-primary"
             >
               npm
@@ -79,6 +94,7 @@ export function Footer() {
               href="https://hub.docker.com/r/emirce/bullstudio"
               target="_blank"
               rel="noreferrer"
+              onClick={() => posthog?.capture("footer_external_link_clicked", { destination: "docker_hub" })}
               className="text-sm text-foreground hover:text-primary"
             >
               Docker Hub
@@ -92,6 +108,7 @@ export function Footer() {
               href={repo}
               target="_blank"
               rel="noreferrer"
+              onClick={() => posthog?.capture("footer_external_link_clicked", { destination: "github" })}
               className="inline-flex items-center gap-2 text-sm text-foreground hover:text-primary"
             >
               <GithubGlyph className="size-4" />
@@ -101,6 +118,7 @@ export function Footer() {
               href={`${repo}/issues`}
               target="_blank"
               rel="noreferrer"
+              onClick={() => posthog?.capture("footer_external_link_clicked", { destination: "github_issues" })}
               className="text-sm text-foreground hover:text-primary"
             >
               Issues

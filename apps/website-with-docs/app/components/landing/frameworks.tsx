@@ -1,3 +1,4 @@
+import { usePostHog } from "@posthog/react";
 import { Terminal } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
@@ -120,8 +121,14 @@ export class AppModule {}`,
 ];
 
 export function Frameworks() {
+  const posthog = usePostHog();
   const [active, setActive] = useState("standalone");
   const fw = FRAMEWORKS.find((f) => f.key === active) ?? FRAMEWORKS[0];
+
+  const handleTabSelect = (key: string, label: string) => {
+    setActive(key);
+    posthog?.capture("framework_tab_selected", { framework: key, framework_label: label });
+  };
 
   if (!fw) return null;
 
@@ -146,7 +153,7 @@ export function Frameworks() {
                 role="tab"
                 aria-selected={f.key === active}
                 type="button"
-                onClick={() => setActive(f.key)}
+                onClick={() => handleTabSelect(f.key, f.label)}
                 className={cn(
                   "shrink-0 whitespace-nowrap border-r border-border px-4 py-3 text-sm font-medium transition-colors sm:px-5",
                   f.key === active
@@ -165,7 +172,15 @@ export function Frameworks() {
                 <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                   1 · Install
                 </span>
-                <CommandBlock command={fw.install} />
+                <CommandBlock
+                  command={fw.install}
+                  onCopied={() =>
+                    posthog?.capture("framework_install_copied", {
+                      framework: fw.key,
+                      framework_label: fw.label,
+                    })
+                  }
+                />
               </div>
 
               {fw.docker ? (

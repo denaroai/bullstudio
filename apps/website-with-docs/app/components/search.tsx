@@ -1,4 +1,5 @@
 "use client";
+import { usePostHog } from "@posthog/react";
 import { create } from "@orama/orama";
 import { useDocsSearch } from "fumadocs-core/search/client";
 import {
@@ -13,6 +14,7 @@ import {
   type SharedProps,
 } from "fumadocs-ui/components/dialog/search";
 import { useI18n } from "fumadocs-ui/contexts/i18n";
+import { useRef } from "react";
 
 function initOrama() {
   return create({
@@ -28,11 +30,23 @@ export default function DefaultSearchDialog(props: SharedProps) {
     initOrama,
     locale,
   });
+  const posthog = usePostHog();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.trim().length > 0) {
+      debounceRef.current = setTimeout(() => {
+        posthog?.capture("docs_searched", { query: value.trim() });
+      }, 1000);
+    }
+  };
 
   return (
     <SearchDialog
       search={search}
-      onSearchChange={setSearch}
+      onSearchChange={handleSearchChange}
       isLoading={query.isLoading}
       {...props}
     >

@@ -1,0 +1,23 @@
+import { PostHogProvider } from "@posthog/react";
+import posthog from "posthog-js";
+import { startTransition, StrictMode } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { HydratedRouter } from "react-router/dom";
+
+posthog.init(import.meta.env.VITE_POSTHOG_PROJECT_TOKEN, {
+  api_host: import.meta.env.VITE_POSTHOG_HOST,
+  defaults: "2026-01-30",
+  tracing_headers: [window.location.hostname, "localhost"],
+  cookieless_mode: "always"
+});
+
+startTransition(() => {
+  hydrateRoot(
+    document,
+    <PostHogProvider client={posthog}>
+      <StrictMode>
+        <HydratedRouter />
+      </StrictMode>
+    </PostHogProvider>,
+  );
+});

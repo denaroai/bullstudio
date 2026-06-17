@@ -4,9 +4,10 @@ import { cn } from "@/lib/cn";
 
 function useCopy() {
   const [copied, setCopied] = useState(false);
-  const copy = useCallback((value: string) => {
+  const copy = useCallback((value: string, onCopied?: () => void) => {
     void navigator.clipboard.writeText(value).then(() => {
       setCopied(true);
+      onCopied?.();
       setTimeout(() => setCopied(false), 1600);
     });
   }, []);
@@ -17,16 +18,18 @@ export function CopyButton({
   value,
   className,
   label = "Copy",
+  onCopied,
 }: {
   value: string;
   className?: string;
   label?: string;
+  onCopied?: () => void;
 }) {
   const { copied, copy } = useCopy();
   return (
     <button
       type="button"
-      onClick={() => copy(value)}
+      onClick={() => copy(value, onCopied)}
       aria-label={copied ? "Copied" : label}
       className={cn(
         "inline-flex size-8 shrink-0 items-center justify-center border border-border bg-background text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
@@ -46,9 +49,11 @@ export function CopyButton({
 export function CommandBlock({
   command,
   className,
+  onCopied,
 }: {
   command: string;
   className?: string;
+  onCopied?: () => void;
 }) {
   return (
     <div
@@ -63,7 +68,7 @@ export function CommandBlock({
       <code className="bs-noscrollbar block min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-foreground">
         {command}
       </code>
-      <CopyButton value={command} label="Copy command" />
+      <CopyButton value={command} label="Copy command" onCopied={onCopied} />
     </div>
   );
 }
