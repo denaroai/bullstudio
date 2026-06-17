@@ -15,7 +15,13 @@ import {
 import { cn } from "@bullstudio/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
-import { Database, Github, LogOut, Twitter } from "lucide-react";
+import {
+  Database,
+  Github,
+  LayoutDashboard,
+  LogOut,
+  Twitter,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { JobDistributionPie } from "@/components/overview/JobDistributionPie";
 import { usePolling } from "@/components/PollingProvider";
@@ -35,6 +41,11 @@ interface AuthSessionResponse {
   authEnabled?: boolean;
 }
 
+/**
+ * Dashboard sidebar: an overview link plus the queue list, grouped by prefix
+ * when more than one is present, and a live Redis/queue-source connection
+ * indicator.
+ */
 export function AppSidebar() {
   const location = useLocation();
   const pathname = location.pathname;
@@ -55,9 +66,6 @@ export function AppSidebar() {
   const queueSource = connectionInfo?.queueSource
     ? getQueueSourceViewModel(connectionInfo.queueSource)
     : null;
-
-  const hasMultiplePrefixes =
-    queueSource?.prefixes && queueSource.prefixes.length > 1;
 
   // If the status query itself fails the API is unreachable; treat that as the
   // worst case so the indicator never shows a stale "connected" state.
@@ -88,6 +96,11 @@ export function AppSidebar() {
       queuesByPrefix.set(queue.prefix ?? "", [queue]);
     }
   }
+
+  // Group by prefix whenever more than one is present. Derived from the queue
+  // list itself (not queueSource.prefixes, which is empty in embedded mode) so
+  // prefix headers show in both standalone and embedded dashboards.
+  const hasMultiplePrefixes = queuesByPrefix.size > 1;
 
   const renderQueueItem = (queue: (typeof queueList)[number]) => {
     const routeParam = queueRouteParam(queue);
@@ -120,13 +133,10 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar
-      collapsible="none"
-      className="sticky top-0 h-svh border-r-0"
-    >
+    <Sidebar collapsible="none" className="sticky top-0 h-svh border-r-0">
       {/* Header with Logo */}
       <SidebarHeader className="h-16 shrink-0 justify-center border-b border-sidebar-border px-4">
-        <div className="flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-3">
           <img
             src={dashboardLogo?.src ?? getAssetUrl("/logo.svg")}
             alt={dashboardLogo?.alt ?? "bullstudio"}
@@ -140,10 +150,31 @@ export function AppSidebar() {
               {dashboardIdentity ? "Embedded" : "Standalone"}
             </span>
           </div>
-        </div>
+        </Link>
       </SidebarHeader>
 
       <SidebarContent>
+        {/* Aggregate overview across all queues */}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/"}
+                  tooltip="Overview"
+                  className="h-9"
+                >
+                  <Link to="/" className="h-9">
+                    <LayoutDashboard className="size-4" />
+                    <span className="text-sm">Overview</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         {hasMultiplePrefixes ? (
           Array.from(queuesByPrefix, ([prefix, prefixQueues]) => (
             <SidebarGroup key={prefix}>

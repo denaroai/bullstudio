@@ -17,7 +17,7 @@ import type {
 } from "@bullstudio/connect-types";
 import Bull from "bull";
 import Redis from "ioredis";
-import { discoverPrefixes } from "../../detection/prefix-discovery";
+import { resolveConfiguredPrefixes } from "../../detection/prefix-discovery";
 import { NotConnectedError } from "../../errors";
 import type {
   QueueProviderCapabilities,
@@ -69,21 +69,31 @@ export class BullProvider implements QueueService {
     return DEFAULT_PREFIX;
   }
 
+  /**
+   * Resolve (and memoize) the prefixes to scan from the configured ones,
+   * expanding `*` (all prefixes) and glob patterns like `local:{*}` against
+   * Redis. Falls back to the default prefix when none are configured.
+   *
+   * @returns The concrete prefixes to scan for this provider.
+   */
   private async getActivePrefixes(): Promise<string[]> {
     if (this.resolvedPrefixes) {
       return this.resolvedPrefixes;
     }
-    const explicit = this.config.prefixes;
-    if (explicit && explicit.length > 0 && !explicit.includes("*")) {
-      this.resolvedPrefixes = explicit;
-      return explicit;
+    const configured = this.config.prefixes;
+    const hasPattern = configured?.some((p) => p.includes("*")) ?? false;
+    if (hasPattern && this.connection) {
+      // Expand "*" (all prefixes) and globs like "local:{*}" against Redis.
+      this.resolvedPrefixes = await resolveConfiguredPrefixes(
+        this.connection,
+        configured,
+        this.defaultPrefix,
+      );
+    } else if (configured && configured.length > 0 && !hasPattern) {
+      this.resolvedPrefixes = configured;
+    } else {
+      this.resolvedPrefixes = [this.defaultPrefix];
     }
-    if (explicit?.includes("*") && this.connection) {
-      const found = await discoverPrefixes(this.connection);
-      this.resolvedPrefixes = found.length > 0 ? found : [this.defaultPrefix];
-      return this.resolvedPrefixes;
-    }
-    this.resolvedPrefixes = [this.defaultPrefix];
     return this.resolvedPrefixes;
   }
 

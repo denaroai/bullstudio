@@ -17,26 +17,57 @@ import {
 import { formatDuration } from "@bullstudio/ui/shared";
 import { useNavigate } from "@tanstack/react-router";
 import { DEFAULT_JOBS_SEARCH } from "@/lib/jobs";
+import { queueRouteParam } from "@/lib/queue-key";
 
 type SlowJob = OverviewMetricsResponse["slowestJobs"][number];
 
 type SlowestJobsTableProps = {
   jobs: SlowJob[];
   /**
-   * Prefix-qualified route param for the queue these jobs belong to (the
-   * overview is scoped to a single queue), so clicking through disambiguates
-   * queues that share a name across prefixes.
+   * Prefix-qualified route param when the table is scoped to a single queue.
+   * Omit it on the global overview and pass `queues` instead so each row links
+   * to the queue the job actually belongs to.
    */
-  queueParam: string;
+  queueParam?: string;
+  /**
+   * Queue list used to resolve a row's destination by job `queueName` when the
+   * table spans multiple queues (global overview). Ignored when `queueParam`
+   * is provided.
+   */
+  queues?: ReadonlyArray<{ name: string; prefix?: string }>;
 };
 
-export function SlowestJobsTable({ jobs, queueParam }: SlowestJobsTableProps) {
+/**
+ * Table of the slowest jobs by processing time. Rows link to the originating
+ * queue's job view — scoped to a single queue via `queueParam`, or resolved
+ * per row from `queues` when rendered on the global overview.
+ *
+ * @param jobs - Slowest jobs to render, already sorted by processing time.
+ * @param queueParam - Fixed queue route param when the table is scoped to one queue.
+ * @param queues - Queue list used to resolve a row's queue by name in global (multi-queue) mode.
+ */
+export function SlowestJobsTable({
+  jobs,
+  queueParam,
+  queues,
+}: SlowestJobsTableProps) {
   const navigate = useNavigate();
 
+  // Single-queue mode uses the fixed param; global mode resolves per row from
+  // the job's queueName (jobs only carry the bare name, so the first matching
+  // prefix wins when names collide across prefixes).
+  const resolveQueueParam = (job: SlowJob): string | undefined => {
+    if (queueParam) return queueParam;
+    const match = queues?.find((queue) => queue.name === job.queueName);
+    return match ? queueRouteParam(match) : undefined;
+  };
+
   const handleJobClick = (job: SlowJob) => {
+    const targetParam = resolveQueueParam(job);
+    if (!targetParam) return;
     navigate({
       to: "/queues/$queueName/jobs",
-      params: { queueName: queueParam },
+      params: { queueName: targetParam },
       search: { ...DEFAULT_JOBS_SEARCH, selected: job.id },
     });
   };
@@ -62,34 +93,39 @@ export function SlowestJobsTable({ jobs, queueParam }: SlowestJobsTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {jobs.map((job) => (
-                <TableRow
-                  key={job.id}
-                  className="cursor-pointer hover:bg-muted/60"
-                  onClick={() => handleJobClick(job)}
-                >
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-foreground">
-                        {job.name}
+              {jobs.map((job) => {
+                const navigable = Boolean(resolveQueueParam(job));
+                return (
+                  <TableRow
+                    key={job.id}
+                    className={
+                      navigable ? "cursor-pointer hover:bg-muted/60" : undefined
+                    }
+                    onClick={navigable ? () => handleJobClick(job) : undefined}
+                  >
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">
+                          {job.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {job.id}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm text-muted-foreground">
+                        {job.queueName}
                       </span>
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {job.id}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="font-mono text-sm text-amber-500">
+                        {formatDuration(job.processingTimeMs)}
                       </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-mono text-sm text-muted-foreground">
-                      {job.queueName}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className="font-mono text-sm text-amber-500">
-                      {formatDuration(job.processingTimeMs)}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
