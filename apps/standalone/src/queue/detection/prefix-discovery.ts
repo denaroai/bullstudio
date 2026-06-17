@@ -11,10 +11,18 @@ import type Redis from "ioredis";
  */
 export async function discoverPrefixes(redis: Redis): Promise<string[]> {
   const prefixes = new Set<string>();
-  const firstSegment = (key: string) => key.split(":")[0] || null;
+  // Strip the trailing `:<queue>:<suffix>` to recover the full prefix, which
+  // may itself contain colons (e.g. a Redis Cluster hash tag like
+  // `local:{event}` or a tenant prefix like `tenant:bull`). Assumes a
+  // single-segment queue name, matching the `*:*:meta` / `*:*:id` scan shape.
+  const prefixOf = (key: string) => {
+    const parts = key.split(":");
+    if (parts.length < 3) return null;
+    return parts.slice(0, -2).join(":") || null;
+  };
 
-  await scanForPattern(redis, "*:*:meta", firstSegment, prefixes);
-  await scanForPattern(redis, "*:*:id", firstSegment, prefixes);
+  await scanForPattern(redis, "*:*:meta", prefixOf, prefixes);
+  await scanForPattern(redis, "*:*:id", prefixOf, prefixes);
 
   return Array.from(prefixes).sort();
 }

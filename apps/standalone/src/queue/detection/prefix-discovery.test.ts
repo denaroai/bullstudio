@@ -43,6 +43,15 @@ describe("discoverPrefixes", () => {
     expect(await discoverPrefixes(redis)).toEqual(["bull"]);
   });
 
+  it("keeps a multi-segment prefix intact (hash tag / colon prefix)", async () => {
+    await redis.set("local:{event}:os-sync:meta", "1");
+    await redis.set("tenant:bull:email:id", "1");
+    expect(await discoverPrefixes(redis)).toEqual([
+      "local:{event}",
+      "tenant:bull",
+    ]);
+  });
+
   it("returns prefixes from both Bull and BullMQ key patterns merged and sorted", async () => {
     await redis.set("stage:q1:meta", "1");
     await redis.set("legacy:q1:id", "1");

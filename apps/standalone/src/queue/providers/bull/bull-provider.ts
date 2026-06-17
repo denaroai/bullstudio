@@ -179,6 +179,9 @@ export class BullProvider implements QueueService {
       if (this._isReconnecting) {
         this._isReconnecting = false;
         this._isConnected = true;
+        // Re-resolve prefixes after a reconnect: new queues/prefixes may have
+        // appeared while disconnected.
+        this.resolvedPrefixes = null;
         this.eventCallbacks.onReconnected?.();
       }
     });
@@ -198,6 +201,8 @@ export class BullProvider implements QueueService {
     }
 
     this._isConnected = false;
+    // Drop memoized prefixes so a fresh connection re-resolves them.
+    this.resolvedPrefixes = null;
   }
 
   isConnected(): boolean {
