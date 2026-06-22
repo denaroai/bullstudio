@@ -1,5 +1,12 @@
 # @bullstudio/bullmq-adapter
 
+## 2.2.0
+
+### Patch Changes
+
+- c06b555: Coerce BullMQ's `Job.stacktrace` (now typed `string[] | null`) to `undefined` when null, matching the `@bullstudio/connect-types` `Job` contract.
+  - @bullstudio/connect-types@2.2.0
+
 ## 2.1.0
 
 ### Patch Changes

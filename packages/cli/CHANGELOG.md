@@ -1,5 +1,21 @@
 # bullstudio
 
+## 2.2.0
+
+### Minor Changes
+
+- c06b555: Add a global dashboard overview page that aggregates job state, throughput, and the slowest jobs across every configured queue, with per-queue status cards.
+
+  To support this across varied Redis deployments, `REDIS_PREFIX` now also accepts a `*` wildcard for full auto-discovery and glob patterns (e.g. `local:{*}`) that resolve to the concrete prefixes present in Redis, including Redis Cluster hash-tag and multi-segment tenant prefixes. Discovered prefixes are re-evaluated on every Redis connect/reconnect so the dashboard picks up new queues without a restart.
+
+### Patch Changes
+
+- c06b555: Fix dashboard UI fallout from recent dependency upgrades:
+  - Inline the two sidebar brand icons that lucide-react 1.x dropped
+  - Update the chart tooltip/legend prop types for recharts v3's reworked `Tooltip`/`Legend` shapes
+
+- c06b555: Fix the queue page so its content can scroll horizontally. The page-level scroll area only mounted a vertical scrollbar, which locked `overflow-x` to hidden and could clip the expanded job detail view on narrower screens.
+
 ## 2.1.0
 
 ## 2.0.1
