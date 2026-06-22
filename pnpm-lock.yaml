@@ -608,6 +608,21 @@ importers:
         specifier: ^11.0.0
         version: 11.0.0
     devDependencies:
+      '@bullstudio/bull-adapter':
+        specifier: workspace:*
+        version: link:../bull-adapter
+      '@bullstudio/bullmq-adapter':
+        specifier: workspace:*
+        version: link:../bullmq-adapter
+      '@bullstudio/embedded-core':
+        specifier: workspace:*
+        version: link:../embedded-core
+      '@bullstudio/frontend':
+        specifier: workspace:*
+        version: link:../../apps/frontend
+      '@bullstudio/standalone':
+        specifier: workspace:*
+        version: link:../../apps/standalone
       '@bullstudio/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -664,6 +679,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@bullstudio/frontend':
+        specifier: workspace:*
+        version: link:../../apps/frontend
       '@bullstudio/private-router':
         specifier: workspace:*
         version: link:../private-router
