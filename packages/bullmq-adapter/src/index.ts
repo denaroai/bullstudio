@@ -645,7 +645,7 @@ async function mapJob(job: BullMqJob, queueName: string): Promise<Job> {
     attemptsMade: job.attemptsMade,
     attemptsLimit: job.opts?.attempts ?? 1,
     failedReason: job.failedReason,
-    stacktrace: job.stacktrace,
+    stacktrace: job.stacktrace ?? undefined,
     returnValue: job.returnvalue,
     timestamp: job.timestamp,
     processedOn: job.processedOn,

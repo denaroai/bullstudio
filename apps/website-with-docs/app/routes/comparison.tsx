@@ -42,6 +42,7 @@ const clientLoader = browserCollections.comparisons.createClientLoader({
         ) : null}
 
         <DocsBody className="mt-10">
+          {/* biome-ignore lint/correctness/useHookAtTopLevel: this `component` render callback is the actual component for this route, biome's heuristic only recognizes PascalCase/use-prefixed names */}
           <Mdx components={useMDXComponents()} />
         </DocsBody>
       </Container>

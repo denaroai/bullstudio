@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
 } from "@bullstudio/ui/components/alert-dialog";
 import { Button } from "@bullstudio/ui/components/button";
-import { ScrollArea } from "@bullstudio/ui/components/scroll-area";
+import { ScrollArea, ScrollBar } from "@bullstudio/ui/components/scroll-area";
 import { Separator } from "@bullstudio/ui/components/separator";
 import {
   useIsFetching,
@@ -223,6 +223,7 @@ function QueueLayout() {
         <div className="pt-6">
           <Outlet />
         </div>
+        <ScrollBar orientation="horizontal" />
       </ScrollArea>
     </div>
   );

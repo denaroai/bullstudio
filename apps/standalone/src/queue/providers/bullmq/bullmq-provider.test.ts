@@ -64,16 +64,24 @@ describe("BullMqProvider (multi-prefix)", () => {
   });
 
   it("discovers queues when the configured prefix contains colons", async () => {
-    await track(await seedBullMqQueue({ prefix: "tenant:bull", name: "email" }));
+    await track(
+      await seedBullMqQueue({ prefix: "tenant:bull", name: "email" }),
+    );
 
-    await withBullMqProvider({ prefixes: ["tenant:bull"] }, async (provider) => {
-      const queues = await provider.getQueues();
-      expect(queues).toHaveLength(1);
-      expect(queues[0]).toMatchObject({ name: "email", prefix: "tenant:bull" });
+    await withBullMqProvider(
+      { prefixes: ["tenant:bull"] },
+      async (provider) => {
+        const queues = await provider.getQueues();
+        expect(queues).toHaveLength(1);
+        expect(queues[0]).toMatchObject({
+          name: "email",
+          prefix: "tenant:bull",
+        });
 
-      const counts = await provider.getJobCounts("email", "tenant:bull");
-      expect(counts.waiting).toBe(3);
-    });
+        const counts = await provider.getJobCounts("email", "tenant:bull");
+        expect(counts.waiting).toBe(3);
+      },
+    );
   });
 
   it("returns queues across multiple explicit prefixes with correct prefix fields", async () => {
