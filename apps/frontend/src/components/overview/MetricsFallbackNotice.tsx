@@ -45,6 +45,7 @@ export function MetricsFallbackNotice({
           href={METRICS_DOCS_URL}
           target="_blank"
           rel="noreferrer"
+          aria-label="Learn more about throughput and failure rate metrics"
           className="underline underline-offset-2 hover:text-foreground"
         >
           Learn more
