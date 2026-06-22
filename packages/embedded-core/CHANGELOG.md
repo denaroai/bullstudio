@@ -1,11 +1,16 @@
 # @bullstudio/embedded-core
 
+## 2.2.0
+
+### Patch Changes
+
+- @bullstudio/connect-types@2.2.0
+
 ## 2.1.0
 
 ### Minor Changes
 
 - Add queue dashboard job management and fix Redis prefix handling
-
   - Add jobs directly from the queue dashboard
   - Retry all failed jobs in a queue at once
   - Support Redis prefixes that contain colons
