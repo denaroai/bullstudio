@@ -53,6 +53,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
           />
         </div>
         <DocsBody>
+          {/* biome-ignore lint/correctness/useHookAtTopLevel: this `component` render callback is the actual component for this route, biome's heuristic only recognizes PascalCase/use-prefixed names */}
           <Mdx components={useMDXComponents()} />
         </DocsBody>
       </DocsPage>
