@@ -81,6 +81,12 @@ export function Footer() {
             >
               Documentation
             </Link>
+            <Link
+              to="/enterprise"
+              className="text-sm text-foreground hover:text-primary"
+            >
+              Enterprise
+            </Link>
             <a
               href="https://www.npmjs.com/package/bullstudio"
               target="_blank"
