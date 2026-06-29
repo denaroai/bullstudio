@@ -1,25 +1,21 @@
-name: Manual Docker image publish
+name: Build and push Docker image
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Docker version tag to publish, for example 1.4.1"
-        required: true
-      latest:
-        description: "Also publish the latest tag"
-        required: true
-        default: true
-        type: boolean
 
 env:
-  IMAGE_NAME: emirce/bullstudio
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: write
 
     steps:
       - name: Checkout repository
@@ -31,46 +27,48 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read package version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./packages/cli/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Resolve tags
         id: tags
         env:
-          VERSION: ${{ inputs.version }}
-          INCLUDE_LATEST: ${{ inputs.latest }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          node <<'NODE'
-          const fs = require("node:fs");
-          const version = process.env.VERSION;
-          const [major, minor] = version.split(".");
-          const tags = [
-            `${process.env.IMAGE_NAME}:${version}`,
-            `${process.env.IMAGE_NAME}:${major}.${minor}`,
-            `${process.env.IMAGE_NAME}:${major}`,
-          ];
-
-          if (process.env.INCLUDE_LATEST === "true") {
-            tags.push(`${process.env.IMAGE_NAME}:latest`);
-          }
-
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `tags<<EOF\n${tags.join("\n")}\nEOF\n`);
-          NODE
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          {
+            echo "tags<<EOF"
+            echo "${IMAGE}:latest"
+            echo "${IMAGE}:${VERSION}"
+            echo "${IMAGE}:sha-${GITHUB_SHA}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           labels: |
             org.opencontainers.image.title=Bullstudio
             org.opencontainers.image.description=Standalone Bullstudio dashboard
-            org.opencontainers.image.source=https://github.com/emirce/bullstudio
-            org.opencontainers.image.version=${{ inputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: |
+            COREPACK_ENABLE_DOWNLOAD_PROMPT=0
           cache-from: type=gha
           cache-to: type=gha,mode=max

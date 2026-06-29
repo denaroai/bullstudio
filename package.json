@@ -9,17 +9,12 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test --concurrency=1",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "release": "changeset publish",
-    "pack:check": "node scripts/verify-public-packs.mjs",
     "format": "biome format --write .",
     "check": "biome lint ."
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
     "@bullstudio/typescript-config": "workspace:*",
-    "@changesets/cli": "^2.31.0",
     "tsup": "^8.5.1",
     "turbo": "^2.9.18",
     "typescript": "5.7.3"
