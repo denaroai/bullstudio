@@ -4,12 +4,35 @@
   "description": "Day.js for Bull Studio",
   "author": "Bull Studio",
   "license": "MIT",
+  "homepage": "https://github.com/emirce/bullstudio#readme",
+  "bugs": {
+    "url": "https://github.com/emirce/bullstudio/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emirce/bullstudio.git",
+    "directory": "packages/dayjs"
+  },
   "main": "./index.ts",
   "types": "./index.ts",
   "exports": {
     ".": "./index.ts"
   },
+  "files": [
+    "index.ts"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "dependencies": {
-    "dayjs": "^1.11.19"
+    "dayjs": "^1.11.21"
+  },
+  "devDependencies": {
+    "@bullstudio/typescript-config": "workspace:*",
+    "@types/node": "^25.9.3"
   }
 }

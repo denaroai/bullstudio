@@ -1,0 +1,76 @@
+---
+title: Bullstudio vs Bull Board
+description: Both give you a window into your Bull and BullMQ queues. Here's how Bullstudio and Bull Board differ on setup, debugging, and day-to-day operations.
+---
+
+If you run [Bull](https://github.com/OptimalBits/bull) or [BullMQ](https://github.com/taskforcesh/bullmq), you've almost certainly come across [Bull Board](https://github.com/felixmosh/bull-board) — the go-to open-source UI for inspecting queues. Bullstudio covers the same ground, so the obvious question is: which one should you reach for?
+
+This page lays out the differences honestly. Both are good tools; they just optimize for different things.
+
+## The short version
+
+**Bull Board** is a UI component you mount inside your own app. It's lightweight, battle-tested, and great when you just need a read-mostly view bolted onto an existing service.
+
+**Bullstudio** is a purpose-built dashboard you can run as a standalone binary _or_ embed in your app. It leans harder into debugging and day-to-day operations — flow tracing, deep job inspection, and a faster path to "just show me my queues."
+
+## At a glance
+
+| | Bullstudio | Bull Board |
+| --- | --- | --- |
+| Standalone mode | ✅ One command, no app required | ❌ Must be mounted in an app |
+| Embedded mode | ✅ Express, Fastify, Hono, NestJS, Next.js | ✅ Express, Fastify, Hono, Koa, NestJS, …|
+| Job inspection | Data, return value, attempts, full stack trace | Data, return value, stack trace |
+| Flow / parent-child tracing | ✅ First-class | ⚠️ Limited |
+| Actions (retry, promote, remove, pause) | ✅ | ✅ |
+| Setup to first view | `npx bullstudio -r <redis>` | Add adapter + mount route |
+| License | MIT | MIT |
+
+> Feature parity moves fast on both projects — treat this as a starting point and check the latest docs before you commit.
+
+## Setup
+
+With Bull Board, you wire an adapter for each queue and mount the server-side router into your app:
+
+```ts
+import { createBullBoard } from "@bull-board/api";
+import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
+import { ExpressAdapter } from "@bull-board/express";
+
+const serverAdapter = new ExpressAdapter();
+createBullBoard({
+  queues: [new BullMQAdapter(myQueue)],
+  serverAdapter,
+});
+serverAdapter.setBasePath("/admin/queues");
+app.use("/admin/queues", serverAdapter.getRouter());
+```
+
+That's a good fit when the dashboard lives _inside_ a service you already run. But if you just want to look at a Redis instance — in development, in staging, or during an incident — there's nothing to mount. Bullstudio runs standalone:
+
+```bash
+npx bullstudio -r redis://localhost:6379
+```
+
+No app, no account, no second service to deploy. When you _do_ want it embedded, Bullstudio [supports the same frameworks](/docs/embedded) with a similar mount-a-router approach.
+
+## Debugging failures
+
+This is where the two tools diverge most. Bull Board gives you a solid table of jobs per state and lets you open a job to read its payload and stack trace — enough to answer "what failed?"
+
+Bullstudio is built around the next question: _why_, and _what now_. Open a failed job and you get its data, return value, every attempt, and the full stack trace in one place — then retry, promote, or remove it without leaving the view. For pipelines built with BullMQ flows, Bullstudio traces parent-child relationships so you can follow a unit of work across queues instead of guessing which child job broke the parent.
+
+## When to pick which
+
+**Reach for Bull Board if** you already mount admin tooling inside one app, you mainly need a read view, and you value a small, well-established dependency.
+
+**Reach for Bullstudio if** you want to point a dashboard at any Redis instance without wiring it into code, you spend real time debugging failed jobs and flows, or you want one tool that works both standalone and embedded.
+
+## Try it
+
+You can see for yourself in about ten seconds — point Bullstudio at any Redis instance with queues:
+
+```bash
+npx bullstudio -r redis://localhost:6379
+```
+
+Then head to the [docs](/docs) for embedded setup, queue adapters, and configuration.

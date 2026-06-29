@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@import "@bullstudio/ui/globals.css";
+
+@font-face {
+  font-family: "Oxanium";
+  src: url(./assets/fonts/Oxanium/Oxanium-VariableFont_wght.ttf) format("truetype");
+  font-weight: 400 1000;
+  font-style: normal;
+}
+
+@theme inline {
+  --font-sans: "Oxanium", sans-serif;
+}

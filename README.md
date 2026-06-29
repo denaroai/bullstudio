@@ -4,433 +4,249 @@
 
 <h1 align="center">bullstudio</h1>
 
-<p align="center">
-  A lightweight, beautiful queue management dashboard for <a href="https://github.com/OptimalBits/bull">Bull</a> and <a href="https://docs.bullmq.io/">BullMQ</a>.<br/>
-  Monitor your queues, inspect jobs, visualize flows, and manage your Redis-backed job infrastructure.
-</p>
 
 <p align="center">
   <a href="https://github.com/denaroai/bullstudio/pkgs/container/bullstudio"><img src="https://img.shields.io/badge/container-GHCR-2496ED?logo=github" alt="GHCR" /></a>
   <img src="https://img.shields.io/badge/BullMQ-5.x-orange" alt="BullMQ" />
-  <img src="https://img.shields.io/badge/Bullx-4.x-orange" alt="Bull" />
-  <img src="https://img.shields.io/badge/React-19-blue" alt="React" />
+  <img src="https://img.shields.io/badge/Bull-4.x-orange" alt="Bull" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-blue" alt="TypeScript" />
 </p>
 
----
+<p align="center">
+Modern, sleek queue dashboard for <a href="https://docs.bullmq.io/">BullMQ</a> and <a href="https://github.com/OptimalBits/bull">Bull</a>. Run it standalone with one command or embed it in your app.
+</p>
+
+<p align="center">View official <a href="https://bullstudio.dev/docs">docs &#8594;</a></p>
 
 
-<div align="center">
-<img width="80%" src="https://github.com/user-attachments/assets/b5eea348-5919-40ff-ad55-3a0387dbec47" />
-</div>
 
+<table align="center">
+  <tr>
+    <td width="30%"><img src="apps/website-with-docs/public/demo/bullstudio-overview-demo-dark.png" alt="Bullstudio dashboard overview" /></td>
+    <td width="30%"><img src="apps/website-with-docs/public/demo/bullstudio-jobs-demo-dark.png" alt="Bullstudio job inspection" /></td>
+    <td  width="30%"><img src="apps/website-with-docs/public/demo/bullstudio-flows-demo-dark.png" alt="Bullstudio dashboard overview" /></td>
+  </tr>
+</table>
 
-## Quick Start
+## Features
 
-```bash
-npx bullstudio -r <redis_url>
-```
+- **Queue overviews** — live queue counts and job states surface stuck, failed, and backed-up work at a glance.
+- **Two ways to run** — launch standalone with one command, or embed it inside your existing app.
+- **BullMQ & Bull** — works with both BullMQ and legacy Bull queues via adapters.
+- **Framework adapters** — support for Hono, Express, Fastify, Next.js, and NestJS.
+- **Flow view** — visualize parent/child job trees and trace dependencies across your flows.
+- **Job control** — retry, promote, remove, and clean jobs; inspect data, logs, and stack traces.
+- **Built-in auth** — protect access with basic authentication or a read-only mode.
+- **Docker ready** — run anywhere from the official image, standalone or in a compose stack.
 
-That's it! The dashboard opens automatically at [http://localhost:4000](http://localhost:4000). No code integration needed. Bullstudio automatically detects your provider (Bull or BullMq).
+## Quick start
 
----
+Bullstudio runs in two modes:
 
-## Installation
+- **Standalone mode**: run a separate dashboard process that connects directly to Redis and discovers queues on start up.
+- **Embedded mode**: mount Bullstudio inside your app and expose only the queues you supply.
 
-### Run directly with npx (recommended)
+### Standalone
 
-```bash
-npx bullstudio
-```
-
-### Or install globally
-
-```bash
-npm install -g bullstudio
-bullstudio
-```
-
----
-
-## Docker
-
-Container images are published to **GitHub Container Registry** (`ghcr.io`), not Docker Hub. The CI image name is `ghcr.io/<github-owner>/bullstudio` (same as `${{ github.repository }}` with the `ghcr.io/` prefix). For this repo that is `ghcr.io/denaroai/bullstudio`.
-
-### Quick Start
+The quickest way to spin up bullstudio is via CLI:
 
 ```bash
-docker run -d \
-  -p 4000:4000 \
-  -e REDIS_URL=redis://host.docker.internal:6379 \
-  ghcr.io/denaroai/bullstudio:latest
+npx bullstudio -r redis://localhost:6379
 ```
 
-The dashboard is available at [http://localhost:4000](http://localhost:4000).
-
-### Connect to Redis
+The dashboard opens at `http://localhost:4000` and connects to your local redis instance on port 6379.
 
 ```bash
-# Local Redis (Docker for Mac/Windows)
-docker run -d -p 4000:4000 -e REDIS_URL=redis://host.docker.internal:6379 ghcr.io/denaroai/bullstudio:latest
-
-# Remote Redis
-docker run -d -p 4000:4000 -e REDIS_URL=redis://myhost.com:6379 ghcr.io/denaroai/bullstudio:latest
-
-# Redis with authentication
-docker run -d -p 4000:4000 -e REDIS_URL=redis://:yourpassword@myhost.com:6379 ghcr.io/denaroai/bullstudio:latest
+bullstudio --help
+bullstudio -r redis://:password@redis.example.com:6379 -p 8080 --no-open
+bullstudio --prefix stage,stage2
+bullstudio --username operator --password change-me
 ```
 
-### Custom Port
+### Docker
 
-```bash
-docker run -d -p 8080:8080 -e PORT=8080 -e REDIS_URL=redis://host.docker.internal:6379 ghcr.io/denaroai/bullstudio:latest
-```
-
-### With Authentication
+Bullstudio is available as a Docker image:
 
 ```bash
 docker run -d \
   -p 4000:4000 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
-  -e BULLSTUDIO_PASSWORD=secret123 \
-  ghcr.io/denaroai/bullstudio:latest
+  emirce/bullstudio
 ```
 
-### Docker Compose
+You can also run it in a Docker compose stack:
 
 ```yaml
 services:
   bullstudio:
-    image: ghcr.io/denaroai/bullstudio:latest
+    image: emirce/bullstudio
     ports:
       - "4000:4000"
     environment:
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      - redis
+      REDIS_URL: redis://redis:6379
+      BULLSTUDIO_USERNAME: operator
+      BULLSTUDIO_PASSWORD: change-me
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
 ```
+
+## Embedded
+
+Use embedded mode if want to access Bullstudio from an existing application that is accessible via a public URL
+
+Install one framework adapter and one queue adapter. Here as an example, we use Hono:
 
 ```bash
-docker compose up -d
+pnpm add @bullstudio/hono @bullstudio/bullmq-adapter
 ```
 
-### Kubernetes
+```ts
+import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
+import { bullstudio } from "@bullstudio/hono";
+import { Queue } from "bullmq";
+import { Hono } from "hono";
+import IORedis from "ioredis";
 
-If your pod shows `ImagePullBackOff` and the event mentions **`docker.io/denaroai/bullstudio`**, the manifest used a short image name. Kubernetes does **not** infer GHCR: `denaroai/bullstudio:…` is always pulled from Docker Hub.
+const connection = new IORedis(
+  process.env.REDIS_URL ?? "redis://localhost:6379",
+  {
+    maxRetriesPerRequest: null,
+  },
+);
 
-Use the full image reference (match the tag from [GHCR packages](https://github.com/denaroai/bullstudio/pkgs/container/bullstudio)):
+const emailQueue = new Queue("email", { connection });
+const app = new Hono();
 
-```yaml
-image: ghcr.io/denaroai/bullstudio:latest
-# or, for a digest-style tag from CI:
-# image: ghcr.io/denaroai/bullstudio:sha-c3b163b2cd0be3a1c290c00ecde639054061e2b6
+app.route(
+  "/ops/bullstudio",
+  bullstudio({
+    queues: [
+      createBullMqQueueAdapter(emailQueue, {
+        key: "email",
+        label: "Email",
+      }),
+    ],
+    protection: {
+      type: "basic",
+      username: process.env.BULLSTUDIO_USERNAME ?? "operator",
+      password: process.env.BULLSTUDIO_PASSWORD ?? "change-me",
+    },
+  }),
+);
 ```
 
-Example patch for a running deployment:
+Open `/ops/bullstudio`. Dashboard assets and the private dashboard API are served under the same mount path.
 
-```bash
-kubectl set image deployment/bullstudio-deployment \
-  bullstudio=ghcr.io/denaroai/bullstudio:latest \
-  -n denaro
+### Framework Adapters
+
+| Framework | Package | Docs |
+| --- | --- | --- |
+| Hono | <a href="https://www.npmjs.com/package/@bullstudio/hono">@bullstudio/hono</a> | <a href="https://bullstudio.dev/docs/embedded/hono">Hono docs</a> |
+| Express | <a href="https://www.npmjs.com/package/@bullstudio/express">@bullstudio/express</a> | <a href="https://bullstudio.dev/docs/embedded/express">Express docs</a> |
+| Fastify | <a href="https://www.npmjs.com/package/@bullstudio/fastify">@bullstudio/fastify</a> | <a href="https://bullstudio.dev/docs/embedded/fastify">Fastify docs</a> |
+| Next.js App Router | <a href="https://www.npmjs.com/package/@bullstudio/next">@bullstudio/next</a> | <a href="https://bullstudio.dev/docs/embedded/next">Next.js docs</a> |
+| NestJS | <a href="https://www.npmjs.com/package/@bullstudio/nestjs">@bullstudio/nestjs</a> | <a href="https://bullstudio.dev/docs/embedded/nestjs">NestJS docs</a> |
+
+```ts
+// Express
+import { bullstudio } from "@bullstudio/express";
+
+app.use("/ops/bullstudio", bullstudio({ queues }));
 ```
 
-Reference manifest: `deploy/kubernetes/bullstudio-deployment.yaml`. For **private** GHCR packages, uncomment `imagePullSecrets` there and add a `ghcr.io` pull secret.
+```ts
+// Fastify
+import { bullstudio } from "@bullstudio/fastify";
 
-### Environment Variables
-
-| Variable              | Description                               | Default                  |
-| --------------------- | ----------------------------------------- | ------------------------ |
-| `REDIS_URL`           | Redis connection URL                      | `redis://localhost:6379` |
-| `PORT`                | Port to run the dashboard on              | `4000`                   |
-| `REDIS_PREFIX`        | Comma-separated key prefixes              | auto-discover all        |
-| `BULLSTUDIO_USERNAME` | Password for HTTP Basic Auth (production) | `bullstudio`             |
-| `BULLSTUDIO_PASSWORD` | Password for HTTP Basic Auth (production) | (none)                   |
-
-### Available Tags
-
-| Tag | Description |
-|-----|-------------|
-| `latest` | Latest build from the `main` branch |
-| `x.y.z` | Specific release version (e.g., `0.1.4`) |
-| `x.y` | Minor version (e.g., `0.1`) |
-| `x` | Major version (e.g., `0`) |
-
-### Supported Platforms
-
-- `linux/amd64`
-- `linux/arm64`
-
----
-
-## Usage
-
-```bash
-bullstudio [options]
+await app.register(bullstudio({ queues }), {
+  prefix: "/ops/bullstudio",
+});
 ```
 
-### Options
+```ts
+// app/ops/bullstudio/[[...bullstudio]]/route.ts
+import { bullstudio } from "@bullstudio/next";
 
-| Option                 | Short | Description                                    | Default                  |
-| ---------------------- | ----- | ---------------------------------------------- | ------------------------ |
-| `--redis <url>`        | `-r`  | Redis connection URL                           | `redis://localhost:6379` |
-| `--port <port>`        | `-p`  | Port to run the dashboard on                   | `4000`                   |
-| `--prefix <prefixes>`  |       | Comma-separated key prefixes                   | auto-discover all        |
-| `--username <user>`    |       | Username for HTTP Basic Auth (production only) | `bullstudio`             |
-| `--password <pass>`    |       | Password for HTTP Basic Auth (production only) | (none)                   |
-| `--no-open`            |       | Don't open browser automatically               | Opens browser            |
-| `--help`               | `-h`  | Show help message                              |                          |
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
----
-
-## Examples
-
-### Connect to local Redis
-
-```bash
-bullstudio
+export const { GET, HEAD, POST } = bullstudio({
+  mountPath: "/ops/bullstudio",
+  queues,
+});
 ```
 
-### Connect to a remote Redis server
+### Queue Adapters
+Bullstudio supports BullMQ and Bull (legacy) queues. You simply wrap your queue in the according adapter:
+```ts
+import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
 
-```bash
-bullstudio -r redis://myhost.com:6379
+const queue = createBullMqQueueAdapter(emailQueue, {
+  key: "email",
+  label: "Email",
+});
 ```
 
-### Connect with authentication
+```ts
+import { createBullQueueAdapter } from "@bullstudio/bull-adapter";
 
-```bash
-bullstudio -r redis://:yourpassword@myhost.com:6379
+const queue = createBullQueueAdapter(emailQueue, {
+  key: "email",
+  label: "Email",
+});
 ```
 
-### Use a custom port
+Embedded mode only shows supplied queues. Bullstudio does not discover all Redis queues in embedded mode and does not close host-owned queue connections.
 
-```bash
-bullstudio -p 5000
+### Embedded Options
+
+```ts
+bullstudio({
+  queues,
+  readOnly: true,
+  protection: {
+    type: "basic",
+    username: "operator",
+    password: process.env.BULLSTUDIO_PASSWORD ?? "change-me",
+  },
+  dashboardIdentity: {
+    title: "Production Queues",
+  },
+  documentIdentity: {
+    title: "Queue Ops",
+    favicon: "/favicon.ico",
+  },
+});
 ```
 
-### Connect to Redis with username and password
+Set `protection: { type: "disabled" }` only when your host application protects the mount path.
 
-```bash
-bullstudio -r redis://username:password@myhost.com:6379
-```
+## Runnable Examples
 
-### Run without opening browser
+| Framework | Command |
+| --- | --- |
+| Hono | `pnpm --filter @bullstudio/example-hono-bullmq-embedded dev` |
+| Express | `pnpm --filter @bullstudio/example-express-bullmq-embedded dev` |
+| Fastify | `pnpm --filter @bullstudio/example-fastify-bullmq-embedded dev` |
+| Next.js App Router | `pnpm --filter @bullstudio/example-next-bullmq-embedded dev` |
+| NestJS | `pnpm --filter @bullstudio/example-nestjs-bullmq-embedded dev:express` |
 
-```bash
-bullstudio --no-open
-```
 
-### Multiple prefixes
+## Tech stack
 
-By default bullstudio auto-discovers all prefixes in Redis.
-To restrict to specific prefixes:
+Bullstudio's core is built with
 
-```bash
-bullstudio --prefix stage,stage2
-```
-
-Or via the environment variable:
-
-```bash
-REDIS_PREFIX=stage,stage2 bullstudio
-```
-
-### Combine options
-
-```bash
-bullstudio -r redis://:secret@production.redis.io:6379 -p 8080 --no-open
-```
-
-### Protect dashboard with password
-
-```bash
-bullstudio --password secret123
-```
-
-The browser will prompt for credentials:
-
-- Username: `bullstudio`
-- Password: `secret123`
-
----
-
-## Authentication
-
-You can protect the dashboard with HTTP Basic Auth in **production mode only**. Development mode (`--dev`) does not require authentication.
-
-### Usage
-
-```bash
-# Using CLI flag
-bullstudio --password secret123
-
-## Custom username
-bullstudio --username bullstudio_admin --password secret123
-
-# Using environment variable
-BULLSTUDIO_PASSWORD=secret123 bullstudio
-
-# Docker with authentication
-docker run -e BULLSTUDIO_PASSWORD=secret123 -p 4000:4000 ghcr.io/denaroai/bullstudio:latest
-```
-
-### Authentication Details
-
-- **Username**: `bullstudio` (fixed, cannot be changed)
-- **Password**: Set via `--password` flag or `BULLSTUDIO_PASSWORD` environment variable
-- **Mode**: Only applies to production mode (default). Development mode (`--dev`) bypasses authentication
-- **Method**: HTTP Basic Auth (browser will show native login dialog)
-
-### Health Check
-
-The `/health` endpoint is publicly accessible without authentication:
-
-```bash
-curl http://localhost:4000/health
-# {"status":"ok","timestamp":"2026-02-08T21:58:47.508Z","redis":"configured"}
-```
-
----
-
-## Features
-
-### Overview Dashboard
-Get a bird's-eye view of your queue health with real-time metrics, throughput charts, and failure tracking.
-
-### Jobs Browser
-- Browse all jobs across queues
-- Filter by status (waiting, active, completed, failed, delayed)
-- Search jobs by name, ID, or data
-- Retry failed jobs with one click
-- View detailed job data, return values, and stack traces
-
-### Flows Visualization
-- Visualize parent-child job relationships as interactive graphs
-- See the live state of each job in the flow
-- Click nodes to navigate to job details
-- Auto-refresh while flows are active
-
----
-
-## Requirements
-
-- **Node.js** 18 or higher
-- **Redis** server running (local or remote)
-- **BullMQ** queues in your Redis instance
-
----
-
-## Environment Variables
-
-You can also configure bullstudio using environment variables:
-
-```bash
-export REDIS_URL=redis://localhost:6379
-export PORT=4000
-export BULLSTUDIO_USERNAME=bullstudio
-export BULLSTUDIO_PASSWORD=secret123
-bullstudio
-```
-
-| Variable              | Description                                    | Default                  |
-| --------------------- | ---------------------------------------------- | ------------------------ |
-| `REDIS_URL`           | Redis connection URL                           | `redis://localhost:6379` |
-| `PORT`                | Port to run the dashboard on                   | `4000`                   |
-| `BULLSTUDIO_USERNAME` | Username for HTTP Basic Auth (production only) | `bullstudio`             |
-| `BULLSTUDIO_PASSWORD` | Password for HTTP Basic Auth (production only) | (none)                   |
-
-Command-line options take precedence over environment variables.
-
----
-
-## Troubleshooting
-
-### "Connection refused" error
-
-Make sure Redis is running:
-
-```bash
-# Check if Redis is running
-redis-cli ping
-
-# Start Redis (macOS with Homebrew)
-brew services start redis
-
-# Start Redis (Docker)
-docker run -d -p 6379:6379 redis
-```
-
-### No queues showing up
-
-bullstudio discovers queues by scanning for BullMQ metadata keys in Redis. Make sure:
-1. Your application has created at least one queue
-2. You're connecting to the correct Redis instance
-3. If you use custom prefixes, bullstudio will auto-discover them. You can also specify them explicitly with `--prefix` or `REDIS_PREFIX`
-
-### Port already in use
-
-Use a different port:
-
-```bash
-bullstudio -p 5000
-```
-
----
+- <a href="https://www.typescriptlang.org/">Typescript</a>
+- <a href="https://react.dev/">React</a>
+- <a href="https://tailwindcss.com/">Tailwind</a>
+- <a href="https://tanstack.com/router/latest">Tanstack Router</a> + <a href="https://tanstack.com/query/latest">Query</a>
+- <a href="https://trpc.io/">tRPC</a>
 
 ## Development
 
-### Running tests
-
-Tests are written with [vitest](https://vitest.dev) and exercise the queue
-providers against a **real Redis instance** — no mocks. An ephemeral Redis
-service is provided via docker compose.
-
-```bash
-# Start the test Redis (first time, or after docker prune)
-docker compose -f docker-compose.test.yml up -d
-
-# Install dependencies
-pnpm install
-
-# Run every package's test suite
-pnpm test
-```
-
-Tests default to `redis://localhost:6379/15`. Override with `TEST_REDIS_URL`
-if you run Redis elsewhere (e.g. a non-default port).
-
-> Tests flush Redis **DB 15** between cases. Do not use DB 15 for anything
-> you care about keeping.
-
-### Running a subset
-
-```bash
-# One package
-pnpm --filter @bullstudio/queue test
-
-# One test file
-pnpm --filter @bullstudio/queue test src/detection/prefix-discovery.test.ts
-```
-
-### Stopping the test Redis
-
-```bash
-docker compose -f docker-compose.test.yml down
-```
-
----
+For detailed development guidelines visit the <a href="https://bullstudio.dev/docs/development">development section</a> in the docs.
 
 ## License
 
 MIT
-
----
-
-<p align="center">
-  Made with love for the BullMQ community
-</p>

@@ -29,6 +29,19 @@ export interface Job {
   repeatJobKey?: string;
 }
 
+/**
+ * Input for enqueuing a new job onto a queue. `data` is the job payload; `opts`
+ * carries the subset of provider job options the dashboard lets users set.
+ */
+export interface AddJobInput {
+  name: string;
+  data?: unknown;
+  opts?: {
+    delay?: number;
+    attempts?: number;
+  };
+}
+
 export interface JobFilter {
   status?: JobStatus | JobStatus[];
   name?: string;

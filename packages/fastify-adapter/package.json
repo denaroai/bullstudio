@@ -1,0 +1,63 @@
+{
+  "name": "@bullstudio/fastify",
+  "version": "2.2.0",
+  "description": "Fastify framework adapter for Bullstudio embedded mode.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "bullstudio",
+    "bullmq",
+    "bull",
+    "fastify",
+    "dashboard",
+    "queue"
+  ],
+  "homepage": "https://github.com/emirce/bullstudio#readme",
+  "bugs": {
+    "url": "https://github.com/emirce/bullstudio/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emirce/bullstudio.git",
+    "directory": "packages/fastify-adapter"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "lint": "biome lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "peerDependencies": {
+    "fastify": "^5.0.0"
+  },
+  "dependencies": {
+    "@bullstudio/embedded-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@bullstudio/typescript-config": "workspace:*",
+    "@types/node": "^25.9.3",
+    "fastify": "^5.0.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  }
+}

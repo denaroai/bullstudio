@@ -1,0 +1,84 @@
+{
+  "name": "@bullstudio/nestjs",
+  "version": "2.2.0",
+  "description": "NestJS framework adapter for Bullstudio embedded mode.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "bullstudio",
+    "bullmq",
+    "bull",
+    "nestjs",
+    "dashboard",
+    "queue"
+  ],
+  "homepage": "https://github.com/emirce/bullstudio#readme",
+  "bugs": {
+    "url": "https://github.com/emirce/bullstudio/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emirce/bullstudio.git",
+    "directory": "packages/nestjs-adapter"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "lint": "biome lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "express": "^5.0.0",
+    "fastify": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "express": {
+      "optional": true
+    },
+    "fastify": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@bullstudio/express": "workspace:*",
+    "@bullstudio/fastify": "workspace:*"
+  },
+  "devDependencies": {
+    "@bullstudio/embedded-core": "workspace:*",
+    "@bullstudio/typescript-config": "workspace:*",
+    "@nestjs/common": "^11.1.27",
+    "@nestjs/core": "^11.1.27",
+    "@nestjs/platform-express": "^11.1.27",
+    "@nestjs/platform-fastify": "^11.1.27",
+    "@nestjs/testing": "^11.1.27",
+    "@types/node": "^25.9.3",
+    "express": "^5.0.0",
+    "fastify": "^5.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  }
+}

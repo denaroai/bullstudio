@@ -1,0 +1,146 @@
+---
+title: Configuration
+description: Configure dashboard access, queue visibility, branding, and mount paths.
+---
+
+This page covers embedded dashboard configuration. Standalone mode uses CLI flags and environment variables.
+
+## Complete example
+
+```ts
+bullstudio({
+  queues: [emailQueueAdapter],
+  readOnly: true,
+  protection: {
+    type: "session",
+    username: "operator",
+    password: process.env.BULLSTUDIO_PASSWORD!,
+    sessionSecret: process.env.BULLSTUDIO_SESSION_SECRET!,
+    tokenTtlSeconds: 60 * 60 * 8,
+    cookieName: "queue_ops_session",
+  },
+  dashboardIdentity: {
+    title: "Production Queues",
+    logo: {
+      src: "/assets/queue-logo.svg",
+      alt: "Queue Ops",
+    },
+  },
+  documentIdentity: {
+    title: "Queue Ops",
+    favicon: "/favicon.ico",
+  },
+  polling: {
+    enabled: true,
+    interval: 5000,
+    minInterval: 2000,
+    allowUserOverride: true,
+  },
+});
+```
+
+## Queue visibility
+
+Choose which queues appear in an embedded dashboard. Pass queue adapters created with `@bullstudio/bullmq-adapter` or `@bullstudio/bull-adapter`.
+
+```ts
+queues: [
+  createBullMqQueueAdapter(emailQueue, {
+    key: "email",
+    label: "Email",
+  }),
+]
+```
+
+Bullstudio only shows the queues you provide. It does not scan Redis in embedded mode.
+
+## Safe viewing
+
+Use read-only mode when operators should inspect queues without changing jobs or queue state.
+
+```ts
+readOnly: true
+```
+
+When enabled, Bullstudio blocks mutating operations on the server. Operators can inspect queues and jobs, but cannot retry jobs, remove jobs, pause queues, or resume queues.
+
+## Auth
+
+Protect embedded dashboards before exposing them outside your local machine. Configure credentials and session signing explicitly in production so they use your own secrets.
+
+```ts
+protection: {
+  type: "session",
+  username: process.env.BULLSTUDIO_USERNAME!,
+  password: process.env.BULLSTUDIO_PASSWORD!,
+  sessionSecret: process.env.BULLSTUDIO_SESSION_SECRET!,
+}
+```
+
+Use `session` for Bullstudio's built-in login session. You can also set `tokenTtlSeconds` for the session lifetime and `cookieName` for the session cookie name.
+
+Disable Bullstudio-owned auth only when the host app already protects the mount path.
+
+```ts
+protection: {
+  type: "disabled",
+}
+```
+
+## Customization
+
+Set the name and logo operators see inside the dashboard.
+
+```ts
+dashboardIdentity: {
+  title: "Queue Ops",
+  logo: {
+    src: "/assets/queue-logo.svg",
+    alt: "Queue Ops",
+  },
+}
+```
+
+Set the browser tab title and favicon separately when the dashboard should match your app or environment.
+
+```ts
+documentIdentity: {
+  title: "Queue Ops",
+  favicon: "/favicon.ico",
+}
+```
+
+## Polling
+
+Live views poll Redis to stay current. On pay-per-command or shared Redis this can get expensive, so you can control how often Bullstudio polls — or turn it off entirely. The setting applies globally to every live view (connection status, job and flow detail, and flow lists).
+
+```ts
+polling: {
+  enabled: true,
+  interval: 5000,
+  minInterval: 2000,
+  allowUserOverride: true,
+}
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `enabled` | `true` | Master switch. When `false`, Bullstudio never polls and operators cannot turn polling on. |
+| `interval` | `2000` | Default poll interval in milliseconds applied to every live view. |
+| `minInterval` | — | Floor in milliseconds that operators cannot poll faster than. Caps load without disabling overrides entirely. |
+| `allowUserOverride` | `true` | Whether operators can change the interval or turn polling off from the dashboard. When `false`, your `interval` is pinned and the control is hidden. |
+
+Operators choose the interval (or **Off**) from the sidebar, and the choice is stored per browser within the bounds you set. When polling is off, each live view still has a manual refresh button.
+
+## Where the dashboard lives
+
+Mount Bullstudio under the URL where operators should open it. Each framework adapter wires that path differently.
+
+| Framework | Mount config |
+| --- | --- |
+| Express | `app.use("/ops/bullstudio", bullstudio(config))` |
+| Fastify | `app.register(bullstudio(config), { prefix: "/ops/bullstudio" })` |
+| Hono | `app.route("/ops/bullstudio", bullstudio(config))` |
+| Next.js | `bullstudio({ mountPath: "/ops/bullstudio", ...config })` |
+
+The UI and private dashboard API live under the same mount path.

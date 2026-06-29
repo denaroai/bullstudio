@@ -1,0 +1,64 @@
+{
+  "name": "@bullstudio/embedded-core",
+  "version": "2.2.0",
+  "description": "Shared embedded-mode runtime for Bullstudio framework adapters.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "bullstudio",
+    "embedded",
+    "dashboard",
+    "queue",
+    "bullmq",
+    "bull"
+  ],
+  "homepage": "https://github.com/emirce/bullstudio#readme",
+  "bugs": {
+    "url": "https://github.com/emirce/bullstudio/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emirce/bullstudio.git",
+    "directory": "packages/embedded-core"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup && node ../../scripts/copy-embedded-client.mjs",
+    "lint": "biome lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "dependencies": {
+    "@bullstudio/connect-types": "workspace:*",
+    "@trpc/server": "^11.18.0",
+    "superjson": "^2.2.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@bullstudio/frontend": "workspace:*",
+    "@bullstudio/private-router": "workspace:*",
+    "@bullstudio/typescript-config": "workspace:*",
+    "@types/node": "^25.9.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "extends": "@bullstudio/typescript-config/base.json",
+  "include": ["src"],
+  "exclude": ["node_modules", "src/**/*.test.ts"],
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "outDir": "dist",
+    "rootDir": "src"
+  }
+}

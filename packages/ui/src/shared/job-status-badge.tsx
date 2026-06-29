@@ -91,7 +91,7 @@ export function JobStatusBadge({
         "inline-flex items-center font-mono font-medium rounded-md border uppercase tracking-wider",
         sizeClasses[size],
         config.className,
-        className
+        className,
       )}
     >
       {showDot && (

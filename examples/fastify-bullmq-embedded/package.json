@@ -1,0 +1,26 @@
+{
+  "name": "@bullstudio/example-fastify-bullmq-embedded",
+  "version": "0.0.4",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --format=esm --external:bullmq --external:ioredis",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bullstudio/bullmq-adapter": "workspace:*",
+    "@bullstudio/fastify": "workspace:*",
+    "bullmq": "^5.79.1",
+    "fastify": "^5.0.0",
+    "ioredis": "^5.11.1"
+  },
+  "devDependencies": {
+    "@bullstudio/typescript-config": "workspace:*",
+    "@types/node": "^25.9.3",
+    "esbuild": "^0.28.1",
+    "tsx": "^4.22.4",
+    "typescript": "^5.7.3"
+  }
+}

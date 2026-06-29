@@ -1,0 +1,71 @@
+{
+  "name": "bullstudio",
+  "version": "2.2.0",
+  "description": "A lightweight queue management dashboard for Bull and BullMQ",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "bullstudio": "./dist/bin/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "bullmq",
+    "bull",
+    "queue",
+    "redis",
+    "dashboard",
+    "cli",
+    "monitoring",
+    "jobs"
+  ],
+  "readme": "README.md",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emirce/bullstudio.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/emirce/bullstudio/issues"
+  },
+  "homepage": "https://github.com/emirce/bullstudio#readme",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "rm -rf dist/client dist/server && mkdir -p dist/client dist/server && cp -R ../../apps/frontend/dist/client/. dist/client/ && cp ../../apps/standalone/dist/server/production.js dist/server/production.js && pnpm build:cli",
+    "build:cli": "esbuild index.ts --bundle --platform=node --target=node20 --outfile=dist/bin/cli.js --format=esm --external:open",
+    "start": "node dist/bin/cli.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint",
+    "prepublishOnly": "pnpm build",
+    "generate:bull-jobs": "tsx scripts/generate-bull-jobs.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts"
+  },
+  "dependencies": {
+    "bull": "^4.16.4",
+    "bullmq": "^5.79.1",
+    "ioredis": "^5.11.1",
+    "open": "^11.0.0"
+  },
+  "devDependencies": {
+    "@bullstudio/bull-adapter": "workspace:*",
+    "@bullstudio/bullmq-adapter": "workspace:*",
+    "@bullstudio/embedded-core": "workspace:*",
+    "@bullstudio/frontend": "workspace:*",
+    "@bullstudio/standalone": "workspace:*",
+    "@bullstudio/typescript-config": "workspace:*",
+    "@types/node": "^25.9.3",
+    "esbuild": "^0.28.1",
+    "tsx": "^4.22.4",
+    "typescript": "^5.7.2"
+  }
+}

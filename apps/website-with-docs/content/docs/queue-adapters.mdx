@@ -1,0 +1,104 @@
+---
+title: Queue Adapters
+description: Expose BullMQ or Bull queues to an embedded dashboard.
+---
+
+Queue adapters expose host-owned queues to an embedded dashboard.
+
+## BullMQ
+
+```bash
+pnpm add @bullstudio/bullmq-adapter bullmq
+```
+
+```ts
+import { createBullMqQueueAdapter } from "@bullstudio/bullmq-adapter";
+import { Queue } from "bullmq";
+
+const emailQueue = new Queue("email", { connection });
+
+const emailQueueAdapter = createBullMqQueueAdapter(emailQueue, {
+  key: "email",
+  label: "Email",
+});
+```
+
+Capabilities:
+
+| Capability | Supported |
+| --- | --- |
+| Job lists and details | yes |
+| Job logs | yes |
+| Retry jobs | yes |
+| Remove jobs | yes |
+| Pause and resume queues | yes |
+| Worker counts | yes |
+| BullMQ flows | yes |
+
+## Bull v4
+
+```bash
+pnpm add @bullstudio/bull-adapter bull
+```
+
+```ts
+import { createBullQueueAdapter } from "@bullstudio/bull-adapter";
+import Bull from "bull";
+
+const emailQueue = new Bull("email", {
+  redis: process.env.REDIS_URL,
+});
+
+const emailQueueAdapter = createBullQueueAdapter(emailQueue, {
+  key: "email",
+  label: "Email",
+});
+```
+
+Capabilities:
+
+| Capability | Supported |
+| --- | --- |
+| Job lists and details | yes |
+| Job logs | yes |
+| Retry jobs | yes |
+| Remove jobs | yes |
+| Pause and resume queues | yes |
+| Worker counts | yes |
+| BullMQ flows | no |
+
+## Adapter options
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `key` | Stable Bullstudio queue key. Must be unique in one dashboard instance. | Queue name |
+| `label` | Human-facing queue label. | Queue name |
+
+Use custom keys when queue names can collide in one dashboard instance.
+
+```ts
+bullstudio({
+  queues: [
+    createBullMqQueueAdapter(emailPrimaryQueue, {
+      key: "email-primary",
+      label: "Email Primary",
+    }),
+    createBullMqQueueAdapter(emailBackfillQueue, {
+      key: "email-backfill",
+      label: "Email Backfill",
+    }),
+  ],
+});
+```
+
+## Lifecycle
+
+Bullstudio does not close supplied queues or Redis connections.
+
+```ts
+process.once("SIGTERM", async () => {
+  await emailQueue.close();
+  await connection.quit();
+  process.exit(0);
+});
+```
